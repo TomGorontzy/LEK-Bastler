@@ -1,0 +1,2 @@
+python-docx==0.8.11
+tkinter-tooltip==2.0.1

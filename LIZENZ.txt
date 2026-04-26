@@ -1,0 +1,9 @@
+MIT-Lizenz
+
+Copyright (c) 2025 LEK-Bastler Projekt
+
+Hiermit wird unentgeltlich jeder Person, die eine Kopie der Software und der zugehörigen Dokumentation (die "Software") erhält, die Erlaubnis erteilt, sie uneingeschränkt zu nutzen, einschließlich und ohne Beschränkung der Rechte zur Nutzung, zum Kopieren, Ändern, Zusammenfügen, Veröffentlichen, Verteilen, Unterlizenzieren und/oder Verkaufen von Kopien der Software, und Personen, denen die Software zur Verfügung gestellt wird, zu gestatten, dies unter den folgenden Bedingungen zu tun:
+
+Der obige Urheberrechtshinweis und dieser Genehmigungshinweis sind in alle Kopien oder wesentliche Teile der Software einzufügen.
+
+DIE SOFTWARE WIRD "WIE SIE IST" ZUR VERFÜGUNG GESTELLT, OHNE GEWÄHRLEISTUNG JEGLICHER ART, AUSDRÜCKLICH ODER STILLSCHWEIGEND, EINSCHLIESSLICH DER GEWÄHRLEISTUNG DER MARKTGÄNGIGKEIT, EIGNUNG FÜR EINEN BESTIMMTEN ZWECK UND NICHTVERLETZUNG. IN KEINEM FALL SIND DIE AUTOREN ODER URHEBERRECHTSINHABER FÜR ANSPRÜCHE, SCHÄDEN ODER ANDERE VERPFLICHTUNGEN VERANTWORTLICH, OB IN EINER VERTRAGS-, UNERLAUBTEN HANDLUNG ODER ANDERWEITIG, DIE SICH AUS, AUS ODER IN VERBINDUNG MIT DER SOFTWARE ODER DER NUTZUNG ODER ANDEREN GESCHÄFTEN MIT DER SOFTWARE ERGEBEN.

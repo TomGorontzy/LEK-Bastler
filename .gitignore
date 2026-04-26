@@ -1,0 +1,23 @@
+# Kompilierte Ausgabe
+dist/
+build/
+*.exe
+*.spec.bak
+
+# Portable-Version (kompilierte Distribution)
+LEK-Bastler-Portable/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# PyInstaller
+*.spec.orig
+
+# Windows
+Thumbs.db
+desktop.ini
