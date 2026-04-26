@@ -26,6 +26,11 @@ class TemplateManager:
         """
         if not os.path.exists(self.template_folder):
             return None
+
+        # Feste Basisvorlage bevorzugen
+        fixed_template = os.path.join(self.template_folder, "LEK-Vorlage.docx")
+        if os.path.exists(fixed_template):
+            return fixed_template
         
         # Suche nach .docx-Dateien im Vorlagen-Ordner
         template_files = glob.glob(os.path.join(self.template_folder, "*.docx"))
@@ -234,70 +239,47 @@ class TemplateManager:
                 if element.tag.endswith('p'):  # Paragraph
                     # Element direkt kopieren
                     new_element = deepcopy(element)
-                    target_doc._body._body.append(new_element)
+                    target_doc._element.body.append(new_element)
                     
                 elif element.tag.endswith('tbl'):  # Tabelle
                     # Tabelle direkt kopieren
                     new_table_element = deepcopy(element)
-                    target_doc._body._body.append(new_table_element)
+                    target_doc._element.body.append(new_table_element)
                 
                 else:
                     # Andere Strukturen (Listen etc.)
                     new_element = deepcopy(element)
-                    target_doc._body._body.append(new_element)
+                    target_doc._element.body.append(new_element)
                     
             except Exception as e:
                 # Fallback: Fehlermeldung als Paragraph
                 target_doc.add_paragraph(f"[Struktur konnte nicht kopiert werden: {type(element).__name__}]")
     
-    def insert_tasks_from_page_3(self, doc, tasks, lek_theme=""):
+    def insert_tasks_from_page_2(self, doc, tasks, lek_theme=""):
         """
-        Fügt Aufgaben ab der dritten Seite in das Dokument ein
+        Fügt Aufgaben ab der zweiten Seite in das Dokument ein.
         
         Args:
             doc: Word-Dokument (Vorlage)
             tasks: Liste der Aufgaben
             lek_theme: LEK-Thema
         """
-        # Seitenumbruch nach den ersten beiden Seiten hinzufügen
+        # Seitenumbruch: Aufgaben starten auf Seite 2
         doc.add_page_break()
         
-        # Seitennummerierung ab Seite 3 einrichten (beginnt mit 1)
-        self._add_page_numbering_from_page_3(doc)
-        
-        # Titel für Aufgabenteil
-        title_paragraph = doc.add_heading('Aufgaben', 1)
-        title_paragraph.style.font.color.rgb = None  # Standard-Farbe verwenden
-        
-        # LEK-Thema als Untertitel, falls vorhanden
-        if lek_theme:
-            theme_paragraph = doc.add_paragraph(lek_theme)
-            theme_run = theme_paragraph.runs[0]
-            theme_run.font.name = 'Aptos'
-            theme_run.font.size = Pt(14)
-            theme_run.bold = True
+        # Seitennummerierung ab Seite 2 einrichten (beginnt mit 1)
+        self._add_page_numbering_from_page_2(doc)
         
         # Aufgaben hinzufügen
         for i, task in enumerate(tasks, 1):
-            original_number = task.get('number', i)
-            task_title = task.get('title', 'Ohne Titel')
-            
-            # Aufgabentitel - ohne "Aufgabe x:" Präfix
-            doc.add_heading(task_title, level=2)
-            
-            # Aufgabeninhalt mit vollständiger Struktur (Tabellen, Listen, etc.)
+            # Aufgabeninhalt mit vollständiger Struktur (inkl. Originalformatierung)
             if task.get('all_elements'):
-                # KORRIGIERT: Verwende word_processor Methode für Dictionary-Struktur
                 from word_processor import WordProcessor
                 wp = WordProcessor()
-                # Kopiere alle Elemente außer dem ersten (Titel) mit korrekter Methode
-                elements_without_title = task['all_elements'][1:]
-                wp._copy_elements_for_lek(doc, elements_without_title)
+                wp._copy_elements_for_lek(doc, task['all_elements'])
             elif task.get('original_paragraphs'):
-                # Fallback: Nur Paragraphen
-                self._copy_paragraphs_with_formatting(doc, task['original_paragraphs'][1:])
+                self._copy_paragraphs_with_formatting(doc, task['original_paragraphs'])
             else:
-                # Fallback: Nur Text ohne Formatierung
                 content_text = '\n'.join(task.get('content', []))
                 doc.add_paragraph(content_text)
             
@@ -320,9 +302,9 @@ class TemplateManager:
         
         # Dokument speichern nicht hier, wird von der aufrufenden Funktion gemacht
         
-    def _add_page_numbering_from_page_3(self, doc):
+    def _add_page_numbering_from_page_2(self, doc):
         """
-        Fügt Seitennummerierung ab Seite 3 hinzu (beginnend mit 1)
+        Fügt Seitennummerierung ab Seite 2 hinzu (beginnend mit 1)
         Format: "Seite/Gesamtseiten" rechtsbündig in der Fußzeile
         
         Args:
@@ -379,3 +361,11 @@ class TemplateManager:
         for run in footer_paragraph.runs:
             run.font.size = Pt(10)
             run.font.name = 'Aptos'
+
+    # Rückwärtskompatibilität
+    def insert_tasks_from_page_3(self, doc, tasks, lek_theme=""):
+        self.insert_tasks_from_page_2(doc, tasks, lek_theme)
+
+    # Rückwärtskompatibilität
+    def _add_page_numbering_from_page_3(self, doc):
+        self._add_page_numbering_from_page_2(doc)

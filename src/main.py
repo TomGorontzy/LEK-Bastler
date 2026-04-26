@@ -12,12 +12,14 @@ Features:
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import os
+import sys
 from word_processor import WordProcessor
 from task_selector import TaskSelector
 
 class LEKBastlerGUI:
     def __init__(self, root):
         self.root = root
+        self._apply_window_icon()
         self.root.title("LEK-Bastler - Aufgabenauswahl")
         self.root.geometry("800x600")
         
@@ -29,6 +31,21 @@ class LEKBastlerGUI:
         self.lek_theme = ""  # Speichert das extrahierte LEK-Thema
         
         self.setup_ui()
+
+    def _apply_window_icon(self):
+        """Setzt das Fenster-Icon (Titelleiste) wenn verfügbar."""
+        try:
+            if getattr(sys, 'frozen', False):
+                base_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+            else:
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+
+            icon_path = os.path.join(base_dir, "app_icon.ico")
+            if os.path.exists(icon_path):
+                self.root.iconbitmap(icon_path)
+        except Exception:
+            # Kein harter Fehler, falls Icon in einer Umgebung nicht gesetzt werden kann
+            pass
     
     def setup_ui(self):
         """Erstellt die Benutzeroberfläche"""
@@ -73,15 +90,18 @@ class LEKBastlerGUI:
         preview_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
         
         # Treeview für Aufgabenvorschau
-        columns = ("Nr", "Titel", "Schwierigkeit", "Suchbegriffe")
+        columns = ("Nr", "Kategorie", "Titel", "Schwierigkeit", "Suchbegriffe")
         self.task_tree = ttk.Treeview(preview_frame, columns=columns, show="headings", height=10, selectmode="extended")
         
         # Spaltenbreiten optimiert setzen
         self.task_tree.heading("Nr", text="Nr")
         self.task_tree.column("Nr", width=50, minwidth=40)
         
+        self.task_tree.heading("Kategorie", text="Kategorie")
+        self.task_tree.column("Kategorie", width=170, minwidth=120)
+
         self.task_tree.heading("Titel", text="Titel")
-        self.task_tree.column("Titel", width=300, minwidth=200)
+        self.task_tree.column("Titel", width=260, minwidth=180)
         
         self.task_tree.heading("Schwierigkeit", text="Schwierigkeit")
         self.task_tree.column("Schwierigkeit", width=100, minwidth=80)
@@ -242,6 +262,7 @@ class LEKBastlerGUI:
             
             self.task_tree.insert("", "end", values=(
                 original_number,
+                task.get('category', 'Ohne Kategorie'),
                 task.get('title', 'Ohne Titel'),
                 task.get('difficulty', 'Unbekannt'),
                 keywords_text

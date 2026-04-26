@@ -17,11 +17,18 @@ class WordProcessor:
     
     def __init__(self):
         self.template_manager = TemplateManager()
+        self._num_id_map = {}
+        self._last_context_report = None
     
     def extract_tasks(self, file_path):
         """
-        Extrahiert Aufgaben aus einer Word-Datei
-        Findet Überschrift 1 und markiert alles bis zur nächsten Überschrift 1 als eine Aufgabe
+        Extrahiert Aufgaben aus einer Word-Datei.
+
+        Struktur-Regel:
+        - Überschrift 1 = Kategorie
+        - Überschrift 2 = neue Aufgabe
+        - Alle folgenden Elemente bis zur nächsten Überschrift 2 oder 1
+          gehören zur aktuellen Aufgabe.
         
         Args:
             file_path (str): Pfad zur Word-Datei
@@ -33,65 +40,75 @@ class WordProcessor:
             doc = Document(file_path)
             tasks = []
             
-            # Erweiterte Methode: Sammle alle Body-Elemente (Paragraphen UND Tabellen)
             all_elements = self._get_all_body_elements(doc)
-            task_ranges = []
-            
-            # Schritt 1: Finde alle Überschrift 1 Positionen
-            heading1_positions = []
-            for i, element in enumerate(all_elements):
-                if element['type'] == 'paragraph' and self._is_heading1(element['content']):
-                    heading1_positions.append(i)
-            
-            # Schritt 2: Erstelle Aufgaben-Bereiche von Überschrift 1 bis zur nächsten
-            for i, start_pos in enumerate(heading1_positions):
-                end_pos = heading1_positions[i + 1] if i + 1 < len(heading1_positions) else len(all_elements)
-                
-                # Sammle alle Elemente von start_pos bis end_pos (exklusiv)
-                task_elements = all_elements[start_pos:end_pos]
-                
-                if task_elements:
-                    # Title aus erstem Paragraph extrahieren
-                    first_element = task_elements[0]
-                    task_title = first_element['content'].text.strip() if first_element['type'] == 'paragraph' else f"Aufgabe {i + 1}"
-                    
-                    # Sammle Text-Inhalt für Keyword/Difficulty-Extraktion (nur von Paragraphen)
-                    content = []
-                    for element in task_elements:
-                        if element['type'] == 'paragraph' and element['content'].text.strip():
-                            content.append(element['content'].text.strip())
-                        elif element['type'] == 'table':
-                            # Füge Tabellen-Text für Keyword-Analyse hinzu
-                            table_text = self._extract_table_text_for_keywords(element['content'])
-                            if table_text:
-                                content.append(table_text)
-                    
-                    full_content = ' '.join(content)
-                    
-                    task = {
-                        'number': i + 1,
+
+            current_category = "Ohne Kategorie"
+            current_task = None
+
+            def _finalize_current_task():
+                if current_task is None:
+                    return
+
+                content = []
+                for task_element in current_task['all_elements']:
+                    if task_element['type'] == 'paragraph' and task_element['content'].text.strip():
+                        content.append(task_element['content'].text.strip())
+                    elif task_element['type'] == 'table':
+                        table_text = self._extract_table_text_for_keywords(task_element['content'])
+                        if table_text:
+                            content.append(table_text)
+
+                current_task['content'] = content
+                current_task['original_paragraphs'] = [
+                    elem['content'] for elem in current_task['all_elements'] if elem['type'] == 'paragraph'
+                ]
+                tasks.append(current_task)
+
+            for element in all_elements:
+                if element['type'] != 'paragraph':
+                    if current_task is not None:
+                        current_task['all_elements'].append(element)
+                    continue
+
+                paragraph = element['content']
+
+                if self._is_heading1(paragraph):
+                    _finalize_current_task()
+                    current_task = None
+                    category_text = paragraph.text.strip()
+                    current_category = category_text if category_text else "Ohne Kategorie"
+                    continue
+
+                if self._is_heading2(paragraph):
+                    _finalize_current_task()
+                    task_title = paragraph.text.strip() or f"Aufgabe {len(tasks) + 1}"
+                    current_task = {
+                        'number': len(tasks) + 1,
+                        'category': current_category,
                         'title': self._extract_task_title(task_title),
-                        'content': content,
-                        'all_elements': task_elements,  # NEUE: Komplette Element-Liste (Paragraphen + Tabellen)
-                        'original_paragraphs': [elem['content'] for elem in task_elements if elem['type'] == 'paragraph'],  # Rückwärtskompatibilität
-                        'difficulty': 'Mittel',  # Wird später aktualisiert
-                        'keywords': []  # Wird später aktualisiert
+                        'content': [],
+                        'all_elements': [element],
+                        'original_paragraphs': [],
+                        'difficulty': 'Mittel',
+                        'keywords': []
                     }
-                    
-                    tasks.append(task)
-            
-            # Schritt 3: Metadaten für alle Aufgaben extrahieren
+                    continue
+
+                if current_task is not None:
+                    current_task['all_elements'].append(element)
+
+            _finalize_current_task()
+
+            # Metadaten für alle Aufgaben extrahieren
             for task in tasks:
                 full_content = ' '.join(task.get('content', []))
                 if full_content:
-                    # Explizite Schwierigkeit suchen, dann automatische Extraktion
                     explicit_difficulty = self._extract_explicit_difficulty(full_content)
                     if explicit_difficulty:
                         task['difficulty'] = explicit_difficulty
                     else:
                         task['difficulty'] = self._extract_difficulty(full_content)
                     
-                    # Explizite Keywords suchen, dann automatische Extraktion
                     explicit_keywords = self._extract_explicit_keywords(full_content)
                     if explicit_keywords:
                         task['keywords'] = explicit_keywords
@@ -168,6 +185,30 @@ class WordProcessor:
         
         return False
 
+    def _is_heading2(self, paragraph):
+        """
+        Überprüft, ob ein Paragraph eine Überschrift 2 ist.
+
+        Args:
+            paragraph: Word-Paragraph-Objekt
+
+        Returns:
+            bool: True wenn es eine Überschrift 2 ist
+        """
+        try:
+            if paragraph.style:
+                style_name = paragraph.style.name
+                return (
+                    style_name == 'Heading 2'
+                    or style_name == 'Überschrift 2'
+                    or style_name.lower() == 'heading 2'
+                    or style_name.lower() == 'überschrift 2'
+                )
+        except:
+            return False
+
+        return False
+
     def _get_all_body_elements(self, doc):
         """
         Sammelt alle Body-Elemente (Paragraphen und Tabellen) in der richtigen Reihenfolge
@@ -181,7 +222,7 @@ class WordProcessor:
         elements = []
         
         # Nutze XML-Struktur für korrekte Reihenfolge
-        body = doc._body._element
+        body = doc._element.body
         
         for child in body:
             tag_name = child.tag.split('}')[-1] if '}' in child.tag else child.tag
@@ -205,6 +246,12 @@ class WordProcessor:
                             'content': table
                         })
                         break
+
+            elif tag_name == 'sdt':  # Inhaltssteuerelement (Content Control)
+                elements.append({
+                    'type': 'sdt',
+                    'content': child  # Kein python-docx-Wrapper – raw XML-Element
+                })
         
         return elements
 
@@ -440,14 +487,31 @@ class WordProcessor:
             doc: Ziel-Word-Dokument (LEK)
             elements: Liste von Element-Dictionaries mit 'type' und 'content'
         """
+        from copy import deepcopy
+        from docx.oxml.ns import qn as _qn
+
+        body = doc._element.body
+        sect_pr = body.find(_qn('w:sectPr'))
+
         for element in elements:
-            if element['type'] == 'paragraph':
-                # Verwende LEK-spezifische Paragraph-Kopierfunktion
-                self._copy_paragraphs_for_lek(doc, [element['content']])
-                
-            elif element['type'] == 'table':
-                # Kopiere Tabelle mit vollständiger Formatierung
-                self._copy_table_with_formatting(doc, element['content'])
+            try:
+                etype = element['type']
+                if etype in ('paragraph', 'table'):
+                    xml_elem = element['content']._element
+                elif etype == 'sdt':
+                    xml_elem = element['content']
+                else:
+                    continue
+
+                new_elem = deepcopy(xml_elem)
+                self._remap_num_ids_in_element(new_elem, self._num_id_map)
+                if sect_pr is not None:
+                    body.insert(list(body).index(sect_pr), new_elem)
+                else:
+                    body.append(new_elem)
+            except Exception as e:
+                # Fallback: Fehlermeldung als Absatz einfügen
+                doc.add_paragraph(f"[Element konnte nicht kopiert werden: {str(e)[:80]}]")
 
     def _copy_paragraphs_for_lek(self, doc, paragraphs):
         """
@@ -854,7 +918,7 @@ class WordProcessor:
         
         return None  # Keine explizite Schwierigkeit gefunden
     
-    def create_document_from_tasks(self, tasks, output_path, lek_theme=""):
+    def create_document_from_tasks(self, tasks, output_path, lek_theme="", debug_context_report=False):
         """
         Erstellt ein neues Word-Dokument aus einer Liste von Aufgaben
         Verwendet Vorlagen aus dem Vorlagen-Ordner falls verfügbar
@@ -863,8 +927,13 @@ class WordProcessor:
             tasks (list): Liste von Aufgaben-Dictionaries
             output_path (str): Pfad für die neue Datei
             lek_theme (str): LEK-Thema für Vorlagen-Auswahl
+            debug_context_report (bool): Gibt Kontext-Report zu Styles/Nummerierung aus
         """
         try:
+            # Debug kann explizit oder per Umgebungsvariable aktiviert werden
+            env_debug = os.getenv("LEK_DEBUG_EXPORT_CONTEXT", "").strip().lower() in {"1", "true", "yes", "on"}
+            debug_context_report = bool(debug_context_report or env_debug)
+
             # Suche nach passender Vorlage
             template_path = self.template_manager.find_matching_template(lek_theme)
             
@@ -872,12 +941,18 @@ class WordProcessor:
                 # Verwende Vorlage als Basis
                 doc = self.template_manager.load_template_as_base(template_path)
                 print(f"Verwende Vorlage: {os.path.basename(template_path)}")
+
+                # Quellkontext (Styles/Nummerierung) in Ziel-Dokument übernehmen,
+                # damit Listen/Formatierungen aus Aufgaben in der Vorlage korrekt bleiben.
+                self._prepare_target_document_context(doc, tasks)
+                if debug_context_report:
+                    self._print_context_report()
                 
                 # Ersetze Platzhalter wie 'TitelFürThema' durch das LEK-Thema
                 self.template_manager.replace_template_placeholders(doc, lek_theme)
                 
-                # Aufgaben ab Seite 3 einfügen
-                self.template_manager.insert_tasks_from_page_3(doc, tasks, lek_theme)
+                # Aufgaben ab Seite 2 einfügen
+                self.template_manager.insert_tasks_from_page_2(doc, tasks, lek_theme)
                 
             else:
                 # Fallback: Erstelle neues Dokument mit programmatischem Deckblatt
@@ -978,6 +1053,275 @@ class WordProcessor:
             
         except Exception as e:
             raise Exception(f"Fehler beim Erstellen der Word-Datei: {str(e)}")
+
+    def _prepare_target_document_context(self, target_doc, tasks):
+        """
+        Übernimmt benötigte Styles und Nummerierungsdefinitionen aus dem
+        Quell-Dokument der Aufgaben in das Ziel-Dokument.
+
+        Args:
+            target_doc: Ziel-Word-Dokument
+            tasks: Aufgabenliste mit all_elements
+        """
+        source_part = self._get_source_part_from_tasks(tasks)
+        if source_part is None:
+            self._num_id_map = {}
+            self._last_context_report = {
+                'used_style_ids': [],
+                'used_num_ids': [],
+                'missing_styles_before': [],
+                'missing_styles_after': [],
+                'num_id_map': {}
+            }
+            return
+
+        used_style_ids, used_num_ids = self._collect_used_style_and_num_ids(tasks)
+        missing_before = self._get_missing_style_ids(target_doc.part, used_style_ids)
+        self._merge_required_styles(source_part, target_doc.part, used_style_ids)
+        missing_after = self._get_missing_style_ids(target_doc.part, used_style_ids)
+        self._num_id_map = self._merge_required_numbering(source_part, target_doc.part, used_num_ids)
+
+        self._last_context_report = {
+            'used_style_ids': sorted(used_style_ids),
+            'used_num_ids': sorted(used_num_ids, key=lambda x: int(x) if str(x).isdigit() else 10**9),
+            'missing_styles_before': sorted(missing_before),
+            'missing_styles_after': sorted(missing_after),
+            'num_id_map': dict(self._num_id_map)
+        }
+
+    def _get_missing_style_ids(self, target_part, used_style_ids):
+        """Ermittelt, welche verwendeten Style-IDs im Ziel noch fehlen."""
+        try:
+            target_styles = target_part.styles.element
+            target_ids = {
+                s.get(qn('w:styleId'))
+                for s in target_styles.xpath('./w:style')
+                if s.get(qn('w:styleId'))
+            }
+        except Exception:
+            return set(used_style_ids)
+
+        return {style_id for style_id in used_style_ids if style_id not in target_ids}
+
+    def _print_context_report(self):
+        """Gibt den zuletzt erstellten Kontext-Report aus."""
+        report = self._last_context_report or {}
+        used_styles = report.get('used_style_ids', [])
+        used_nums = report.get('used_num_ids', [])
+        missing_before = report.get('missing_styles_before', [])
+        missing_after = report.get('missing_styles_after', [])
+        num_map = report.get('num_id_map', {})
+
+        print("[Export-Kontext] Styles verwendet      :", len(used_styles))
+        print("[Export-Kontext] NumIDs verwendet      :", len(used_nums))
+        print("[Export-Kontext] Styles fehlend vorher :", len(missing_before))
+        print("[Export-Kontext] Styles fehlend nachher:", len(missing_after))
+
+        if missing_before:
+            print("[Export-Kontext] Fehlend vorher (Beispiel):", ', '.join(missing_before[:10]))
+        if num_map:
+            mappings = [f"{k}->{v}" for k, v in sorted(num_map.items(), key=lambda kv: int(kv[0]) if str(kv[0]).isdigit() else 10**9)]
+            print("[Export-Kontext] NumID-Mapping:", ', '.join(mappings[:15]))
+
+    def get_last_context_report(self):
+        """Liefert den zuletzt berechneten Export-Kontext-Report zurück."""
+        return dict(self._last_context_report) if self._last_context_report else None
+
+    def _get_source_part_from_tasks(self, tasks):
+        """
+        Ermittelt den Dokument-Part des Quell-Dokuments über die ersten
+        verfügbaren Paragraph-/Table-Objekte in den Aufgaben.
+        """
+        for task in tasks or []:
+            for element in task.get('all_elements', []):
+                content = element.get('content')
+                if hasattr(content, 'part'):
+                    return content.part
+        return None
+
+    def _collect_used_style_and_num_ids(self, tasks):
+        """
+        Sammelt verwendete Style-IDs und Num-IDs aus den Aufgaben-Elementen.
+        """
+        style_ids = set()
+        num_ids = set()
+
+        def _xml_of(element):
+            content = element.get('content')
+            if hasattr(content, '_element'):
+                return content._element
+            return content
+
+        for task in tasks or []:
+            for element in task.get('all_elements', []):
+                xml_elem = _xml_of(element)
+                if xml_elem is None:
+                    continue
+
+                for n in xml_elem.xpath('.//w:pStyle|.//w:rStyle|.//w:tblStyle'):
+                    val = n.get(qn('w:val'))
+                    if val:
+                        style_ids.add(val)
+
+                for n in xml_elem.xpath('.//w:numPr/w:numId'):
+                    val = n.get(qn('w:val'))
+                    if val:
+                        num_ids.add(val)
+
+        return style_ids, num_ids
+
+    def _merge_required_styles(self, source_part, target_part, used_style_ids):
+        """
+        Fügt fehlende Styles (inkl. Abhängigkeiten) aus Quelle in Ziel ein.
+        """
+        from copy import deepcopy
+
+        if not used_style_ids:
+            return
+
+        try:
+            source_styles = source_part.styles.element
+            target_styles = target_part.styles.element
+        except Exception:
+            return
+
+        src_by_id = {
+            s.get(qn('w:styleId')): s
+            for s in source_styles.xpath('./w:style')
+            if s.get(qn('w:styleId'))
+        }
+        tgt_ids = {
+            s.get(qn('w:styleId'))
+            for s in target_styles.xpath('./w:style')
+            if s.get(qn('w:styleId'))
+        }
+
+        pending = list(used_style_ids)
+        visited = set()
+
+        while pending:
+            style_id = pending.pop()
+            if not style_id or style_id in visited:
+                continue
+            visited.add(style_id)
+
+            src_style = src_by_id.get(style_id)
+            if src_style is None:
+                continue
+
+            # Abhängigkeiten zuerst aufnehmen
+            for dep_xpath in ('./w:basedOn', './w:link', './w:next'):
+                dep_nodes = src_style.xpath(dep_xpath)
+                for dep in dep_nodes:
+                    dep_id = dep.get(qn('w:val'))
+                    if dep_id and dep_id not in visited:
+                        pending.append(dep_id)
+
+            if style_id not in tgt_ids:
+                target_styles.append(deepcopy(src_style))
+                tgt_ids.add(style_id)
+
+    def _merge_required_numbering(self, source_part, target_part, used_num_ids):
+        """
+        Fügt benötigte Nummerierungsdefinitionen aus Quelle in Ziel ein.
+        Bei ID-Konflikten werden neue IDs erzeugt und zurückgemappt.
+
+        Returns:
+            dict: Mapping alter numId -> neue/übernommene numId
+        """
+        from copy import deepcopy
+
+        num_id_map = {}
+        if not used_num_ids:
+            return num_id_map
+
+        try:
+            src_numbering = source_part.numbering_part.element
+            tgt_numbering = target_part.numbering_part.element
+        except Exception:
+            return num_id_map
+
+        src_nums = {
+            n.get(qn('w:numId')): n
+            for n in src_numbering.xpath('./w:num')
+            if n.get(qn('w:numId'))
+        }
+        tgt_nums = {
+            n.get(qn('w:numId')): n
+            for n in tgt_numbering.xpath('./w:num')
+            if n.get(qn('w:numId'))
+        }
+
+        src_abs = {
+            a.get(qn('w:abstractNumId')): a
+            for a in src_numbering.xpath('./w:abstractNum')
+            if a.get(qn('w:abstractNumId'))
+        }
+        tgt_abs = {
+            a.get(qn('w:abstractNumId')): a
+            for a in tgt_numbering.xpath('./w:abstractNum')
+            if a.get(qn('w:abstractNumId'))
+        }
+
+        def _next_free_id(existing_ids):
+            max_id = max([int(i) for i in existing_ids if str(i).isdigit()] + [0])
+            return str(max_id + 1)
+
+        for num_id in sorted(used_num_ids, key=lambda x: int(x) if str(x).isdigit() else 10**9):
+            src_num = src_nums.get(num_id)
+            if src_num is None:
+                continue
+
+            abs_nodes = src_num.xpath('./w:abstractNumId')
+            if not abs_nodes:
+                continue
+            src_abs_id = abs_nodes[0].get(qn('w:val'))
+
+            target_num_id = num_id
+            if target_num_id in tgt_nums:
+                # ID bereits belegt -> remappen
+                target_num_id = _next_free_id(tgt_nums.keys())
+
+            target_abs_id = src_abs_id
+            if target_abs_id in tgt_abs:
+                # Abstract-ID belegt -> remappen
+                target_abs_id = _next_free_id(tgt_abs.keys())
+
+            # AbstractNum sicherstellen
+            src_abs_def = src_abs.get(src_abs_id)
+            if src_abs_def is not None:
+                new_abs = deepcopy(src_abs_def)
+                new_abs.set(qn('w:abstractNumId'), target_abs_id)
+                if target_abs_id not in tgt_abs:
+                    tgt_numbering.append(new_abs)
+                    tgt_abs[target_abs_id] = new_abs
+
+            # Num hinzufügen
+            new_num = deepcopy(src_num)
+            new_num.set(qn('w:numId'), target_num_id)
+            new_abs_nodes = new_num.xpath('./w:abstractNumId')
+            if new_abs_nodes:
+                new_abs_nodes[0].set(qn('w:val'), target_abs_id)
+
+            if target_num_id not in tgt_nums:
+                tgt_numbering.append(new_num)
+                tgt_nums[target_num_id] = new_num
+
+            num_id_map[num_id] = target_num_id
+
+        return num_id_map
+
+    def _remap_num_ids_in_element(self, xml_element, num_id_map):
+        """
+        Ersetzt numId-Werte innerhalb eines kopierten XML-Elements anhand Mapping.
+        """
+        if not num_id_map:
+            return
+
+        for node in xml_element.xpath('.//w:numPr/w:numId'):
+            old_id = node.get(qn('w:val'))
+            if old_id in num_id_map:
+                node.set(qn('w:val'), num_id_map[old_id])
     
     def _add_page_numbering_from_page_2(self, doc):
         """

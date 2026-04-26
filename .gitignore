@@ -3,9 +3,13 @@ dist/
 build/
 *.exe
 *.spec.bak
+release/
 
 # Portable-Version (kompilierte Distribution)
 LEK-Bastler-Portable/
+
+# Generierte Exportdateien
+LEKs/*.docx
 
 # Python
 __pycache__/

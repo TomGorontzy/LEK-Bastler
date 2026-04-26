@@ -2,10 +2,10 @@
 
 
 a = Analysis(
-    ['main.py'],
-    pathex=[],
+    ['src/main.py'],
+    pathex=['src'],
     binaries=[],
-    datas=[('Vorlagen', 'Vorlagen')],
+    datas=[('Vorlagen', 'Vorlagen'), ('src/app_icon.ico', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -22,7 +22,8 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='LEK-Bastler-v1.0',
+    name='LEK-Bastler-Portable',
+    icon='src/app_icon.ico',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
