@@ -60,40 +60,6 @@ LEK-Bastler-Portable/
 
 ## 📝 Changelog
 
-### v3.2 (29.11.2025) - GUI-Optimierungen
-
-- **🎨 Optimierte Spaltenbreiten**: Nr (50px), Titel (300px), Schwierigkeit (100px), Suchbegriffe (250px)
-- **🔧 Verbesserte Keywords-Anzeige**: Saubere Darstellung der Schlüsselwörter in der Aufgabenliste
-- **🔧 Robustere GUI**: Bessere Fehlerbehandlung bei leeren Keyword-Listen
-
-### v3.0 (29.11.2025) - Metadaten-Fix
-
-- **🔧 KRITISCHER FIX**: Schwierigkeitsgrad-Anzeige korrigiert - basiert nun auf vollständigem Aufgabeninhalt
-- **🔧 KRITISCHER FIX**: Schlüsselwörter-Extraktion korrigiert - erfasst nun alle relevanten Begriffe aus gesamter Aufgabe  
-- **🔧 Optimierte Metadaten-Berechnung**: Schwierigkeit und Keywords werden nach vollständiger Inhalterfassung berechnet
-- **🔧 Entfernung redundanter Verarbeitung**: Sauberere und effizientere Extraktion
-
-### v2.9 (29.11.2025)
-
-- **Verbesserte Aufgaben-Extraktion**: Erfasst ALLE Inhalte zwischen "Überschrift 1" Formatierungen
-- **Entfernung "Aufgabe x:" Präfix**: Verwendet nur noch ursprüngliche Titel
-- **Seitennummerierung**: Format "Seite/Gesamtseiten" rechtsbündig ab Seite 2
-- **Vollständige Strukturerhaltung**: XML-basierte Element-Übertragung
-
-### v2.8 (29.11.2025)
-
-- **Prioritäre Überschrift-Erkennung**: "Überschrift 1" Format hat Vorrang
-- **Robuste Element-Verarbeitung**: Auch leere Absätze für korrekte Formatierung
-- **Verbesserte Gruppierung**: Komplette Abschnitte zwischen Überschriften
-
-### v2.7 (28.11.2025)
-
-- **Pfad-Korrekturen**: Fixes für .exe vs Python-Ausführung
-- **GUI-Verbesserungen**: Korrekte Verzeichnis-Navigation
-- **Portable Distribution**: Cleanere Verzeichnisstruktur
-
-## 📋 Changelog
-
 ### v3.5 (2025) - Robuste Strukturübertragung
 
 - ✅ **Verbesserte Kompatibilität**: Verwendet python-docx API statt direkte XML-Manipulation
@@ -114,16 +80,6 @@ LEK-Bastler-Portable/
 - ✅ **Automatischer Fallback**: Wenn keine expliziten Schlüsselwörter gefunden werden
 - ✅ **Schwierigkeitsgrad-Erkennung**: Unterstützt "Schwierigkeit:" Markierungen
 - ✅ **Multi-Format Support**: Erkennt verschiedene Keyword-Formate (Deutsch/Englisch)
-
-### v3.2 (2024) - GUI-Optimierung  
-
-- ✅ **Spaltenbreiten optimiert**: Nr (50px), Titel (300px), Schwierigkeit (100px), Suchbegriffe (250px)
-- ✅ **Verbesserte Darstellung**: Bessere Lesbarkeit der Aufgaben-Metadaten
-
-### v3.0 (2024) - Metadaten-Korrektur
-
-- ✅ **Korrigierte Metadaten-Anzeige**: Zeigt tatsächlich extrahierte Keywords und Schwierigkeitsgrade an
-- ✅ **Verbesserte Extraktion**: Robustere Erkennung von Aufgaben-Eigenschaften
 
 ## 🛠️ Technische Details
 
