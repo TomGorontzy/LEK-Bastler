@@ -1,11 +1,25 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from pathlib import Path
+
+try:
+    SPEC_DIR = Path(__file__).resolve().parent
+except NameError:
+    cwd = Path.cwd()
+    spec_in_src = cwd / 'src' / 'LEK-Bastler-Portable.spec'
+    SPEC_DIR = spec_in_src.parent if spec_in_src.exists() else cwd
+
+PROJECT_ROOT = SPEC_DIR.parent
+SRC_DIR = PROJECT_ROOT / 'src'
 
 a = Analysis(
-    ['src/main.py'],
-    pathex=['src'],
+    [str(SRC_DIR / 'main.py')],
+    pathex=[str(SRC_DIR), str(PROJECT_ROOT)],
     binaries=[],
-    datas=[('Vorlagen', 'Vorlagen'), ('src/app_icon.ico', '.')],
+    datas=[
+        (str(PROJECT_ROOT / 'data'), 'data'),
+        (str(SRC_DIR / 'app_icon.ico'), '.'),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -23,7 +37,7 @@ exe = EXE(
     a.datas,
     [],
     name='LEK-Bastler-Portable',
-    icon='src/app_icon.ico',
+    icon=str(SRC_DIR / 'app_icon.ico'),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -36,5 +50,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    version='build_version_info.txt',
+    version=str(SPEC_DIR / 'build_version_info.txt'),
 )

@@ -11,12 +11,20 @@ from docx.oxml import OxmlElement
 from template_manager import TemplateManager
 import re
 import os
+import sys
+from pathlib import Path
 
 class WordProcessor:
     """Klasse für das Lesen und Schreiben von Word-Dokumenten"""
     
     def __init__(self):
-        self.template_manager = TemplateManager()
+        if getattr(sys, 'frozen', False):
+            runtime_base = Path(sys.executable).resolve().parent
+        else:
+            runtime_base = Path(__file__).resolve().parents[1]
+
+        template_folder = runtime_base / 'data' / 'Vorlagen'
+        self.template_manager = TemplateManager(str(template_folder))
         self._num_id_map = {}
         self._last_context_report = None
     

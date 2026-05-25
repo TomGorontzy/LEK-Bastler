@@ -1,4 +1,4 @@
-# Dokumentation_Technik
+# DOKUMENTATION_TECHNIK
 
 ## 1. Komponenten
 
@@ -12,14 +12,14 @@ Aktueller Versionsstand: **3.5.0**.
 
 ## 2. Build-Konfiguration
 
-- Spec: `LEK-Bastler-Portable.spec`
+- Spec: `src/LEK-Bastler-Portable.spec`
   - Entry: `src/main.py`
   - Pathex: `src`
   - Icon: `src/app_icon.ico`
-  - Datas: `Vorlagen`, `src/app_icon.ico`
+  - Datas: `data`, `src/app_icon.ico`
   - EXE-Basisname: `LEK-Bastler-Portable`
 
-- Build-Skript: `build.ps1`
+- Build-Skript: `src/build.ps1`
   - Führt PyInstaller aus
   - Erzeugt versionierten Deploy-Ordner `dist/LEK-Bastler-Portable_<Version>`
   - Erzeugt versionierte EXE `LEK-Bastler-Portable_<Version>.exe`
@@ -31,7 +31,7 @@ Aktueller Versionsstand: **3.5.0**.
 - Entwicklungsmodus: Pfade relativ zu `__file__` in `src/`
 - EXE-Modus: Pfade relativ zu `sys.executable` (Deploy-Ordner)
 - Icon-Fallback bei PyInstaller: `sys._MEIPASS`
-- Exportziel: Verzeichnis `LEKs/` (wird bei Bedarf automatisch angelegt)
+- Exportziel: Verzeichnis `data/LEKs/` (wird bei Bedarf automatisch angelegt)
 
 ## 4. Inhaltserhaltung beim Export
 
@@ -43,7 +43,7 @@ Aktueller Versionsstand: **3.5.0**.
 ## 5. Konventionen
 
 - Source-Dateien liegen unter `src/`
-- Laufzeitdaten (Aufgaben, Vorlagen, LEKs) liegen auf Projektebene
+- Laufzeitdaten (`data/Aufgaben`, `data/Vorlagen`, `data/LEKs`) liegen unter `data/`
 - Build-Artefakte liegen unter `dist/` und `release/`
 - Anwenderdoku und technische Doku liegen unter `docs/`
 
@@ -57,10 +57,10 @@ Aus den historischen Dokumenten übernommen und auf aktuellen Stand angepasst:
 
 ## 7. Regression-Checkliste
 
-1. `build.ps1` erfolgreich
+1. `src/build.ps1` erfolgreich
 2. `dist/LEK-Bastler-Portable_<Version>/` vollständig
 3. `release/LEK-Bastler-Portable_<Version>.zip` vollständig
 4. EXE-Icon korrekt
 5. GUI-Fenstericon korrekt
-6. Exportfunktion erstellt Word-Datei unter `LEKs/`
+6. Exportfunktion erstellt Word-Datei unter `data/LEKs/`
 7. Vorlagenersetzung und Aufgabenübernahme fachlich plausibel

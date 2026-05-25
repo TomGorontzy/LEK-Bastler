@@ -13,8 +13,15 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import os
 import sys
+from pathlib import Path
 from word_processor import WordProcessor
 from task_selector import TaskSelector
+
+
+def _runtime_base_dir() -> Path:
+    if getattr(sys, 'frozen', False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parents[1]
 
 class LEKBastlerGUI:
     def __init__(self, root):
@@ -36,13 +43,13 @@ class LEKBastlerGUI:
         """Setzt das Fenster-Icon (Titelleiste) wenn verfügbar."""
         try:
             if getattr(sys, 'frozen', False):
-                base_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+                base_dir = Path(getattr(sys, '_MEIPASS', os.path.dirname(sys.executable)))
             else:
-                base_dir = os.path.dirname(os.path.abspath(__file__))
+                base_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
-            icon_path = os.path.join(base_dir, "app_icon.ico")
-            if os.path.exists(icon_path):
-                self.root.iconbitmap(icon_path)
+            icon_path = base_dir / "app_icon.ico"
+            if icon_path.exists():
+                self.root.iconbitmap(str(icon_path))
         except Exception:
             # Kein harter Fehler, falls Icon in einer Umgebung nicht gesetzt werden kann
             pass
@@ -136,21 +143,14 @@ class LEKBastlerGUI:
     def browse_and_load_file(self):
         """Öffnet einen Dateidialog zur Auswahl der Word-Datei und lädt sie direkt"""
         # Aufgaben-Verzeichnis als Standard setzen
-        import sys
-        if getattr(sys, 'frozen', False):
-            # PyInstaller .exe - verwende Verzeichnis der .exe
-            script_dir = os.path.dirname(sys.executable)
-        else:
-            # Python-Skript - verwende Verzeichnis der .py-Datei
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        aufgaben_dir = os.path.join(script_dir, "Aufgaben")
-        if not os.path.exists(aufgaben_dir):
-            aufgaben_dir = script_dir  # Fallback auf Hauptverzeichnis
+        base_dir = _runtime_base_dir()
+        aufgaben_dir = base_dir / "data" / "Aufgaben"
+        if not aufgaben_dir.exists():
+            aufgaben_dir = base_dir  # Fallback auf Hauptverzeichnis
         
         filename = filedialog.askopenfilename(
             title="Word-Datei auswählen",
-            initialdir=aufgaben_dir,
+            initialdir=str(aufgaben_dir),
             filetypes=[("Word-Dokumente", "*.docx"), ("Alle Dateien", "*.*")]
         )
         if filename:
@@ -160,21 +160,14 @@ class LEKBastlerGUI:
     def browse_file(self):
         """Öffnet einen Dateidialog zur Auswahl der Word-Datei"""
         # Aufgaben-Verzeichnis als Standard setzen
-        import sys
-        if getattr(sys, 'frozen', False):
-            # PyInstaller .exe - verwende Verzeichnis der .exe
-            script_dir = os.path.dirname(sys.executable)
-        else:
-            # Python-Skript - verwende Verzeichnis der .py-Datei
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        aufgaben_dir = os.path.join(script_dir, "Aufgaben")
-        if not os.path.exists(aufgaben_dir):
-            aufgaben_dir = script_dir  # Fallback auf Hauptverzeichnis
+        base_dir = _runtime_base_dir()
+        aufgaben_dir = base_dir / "data" / "Aufgaben"
+        if not aufgaben_dir.exists():
+            aufgaben_dir = base_dir  # Fallback auf Hauptverzeichnis
         
         filename = filedialog.askopenfilename(
             title="Word-Datei auswählen",
-            initialdir=aufgaben_dir,
+            initialdir=str(aufgaben_dir),
             filetypes=[("Word-Dokumente", "*.docx"), ("Alle Dateien", "*.*")]
         )
         if filename:
@@ -332,16 +325,9 @@ class LEKBastlerGUI:
         time_stamp = now.strftime("%H%M")
         
         # LEK-Export-Verzeichnis erstellen  
-        import sys
-        if getattr(sys, 'frozen', False):
-            # PyInstaller .exe - verwende Verzeichnis der .exe
-            script_dir = os.path.dirname(sys.executable)
-        else:
-            # Python-Skript - verwende Verzeichnis der .py-Datei
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        leks_dir = os.path.join(script_dir, "LEKs")
-        os.makedirs(leks_dir, exist_ok=True)
+        base_dir = _runtime_base_dir()
+        leks_dir = base_dir / "data" / "LEKs"
+        leks_dir.mkdir(parents=True, exist_ok=True)
         
         if self.lek_theme:
             default_filename = f"LEK_{self.lek_theme}_{year_month_day}_{time_stamp}.docx"
@@ -353,7 +339,7 @@ class LEKBastlerGUI:
             title="Word-Datei speichern",
             defaultextension=".docx",
             initialfile=default_filename,
-            initialdir=leks_dir,
+            initialdir=str(leks_dir),
             filetypes=[("Word-Dokumente", "*.docx"), ("Alle Dateien", "*.*")]
         )
         

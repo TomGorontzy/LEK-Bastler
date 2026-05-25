@@ -52,9 +52,15 @@ LEK-Bastler-Portable/
 │   ├── word_processor.py   # Word-Dokumentverarbeitung mit XML-Zugriff
 │   ├── template_manager.py # Vorlagen-Management und LEK-Erstellung
 │   └── task_selector.py    # Filterlogik
-├── Aufgaben/              # Quell-Word-Dokumente mit Aufgabensammlungen
-├── Vorlagen/              # LEK-Vorlagen für verschiedene Themen
-├── LEKs/                  # Exportierte Lernerfolgskontroll-Dokumente
+│   ├── build.ps1
+│   ├── LEK-Bastler-Portable.spec
+│   ├── build_version_info.txt
+│   ├── REQUIREMENTS.txt
+│   └── LIZENZ.txt
+├── data/
+│   ├── Aufgaben/           # Quell-Word-Dokumente mit Aufgabensammlungen
+│   ├── Vorlagen/           # LEK-Vorlagen für verschiedene Themen
+│   └── LEKs/               # Exportierte Lernerfolgskontroll-Dokumente
 └── docs/                  # Aktuelle Projektdokumentation
 ```
 
@@ -91,4 +97,4 @@ LEK-Bastler-Portable/
 
 ## 📄 Lizenz
 
-MIT License - Siehe LIZENZ.txt für Details
+MIT License - Siehe src/LIZENZ.txt für Details

@@ -10,9 +10,9 @@ Kernfunktionen:
 - Filterung/Selektion in GUI
 - Export in LEK-Dokumente auf Basis von Vorlagen
 - Erhaltung von Struktur und Formatierungen (inkl. Tabellen und Inhaltssteuerelemente)
-- Automatische Ablage im Verzeichnis `LEKs/`
+- Automatische Ablage im Verzeichnis `data/LEKs/`
 
-Aktueller Versionsstand: **3.5.0** (aus `build_version_info.txt`).
+Aktueller Versionsstand: **3.5.0** (aus `src/build_version_info.txt`).
 
 ## 2. Projektstruktur (aktuell)
 
@@ -24,19 +24,21 @@ LEK-Bastler-Portable/
 │   ├── template_manager.py
 │   ├── task_selector.py
 │   └── app_icon.ico
-├── Aufgaben/
-├── Vorlagen/
-├── LEKs/
+│   ├── build.ps1
+│   ├── LEK-Bastler-Portable.spec
+│   ├── build_version_info.txt
+│   ├── REQUIREMENTS.txt
+│   └── LIZENZ.txt
+├── data/
+│   ├── Aufgaben/
+│   ├── Vorlagen/
+│   └── LEKs/
 ├── docs/                          # Aktuelle konsolidierte Dokumentation
 │   ├── PROJEKTDOKUMENTATION.md
-│   ├── Dokumentation_Anwender.md
-│   └── Dokumentation_Technik.md
-├── build.ps1
-├── LEK-Bastler-Portable.spec
-├── build_version_info.txt
-├── REQUIREMENTS.txt
+│   ├── DOKUMENTATION_ANWENDER.md
+│   └── DOKUMENTATION_TECHNIK.md
 ├── README.md
-└── LIZENZ.txt
+└── release/
 ```
 
 ## 3. Fachliche und technische Hauptmerkmale
@@ -49,13 +51,13 @@ LEK-Bastler-Portable/
 
 ### 3.2 Vorlagen-System
 
-- Vorlagen liegen im Ordner `Vorlagen/`.
+- Vorlagen liegen im Ordner `data/Vorlagen/`.
 - LEK-Themen können für die Vorlagenauswahl und Benennung genutzt werden.
 - Platzhalter in Vorlagen werden beim Export ersetzt.
 
-### 3.3 Export in `LEKs/`
+### 3.3 Export in `data/LEKs/`
 
-- Der LEK-Export nutzt standardmäßig das Verzeichnis `LEKs/`.
+- Der LEK-Export nutzt standardmäßig das Verzeichnis `data/LEKs/`.
 - Das Verzeichnis wird bei Bedarf zur Laufzeit automatisch erzeugt.
 
 ### 3.4 Icon-Integration
@@ -66,7 +68,7 @@ LEK-Bastler-Portable/
 
 ## 4. Build- und Release-Prozess
 
-Build-Skript: `build.ps1`
+Build-Skript: `src/build.ps1`
 
 ### 4.1 Artefakte
 
@@ -83,12 +85,12 @@ Beispiel für aktuelle Version:
 ### 4.2 Deploy-Inhalt
 
 - EXE
-- `Aufgaben/`
+- `data/Aufgaben/`
 - `docs/`
-- `Vorlagen/`
-- `LEKs/` (inkl. Platzhalterdatei)
+- `data/Vorlagen/`
+- `data/LEKs/` (inkl. Platzhalterdatei)
 - `README.md`
-- `LIZENZ.txt`
+- `LIZENZ.txt` (aus `src/LIZENZ.txt`)
 
 ## 5. Architekturüberblick
 
@@ -102,10 +104,10 @@ Beispiel für aktuelle Version:
 Empfohlene Mindestprüfungen:
 
 1. Start aus Python (`src/main.py`)
-2. Build via `build.ps1` erfolgreich
+2. Build via `src/build.ps1` erfolgreich
 3. Deploy-Struktur vollständig
 4. ZIP-Inhalt vollständig
-5. Testexport mit einer Datei aus `Aufgaben/`
+5. Testexport mit einer Datei aus `data/Aufgaben/`
 6. Icon-Prüfung (EXE + Fenstertitel)
 
 ## 7. Historischer Kontext

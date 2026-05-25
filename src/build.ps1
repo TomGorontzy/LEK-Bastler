@@ -19,12 +19,13 @@ if ($Help) {
 }
 
 $ErrorActionPreference = 'Stop'
-Set-Location $PSScriptRoot
+$projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+Set-Location $projectRoot
 
 $BaseExeName = "LEK-Bastler-Portable"
-$SpecFile    = "LEK-Bastler-Portable.spec"
+$SpecFile    = Join-Path $PSScriptRoot "LEK-Bastler-Portable.spec"
 $PyExePath   = "dist\LEK-Bastler-Portable.exe"
-$VenvPython = ".venv\Scripts\python.exe"
+$VenvPython = Join-Path $projectRoot ".venv\Scripts\python.exe"
 
 function Get-BuildVersion {
     $versionFile = Join-Path $PSScriptRoot 'build_version_info.txt'
@@ -81,7 +82,7 @@ if (-not $SkipBuild) {
 
     if (-not (Test-Path $VenvPython)) {
         Write-Host "   venv nicht gefunden ($VenvPython)." -ForegroundColor Red
-        Write-Host "   Bitte zuerst: python -m venv .venv && .venv\Scripts\pip install pyinstaller python-docx" -ForegroundColor Yellow
+        Write-Host "   Bitte zuerst: python -m venv .venv && .venv\Scripts\pip install -r src\REQUIREMENTS.txt" -ForegroundColor Yellow
         exit 1
     }
 
@@ -119,7 +120,7 @@ Copy-Item $PyExePath $VersionedExePath
 Write-Host "   $VersionedExeName" -ForegroundColor DarkGray
 
 # ─── Schritt 4: Pflicht-Ordner kopieren ──────────────────────────────────────
-$foldersToInclude = @("Aufgaben", "docs", "Vorlagen")
+$foldersToInclude = @("data", "docs")
 foreach ($folder in $foldersToInclude) {
     if (Test-Path $folder) {
         Copy-Item $folder "$DeployDir\" -Recurse
@@ -131,27 +132,28 @@ foreach ($folder in $foldersToInclude) {
 }
 
 # LEKs-Ordner: nur Platzhalterdatei(en), keine erzeugten LEK-Dokumente
-New-Item -ItemType Directory -Path "$DeployDir\LEKs" | Out-Null
-$leksReadme = "LEKs\README.md"
+New-Item -ItemType Directory -Path "$DeployDir\data\LEKs" -Force | Out-Null
+$leksReadme = "data\LEKs\README.md"
 if (Test-Path $leksReadme) {
-    Copy-Item $leksReadme "$DeployDir\LEKs\"
-    Write-Host "   LEKs\ (nur README.md)" -ForegroundColor DarkGray
+    Copy-Item $leksReadme "$DeployDir\data\LEKs\"
+    Write-Host "   data\LEKs\ (nur README.md)" -ForegroundColor DarkGray
 } else {
-    $fallbackReadmePath = Join-Path $DeployDir "LEKs\README.md"
+    $fallbackReadmePath = Join-Path $DeployDir "data\LEKs\README.md"
     @(
         "# LEKs"
         ""
         "Dieser Ordner wird für erzeugte LEK-Dokumente verwendet."
     ) | Set-Content -Path $fallbackReadmePath -Encoding UTF8
-    Write-Host "   LEKs\ (README.md automatisch erstellt)" -ForegroundColor DarkGray
+    Write-Host "   data\LEKs\ (README.md automatisch erstellt)" -ForegroundColor DarkGray
 }
 
 # ─── Schritt 5: Begleitdateien kopieren ──────────────────────────────────────
-$filesToInclude = @("README.md", "LIZENZ.txt")
+$filesToInclude = @("README.md", "src\LIZENZ.txt")
 foreach ($file in $filesToInclude) {
     if (Test-Path $file) {
-        Copy-Item $file "$DeployDir\"
-        Write-Host "   $file" -ForegroundColor DarkGray
+        $targetName = Split-Path $file -Leaf
+        Copy-Item $file (Join-Path $DeployDir $targetName)
+        Write-Host "   $targetName" -ForegroundColor DarkGray
     } else {
         Write-Host "   WARNUNG: Datei nicht gefunden – $file" -ForegroundColor Yellow
     }
@@ -174,7 +176,7 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
     (Resolve-Path $DeployDir).Path,
     (Join-Path (Get-Location) $ReleaseZipPath),
     [System.IO.Compression.CompressionLevel]::Optimal,
-    $true
+    $false
 )
 Write-Host "   $ReleaseZipName" -ForegroundColor DarkGray
 
