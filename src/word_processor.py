@@ -1830,6 +1830,121 @@ class WordProcessor:
         for content_line in task.get('content', []) or []:
             if str(content_line).strip():
                 doc.add_paragraph(str(content_line))
+
+    def _cell_text_lines(self, cell):
+        """Liest nicht-leere Textzeilen aus einer Tabellenzelle in stabiler Reihenfolge."""
+        lines = []
+        if cell is None:
+            return lines
+
+        for paragraph in cell.paragraphs:
+            text = str(paragraph.text or '').strip()
+            if text:
+                lines.append(text)
+
+        if not lines:
+            raw = str(cell.text or '').strip()
+            if raw:
+                lines = [line.strip() for line in raw.splitlines() if line.strip()]
+
+        return lines
+
+    def build_task_flow_preview_lines(self, task):
+        """
+        Erzeugt eine textuelle Vorschau einer Aufgabe in derselben Reihenfolge wie der LEK-Export.
+
+        Returns:
+            list[str]: Vorschauzeilen für GUI-Preview/Review.
+        """
+        task = task or {}
+        all_elements = task.get('all_elements') or []
+
+        if len(all_elements) == 1 and all_elements[0].get('type') == 'table':
+            table = all_elements[0].get('content')
+            if self._is_structured_task_table_for_export(table):
+                section_defs = [
+                    ('Titel', ['titel'], task.get('title', '')),
+                    ('Intro/Einleitung', ['introeinleitungoptional', 'introeinleitung', 'einleitung', 'intro', 'kontext'], ''),
+                    ('Aufgabenstellung', ['aufgabenstellungpflicht', 'aufgabenstellung'], ''),
+                    ('Hinweis', ['loesungsmoeglichkeithinweisoptional', 'loesungsmoeglichkeithinweis', 'hinweis'], ''),
+                    ('Punkte', ['punkte', 'punktzahl', 'bewertung', 'bewertungpunkte'], ''),
+                ]
+
+                lines = []
+                written_sections = 0
+                for label, aliases, fallback in section_defs:
+                    cell = self._structured_table_value_cell_by_aliases(table, aliases)
+                    section_lines = self._cell_text_lines(cell)
+
+                    if not section_lines and str(fallback or '').strip():
+                        section_lines = [str(fallback).strip()]
+
+                    optional = label in {'Intro/Einleitung', 'Hinweis', 'Punkte'}
+                    if optional and not section_lines:
+                        continue
+
+                    if not section_lines:
+                        continue
+
+                    if written_sections > 0:
+                        lines.append('')
+
+                    lines.append(f"{label}:")
+                    lines.extend(section_lines)
+                    written_sections += 1
+
+                if lines:
+                    return lines
+
+        # Fallback für nicht-strukturierte Aufgaben
+        content_lines = [str(line).strip() for line in (task.get('content') or []) if str(line).strip()]
+        if content_lines:
+            return content_lines
+
+        title = str(task.get('title') or '').strip()
+        return [title] if title else ['(kein Inhalt verfügbar)']
+
+    def analyze_task_flow_preview_delta(self, task):
+        """
+        Analysiert, welche optionale Blöcke in der strukturierten Exportreihenfolge fehlen.
+
+        Returns:
+            dict: {
+                'is_structured': bool,
+                'missing_optional_sections': list[str],
+            }
+        """
+        task = task or {}
+        all_elements = task.get('all_elements') or []
+
+        result = {
+            'is_structured': False,
+            'missing_optional_sections': [],
+        }
+
+        if not (len(all_elements) == 1 and all_elements[0].get('type') == 'table'):
+            return result
+
+        table = all_elements[0].get('content')
+        if not self._is_structured_task_table_for_export(table):
+            return result
+
+        result['is_structured'] = True
+
+        optional_sections = [
+            ('Intro/Einleitung', ['introeinleitungoptional', 'introeinleitung', 'einleitung', 'intro', 'kontext']),
+            ('Hinweis', ['loesungsmoeglichkeithinweisoptional', 'loesungsmoeglichkeithinweis', 'hinweis']),
+            ('Punkte', ['punkte', 'punktzahl', 'bewertung', 'bewertungpunkte']),
+        ]
+
+        missing = []
+        for label, aliases in optional_sections:
+            cell = self._structured_table_value_cell_by_aliases(table, aliases)
+            if not self._cell_text_lines(cell):
+                missing.append(label)
+
+        result['missing_optional_sections'] = missing
+        return result
     
     def _is_task_start(self, text, paragraph):
         """

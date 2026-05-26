@@ -55,23 +55,19 @@ Gern direkt Vorschläge, Mockups oder PRs verlinken.
 ## Update 2026-05-26 – Schwierigkeitsgrad-Regel geschärft
 
 - Konfigurierbare Difficulty-Regeln ergänzt (`difficulty_rules` in `data/config/import_rules.json`):
-   - `allowed_values`
-   - `aliases`
-   - `block_export_on_inconsistent`
+   `allowed_values`, `aliases`, `block_export_on_inconsistent`.
 - Parser normalisiert Difficulty-Werte regelbasiert (inkl. Alias-Mapping).
 - Inkonsistente Mehrfachwerte (z. B. `leicht | mittel | schwer`) werden robust erkannt.
 - GUI nutzt dieselben Regelwerte bei der Metadaten-Eingabe.
 - Bulk-Import besitzt jetzt eine Korrekturschleife bei abgebrochener Metadaten-Eingabe:
-   - erneut bearbeiten / Datei überspringen / Serie stoppen.
+   erneut bearbeiten / Datei überspringen / Serie stoppen.
 - Export blockiert optional bei inkonsistenter oder ungültiger Schwierigkeit.
 
 ## Update 2026-05-26 – Titel als Pflichtfeld aufgenommen
 
 - Ja, das Feld `Titel` wurde als Template-Pflichtfeld aufgenommen.
 - Neue Regelkonfiguration `template_rules.required_fields` enthält jetzt standardmäßig:
-   - `id`
-   - `aufgabenstellungpflicht`
-   - `titel`
+   `id`, `aufgabenstellungpflicht`, `titel`.
 - Fehlt ein Pflichtfeld (z. B. `Titel`), wird eine Diagnosewarnung erzeugt (`Pflichtfeld fehlt: ...`).
 - Bei aktivem `template_rules.block_export_on_missing_required=true` wird der Export blockiert,
    bis die Pflichtfelder in der Quelle ergänzt und neu geladen wurden.
@@ -122,3 +118,19 @@ Gern direkt Vorschläge, Mockups oder PRs verlinken.
    `loesungsmoeglichkeithinweis`, weitere Varianten ohne "optional").
 - Dadurch werden Introtexte bei Aufgaben mit Nebennummer `.0`
    zuverlässig in die LEK übernommen.
+
+## Update 2026-05-26 – Schritt-3-Gesamtvorschau exportnah ergänzt
+
+- Wizard-Schritt 3 enthält jetzt eine **LEK-Gesamtvorschau** über alle freigegebenen Aufgaben
+   (Button: `LEK-Gesamtvorschau`).
+- Die Vorschau nutzt dieselbe Blockreihenfolge wie der Export strukturierter Aufgaben:
+   1. Titel
+   2. Intro/Einleitung (optional)
+   3. Aufgabenstellung
+   4. Hinweis (optional)
+   5. Punkte (optional)
+- Für strukturierte Aufgaben wurde ein **Delta-Check** ergänzt:
+   fehlende optionale Blöcke werden explizit angezeigt
+   (`Delta-Check (optional nicht vorhanden): ...`).
+- Ziel: bessere Nachvollziehbarkeit vor dem finalen Export
+   und engeres Verhalten „Vorschau = Export“.

@@ -242,6 +242,8 @@ class LEKBastlerGUI:
         self.btn_clear_approvals.pack(side=tk.LEFT, padx=(0, 10))
         self.btn_preview_selected = ttk.Button(button_frame, text="Vorschau Auswahl", command=self.preview_selected_task)
         self.btn_preview_selected.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_preview_lek = ttk.Button(button_frame, text="LEK-Gesamtvorschau", command=self.preview_lek_output)
+        self.btn_preview_lek.pack(side=tk.LEFT, padx=(0, 10))
         self.btn_export_selected = ttk.Button(button_frame, text="Markierte exportieren", command=self.export_selected)
         self.btn_export_selected.pack(side=tk.LEFT, padx=(0, 10))
         self.btn_export_all = ttk.Button(button_frame, text="Alle exportieren", command=self.export_all)
@@ -408,6 +410,16 @@ class LEKBastlerGUI:
         self.btn_approve.configure(state=enable_workflow)
         self.btn_clear_approvals.configure(state=enable_workflow)
         self.btn_preview_selected.configure(state=enable_workflow)
+
+        approved_count = 0
+        if self.import_session is not None:
+            try:
+                approved_count = int(self.import_session.get_stats().get('approved', 0))
+            except Exception:
+                approved_count = 0
+
+        preview_lek_enabled = tk.NORMAL if has_session and self.current_step >= 3 and approved_count > 0 else tk.DISABLED
+        self.btn_preview_lek.configure(state=preview_lek_enabled)
 
         export_enabled = tk.NORMAL if has_session and self.current_step >= 4 and max_step >= 4 else tk.DISABLED
         self.btn_export_selected.configure(state=export_enabled)
@@ -1208,6 +1220,94 @@ class LEKBastlerGUI:
         preview_window = tk.Toplevel(self.root)
         preview_window.title(f"Aufgaben-Vorschau #{number_label}")
         preview_window.geometry("900x620")
+
+        text_widget = scrolledtext.ScrolledText(preview_window, wrap=tk.WORD, font=("Segoe UI", 10))
+        text_widget.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
+        text_widget.insert(tk.END, preview_text)
+        text_widget.configure(state=tk.DISABLED)
+
+    def preview_lek_output(self):
+        """Zeigt eine Gesamtvorschau der freigegebenen LEK-Ausgabe (Schritt 3)."""
+        if not self.import_session:
+            messagebox.showwarning("Warnung", "Keine Import-Session vorhanden. Bitte zuerst Datei laden.")
+            return
+
+        approved_tasks = self.import_session.get_approved_raw_tasks()
+        if not approved_tasks:
+            messagebox.showwarning(
+                "Hinweis",
+                "Keine freigegebenen Aufgaben vorhanden.\n"
+                "Bitte zuerst Aufgaben auswählen und über 'Auswahl freigeben' bestätigen.",
+            )
+            return
+
+        lines = [
+            "LEK-Gesamtvorschau (Schritt 3)",
+            "=" * 36,
+        ]
+
+        if str(self.lek_theme or '').strip():
+            lines.extend([
+                f"Thema: {self.lek_theme}",
+                "",
+            ])
+
+        lines.extend([
+            f"Freigegebene Aufgaben: {len(approved_tasks)}",
+            "",
+        ])
+
+        preview_builder = getattr(self.word_processor, 'build_task_flow_preview_lines', None)
+        delta_checker = getattr(self.word_processor, 'analyze_task_flow_preview_delta', None)
+
+        for idx, task in enumerate(approved_tasks, 1):
+            number_label = self._task_number_label(task)
+            task_title = str(task.get('title') or 'Ohne Titel').strip()
+            lines.append(f"{idx}) Nr {number_label} – {task_title}")
+
+            section_lines = []
+            if callable(preview_builder):
+                try:
+                    section_lines = preview_builder(task)
+                except Exception:
+                    section_lines = []
+
+            if not section_lines:
+                section_lines = [
+                    str(line).strip()
+                    for line in (task.get('content') or [])
+                    if str(line).strip()
+                ]
+                if not section_lines:
+                    section_lines = ['(kein Inhalt verfügbar)']
+
+            missing_optionals = []
+            if callable(delta_checker):
+                try:
+                    delta = delta_checker(task) or {}
+                    missing_optionals = list(delta.get('missing_optional_sections') or [])
+                except Exception:
+                    missing_optionals = []
+
+            lines.append("")
+            lines.extend(section_lines)
+
+            if missing_optionals:
+                lines.append("")
+                lines.append(
+                    "Delta-Check (optional nicht vorhanden): "
+                    + ", ".join(str(item) for item in missing_optionals)
+                )
+
+            lines.append("")
+            lines.append("-" * 72)
+            lines.append("")
+
+        preview_text = "\n".join(lines).rstrip() + "\n"
+
+        preview_window = tk.Toplevel(self.root)
+        preview_window.title("LEK-Gesamtvorschau")
+        preview_window.geometry("980x720")
 
         text_widget = scrolledtext.ScrolledText(preview_window, wrap=tk.WORD, font=("Segoe UI", 10))
         text_widget.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
