@@ -177,11 +177,11 @@ Vor Export wird ausschließlich die freigegebene `approved_task_ids`-Menge expor
 - Freigabe-Workflow ergänzt (`Auswahl freigeben`, `Freigaben löschen`)
 - Exportlogik auf bestätigte Auswahl ausgerichtet
 - Statuszeile + Export-Vorschau vor dem Speichern ergänzt
+- Explizite Schrittführung im Wizard ergänzt (Schrittanzeige `1/4` bis `4/4` inkl. `Zurück/Weiter`)
 - Duplikat-Cleanup in `word_processor.py` abgeschlossen (`_copy_elements_with_formatting` nur noch einmal definiert)
 
 ### Noch offen für Sprint-1-Abschluss
 
-- Optional: explizite Wizard-Navigation (z. B. `ttk.Notebook` mit Schrittführung)
 - Optional: kurze Technikdoku-Aktualisierung in `docs/DOKUMENTATION_TECHNIK.md`
 - Abschluss-Smoke-Test mit 2–3 realen Quelldokumenten
 

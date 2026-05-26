@@ -38,6 +38,13 @@ class LEKBastlerGUI:
         self.source_filename = ""  # Speichert den Namen der Quelldatei
         self.lek_theme = ""  # Speichert das extrahierte LEK-Thema
         self.import_session = None  # Wizard-Session (Sprint 1)
+        self.current_step = 1
+        self.step_labels = {
+            1: "Quelle wählen",
+            2: "Erkennung prüfen",
+            3: "Aufgaben freigeben",
+            4: "Exportieren",
+        }
         
         self.setup_ui()
 
@@ -70,7 +77,8 @@ class LEKBastlerGUI:
         self.file_path_var = tk.StringVar()
         ttk.Label(file_frame, text="Word-Datei:").grid(row=0, column=0, sticky=tk.W)
         ttk.Entry(file_frame, textvariable=self.file_path_var, width=50).grid(row=0, column=1, padx=(10, 0))
-        ttk.Button(file_frame, text="Durchsuchen...", command=self.browse_and_load_file).grid(row=0, column=2, padx=(10, 0))
+        self.btn_browse = ttk.Button(file_frame, text="Durchsuchen...", command=self.browse_and_load_file)
+        self.btn_browse.grid(row=0, column=2, padx=(10, 0))
         
         # Kriterien-Auswahl Sektion
         criteria_frame = ttk.LabelFrame(main_frame, text="Auswahlkriterien", padding="10")
@@ -94,9 +102,25 @@ class LEKBastlerGUI:
         self.max_tasks_var = tk.StringVar(value="10")
         ttk.Spinbox(criteria_frame, from_=1, to=100, textvariable=self.max_tasks_var, width=10).grid(row=2, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 0))
         
+        # Wizard-Navigation
+        wizard_frame = ttk.LabelFrame(main_frame, text="Import-Assistent", padding="10")
+        wizard_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+
+        self.wizard_step_var = tk.StringVar(value="Schritt 1/4: Quelle wählen")
+        ttk.Label(wizard_frame, textvariable=self.wizard_step_var).grid(row=0, column=0, sticky=tk.W)
+
+        nav_frame = ttk.Frame(wizard_frame)
+        nav_frame.grid(row=0, column=1, sticky=tk.E)
+        self.btn_step_prev = ttk.Button(nav_frame, text="← Zurück", command=self._on_prev_step)
+        self.btn_step_prev.pack(side=tk.LEFT, padx=(0, 8))
+        self.btn_step_next = ttk.Button(nav_frame, text="Weiter →", command=self._on_next_step)
+        self.btn_step_next.pack(side=tk.LEFT)
+
+        wizard_frame.columnconfigure(0, weight=1)
+
         # Aufgaben-Vorschau
         preview_frame = ttk.LabelFrame(main_frame, text="Gefundene Aufgaben", padding="10")
-        preview_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        preview_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
 
         self.wizard_status_var = tk.StringVar(value="Wizard-Status: Keine Datei geladen")
         ttk.Label(preview_frame, textvariable=self.wizard_status_var).grid(
@@ -140,15 +164,22 @@ class LEKBastlerGUI:
         
         # Buttons
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=3, column=0, columnspan=2, pady=(10, 0))
+        button_frame.grid(row=4, column=0, columnspan=2, pady=(10, 0))
         
-        ttk.Button(button_frame, text="Aufgaben filtern", command=self.filter_tasks).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="Alle auswählen", command=self.select_all_tasks).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="Auswahl aufheben", command=self.deselect_all_tasks).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="Auswahl freigeben", command=self.approve_selected_tasks).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="Freigaben löschen", command=self.clear_task_approvals).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="Markierte exportieren", command=self.export_selected).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="Alle exportieren", command=self.export_all).pack(side=tk.LEFT)
+        self.btn_filter = ttk.Button(button_frame, text="Aufgaben filtern", command=self.filter_tasks)
+        self.btn_filter.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_select_all = ttk.Button(button_frame, text="Alle auswählen", command=self.select_all_tasks)
+        self.btn_select_all.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_deselect_all = ttk.Button(button_frame, text="Auswahl aufheben", command=self.deselect_all_tasks)
+        self.btn_deselect_all.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_approve = ttk.Button(button_frame, text="Auswahl freigeben", command=self.approve_selected_tasks)
+        self.btn_approve.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_clear_approvals = ttk.Button(button_frame, text="Freigaben löschen", command=self.clear_task_approvals)
+        self.btn_clear_approvals.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_export_selected = ttk.Button(button_frame, text="Markierte exportieren", command=self.export_selected)
+        self.btn_export_selected.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_export_all = ttk.Button(button_frame, text="Alle exportieren", command=self.export_all)
+        self.btn_export_all.pack(side=tk.LEFT)
         
         # Grid-Konfiguration für responsives Layout
         main_frame.columnconfigure(1, weight=1)
@@ -157,11 +188,80 @@ class LEKBastlerGUI:
         preview_frame.rowconfigure(1, weight=1)
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
+        self._set_step(1, show_message=False)
+
+    def _max_reachable_step(self):
+        """Ermittelt den maximal zulässigen Wizard-Schritt anhand des aktuellen Zustands."""
+        if not self.import_session:
+            return 1
+
+        stats = self.import_session.get_stats()
+        total = stats.get('total', 0)
+        approved = stats.get('approved', 0)
+
+        if total <= 0:
+            return 1
+        if approved <= 0:
+            return 3
+        return 4
+
+    def _set_step(self, target_step, show_message=True):
+        """Setzt den aktiven Wizard-Schritt, sofern die Voraussetzungen erfüllt sind."""
+        target_step = max(1, min(4, int(target_step)))
+        max_step = self._max_reachable_step()
+        if target_step > max_step:
+            if show_message:
+                hints = {
+                    2: "Bitte zuerst eine gültige Aufgabensammlung laden.",
+                    3: "Bitte zuerst die Erkennung prüfen und Aufgaben auswählen.",
+                    4: "Bitte zuerst Aufgaben freigeben.",
+                }
+                messagebox.showwarning("Schritt nicht verfügbar", hints.get(target_step, "Schritt aktuell nicht verfügbar."))
+            return False
+
+        self.current_step = target_step
+        self._update_wizard_step_ui()
+        return True
+
+    def _on_prev_step(self):
+        """Navigiert einen Schritt zurück."""
+        self._set_step(self.current_step - 1, show_message=False)
+
+    def _on_next_step(self):
+        """Navigiert einen Schritt vorwärts, sofern erlaubt."""
+        if self.current_step >= 4:
+            return
+        self._set_step(self.current_step + 1, show_message=True)
+
+    def _update_wizard_step_ui(self):
+        """Aktualisiert Schrittanzeige, Navigations- und Aktionsbuttons."""
+        label = self.step_labels.get(self.current_step, "Unbekannt")
+        self.wizard_step_var.set(f"Schritt {self.current_step}/4: {label}")
+
+        max_step = self._max_reachable_step()
+
+        self.btn_step_prev.configure(state=tk.NORMAL if self.current_step > 1 else tk.DISABLED)
+        next_enabled = self.current_step < 4 and self.current_step < max_step
+        self.btn_step_next.configure(state=tk.NORMAL if next_enabled else tk.DISABLED)
+
+        has_session = self.import_session is not None and max_step >= 2
+        enable_workflow = tk.NORMAL if has_session and self.current_step >= 2 else tk.DISABLED
+
+        self.btn_filter.configure(state=enable_workflow)
+        self.btn_select_all.configure(state=enable_workflow)
+        self.btn_deselect_all.configure(state=enable_workflow)
+        self.btn_approve.configure(state=enable_workflow)
+        self.btn_clear_approvals.configure(state=enable_workflow)
+
+        export_enabled = tk.NORMAL if has_session and self.current_step >= 4 and max_step >= 4 else tk.DISABLED
+        self.btn_export_selected.configure(state=export_enabled)
+        self.btn_export_all.configure(state=export_enabled)
 
     def _refresh_wizard_status(self):
         """Aktualisiert die kompakte Statuszeile für den Wizard-Zustand."""
         if not self.import_session:
             self.wizard_status_var.set("Wizard-Status: Keine Datei geladen")
+            self._update_wizard_step_ui()
             return
 
         stats = self.import_session.get_stats()
@@ -173,6 +273,7 @@ class LEKBastlerGUI:
         self.wizard_status_var.set(
             f"Wizard-Status: Freigegeben {approved}/{total} | Warnungen {warnings_total} | Low-Confidence {low_total}"
         )
+        self._update_wizard_step_ui()
     
     def browse_and_load_file(self):
         """Öffnet einen Dateidialog zur Auswahl der Word-Datei und lädt sie direkt"""
@@ -253,6 +354,7 @@ class LEKBastlerGUI:
                 )
 
             if stats.get('total', 0) == 0:
+                self._set_step(1, show_message=False)
                 messagebox.showwarning(
                     "Keine Aufgaben erkannt",
                     "In der gewählten Datei wurden keine Aufgaben erkannt.\n\n"
@@ -263,6 +365,8 @@ class LEKBastlerGUI:
                     "data/Vorlagen/AUFGABEN_MUSTER_STANDARD.docx",
                 )
                 return
+
+            self._set_step(2, show_message=False)
 
             messagebox.showinfo("Erfolg", f"{stats['total']} Aufgaben geladen.{warning_hint}")
         except Exception as e:
@@ -372,6 +476,7 @@ class LEKBastlerGUI:
             self.import_session.set_task_approval(task_id, True)
 
         stats = self.import_session.get_stats()
+        self._set_step(3, show_message=False)
         self._refresh_wizard_status()
         messagebox.showinfo(
             "Freigabe aktualisiert",
@@ -385,6 +490,8 @@ class LEKBastlerGUI:
             return
 
         self.import_session.clear_approvals()
+        if self.current_step > 3:
+            self._set_step(3, show_message=False)
         self._refresh_wizard_status()
         messagebox.showinfo("Freigaben gelöscht", "Alle Freigaben wurden entfernt.")
     
@@ -399,6 +506,9 @@ class LEKBastlerGUI:
     
     def export_selected(self):
         """Exportiert nur die markierten Aufgaben in eine neue Word-Datei"""
+        if not self._set_step(4, show_message=True):
+            return
+
         selected_items = self.task_tree.selection()
         if not selected_items:
             messagebox.showwarning("Warnung", "Bitte wählen Sie mindestens eine Aufgabe aus.")
@@ -434,6 +544,9 @@ class LEKBastlerGUI:
     
     def export_all(self):
         """Exportiert alle aktuell angezeigten Aufgaben in eine neue Word-Datei"""
+        if not self._set_step(4, show_message=True):
+            return
+
         if self.import_session:
             approved_tasks = self.import_session.get_approved_raw_tasks()
             if not approved_tasks:
