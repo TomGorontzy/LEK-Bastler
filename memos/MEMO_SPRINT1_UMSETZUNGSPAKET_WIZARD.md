@@ -355,6 +355,14 @@ Bulk-Übernahme (mehrere Quell-Dateien):
   vor der Übernahme individuell überschrieben werden.
 - Abschlussdialog mit Serienzusammenfassung (`übernommen`, `übersprungen`, `Fehler`).
 
+Duplikat-Check vor Import:
+
+- In der Import-Vorschau wird ein Duplikatverdacht per Textähnlichkeitsprüfung ermittelt.
+- Bei Treffer zeigt die GUI den wahrscheinlichsten Match (ID, Titel, Kategorie, Ähnlichkeit).
+- Entscheidung ist explizit je Datei:
+  - Einzelimport: `trotzdem fortfahren?`
+  - Bulk-Import: `fortfahren / überspringen / Serie stoppen`
+
 Zusätzliche Validierung vor Übernahme:
 
 - Inkonsistenter Schwierigkeitsgrad in der Eingabe (z. B. mehrere Werte wie `leicht | mittel`)

@@ -9,6 +9,7 @@ from docx.enum.section import WD_SECTION
 from docx.oxml.shared import qn
 from docx.oxml import OxmlElement
 from template_manager import TemplateManager
+from difflib import SequenceMatcher
 import re
 import os
 import sys
@@ -286,6 +287,8 @@ class WordProcessor:
         if not normalized_difficulty:
             normalized_difficulty = self._extract_difficulty(str(difficulty or ''))
 
+        duplicate_check = self._detect_potential_duplicate(source_doc, target_doc)
+
         return {
             'next_id': next_id,
             'source_paragraph_count': len(nonempty_paragraphs),
@@ -297,6 +300,97 @@ class WordProcessor:
             'difficulty_normalized': normalized_difficulty,
             'keywords': str(keywords or '').strip(),
             'difficulty_inconsistent': self._has_inconsistent_difficulty(difficulty),
+            'duplicate_check': duplicate_check,
+        }
+
+    def _build_source_signature(self, source_doc):
+        """Erstellt eine normalisierte Textsignatur der Quellaufgabe."""
+        chunks = []
+
+        for child in source_doc._element.body:
+            tag_local = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+            if tag_local == 'p':
+                for para in source_doc.paragraphs:
+                    if para._element == child:
+                        text = para.text.strip()
+                        if text:
+                            chunks.append(text)
+                        break
+            elif tag_local == 'tbl':
+                for table in source_doc.tables:
+                    if table._element == child:
+                        table_text = self._extract_table_text_for_keywords(table)
+                        if table_text:
+                            chunks.append(table_text)
+                        break
+
+        return self._normalize_signature_text(' '.join(chunks))
+
+    def _task_signature(self, task):
+        """Erstellt eine normalisierte Vergleichssignatur aus einem Task-Dictionary."""
+        parts = []
+        title = str(task.get('title') or '').strip()
+        if title:
+            parts.append(title)
+
+        content_lines = task.get('content') or []
+        parts.extend(str(line).strip() for line in content_lines if str(line).strip())
+
+        return self._normalize_signature_text(' '.join(parts))
+
+    def _normalize_signature_text(self, text):
+        """Normalisiert Text für robuste Ähnlichkeitsvergleiche."""
+        value = (text or '').lower().strip()
+        value = re.sub(r'\s+', ' ', value)
+        value = re.sub(r'[^a-z0-9äöüß ]+', ' ', value)
+        value = re.sub(r'\s+', ' ', value).strip()
+        return value
+
+    def _detect_potential_duplicate(self, source_doc, target_doc, threshold=0.70):
+        """
+        Prüft die Quellaufgabe gegen vorhandene Aufgaben der Zielsammlung.
+
+        Returns:
+            dict: {is_duplicate, similarity, matched_title, matched_id, matched_category}
+        """
+        source_sig = self._build_source_signature(source_doc)
+        if not source_sig:
+            return {
+                'is_duplicate': False,
+                'similarity': 0.0,
+                'matched_title': '',
+                'matched_id': '',
+                'matched_category': '',
+            }
+
+        existing_tasks = self._extract_tasks_from_structured_tables(target_doc)
+        best_similarity = 0.0
+        best_task = None
+
+        for task in existing_tasks:
+            candidate_sig = self._task_signature(task)
+            if not candidate_sig:
+                continue
+            similarity = SequenceMatcher(None, source_sig, candidate_sig).ratio()
+            if similarity > best_similarity:
+                best_similarity = similarity
+                best_task = task
+
+        if best_task is None:
+            return {
+                'is_duplicate': False,
+                'similarity': 0.0,
+                'matched_title': '',
+                'matched_id': '',
+                'matched_category': '',
+            }
+
+        return {
+            'is_duplicate': best_similarity >= threshold,
+            'similarity': round(best_similarity, 3),
+            'matched_title': best_task.get('title', ''),
+            'matched_id': best_task.get('id', ''),
+            'matched_category': best_task.get('category', ''),
         }
 
     def _normalize_table_key(self, value):

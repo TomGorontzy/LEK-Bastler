@@ -644,6 +644,38 @@ class LEKBastlerGUI:
             )
             return None if allow_cancel else False
 
+        duplicate_check = preview.get('duplicate_check') or {}
+        if duplicate_check.get('is_duplicate'):
+            similarity_pct = int((duplicate_check.get('similarity') or 0) * 100)
+            duplicate_text = (
+                "Duplikatverdacht erkannt.\n\n"
+                f"Quelle: {os.path.basename(source_file)}\n"
+                f"Ähnlichkeit: {similarity_pct}%\n"
+                f"Treffer-ID: {duplicate_check.get('matched_id') or '-'}\n"
+                f"Treffer-Titel: {duplicate_check.get('matched_title') or '-'}\n"
+                f"Treffer-Kategorie: {duplicate_check.get('matched_category') or '-'}\n\n"
+            )
+
+            if allow_cancel:
+                dup_answer = messagebox.askyesnocancel(
+                    "Duplikatverdacht",
+                    duplicate_text
+                    + "Ja = trotzdem fortfahren\n"
+                    + "Nein = diese Datei überspringen\n"
+                    + "Abbrechen = Serie stoppen",
+                )
+                if dup_answer is None:
+                    return None
+                if dup_answer is False:
+                    return False
+            else:
+                dup_answer = messagebox.askyesno(
+                    "Duplikatverdacht",
+                    duplicate_text + "Trotzdem fortfahren?",
+                )
+                if not dup_answer:
+                    return False
+
         lines = preview.get('source_preview_lines', [])
         source_preview_text = "\n".join(f"- {line}" for line in lines) if lines else "- (kein Textvorschau verfügbar)"
         if preview.get('source_paragraph_count', 0) > len(lines):
