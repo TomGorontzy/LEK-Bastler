@@ -83,3 +83,5 @@ Gern direkt Vorschläge, Mockups oder PRs verlinken.
 - Bei Zustimmung werden fehlende Titel aus der Aufgabenstellung abgeleitet,
   die Sammlung gespeichert und automatisch neu geladen.
 - Vor der Änderung wird eine zeitgestempelte Backup-Datei erstellt.
+- Der Erfolgsdialog zeigt zusätzlich die betroffenen Aufgaben-IDs
+   (bei vielen Einträgen mit gekürzter Vorschau).

@@ -498,10 +498,19 @@ class LEKBastlerGUI:
                     try:
                         result = self.word_processor.migrate_missing_titles_in_collection(file_path)
                         if result.get('changed_tasks', 0) > 0:
+                            updated_ids = result.get('updated_ids', []) or []
+                            ids_preview = ''
+                            if updated_ids:
+                                preview_list = updated_ids[:10]
+                                ids_preview = "\n\nBetroffene Aufgaben-IDs:\n- " + "\n- ".join(preview_list)
+                                if len(updated_ids) > 10:
+                                    ids_preview += f"\n- ... (+{len(updated_ids) - 10} weitere)"
+
                             messagebox.showinfo(
                                 "Titel ergänzt",
                                 f"Titel wurden für {result.get('changed_tasks', 0)} Aufgabe(n) ergänzt.\n"
-                                f"Backup: {result.get('backup_file', '-')}",
+                                f"Backup: {result.get('backup_file', '-')}"
+                                f"{ids_preview}",
                             )
                             self.load_tasks(allow_title_migration_prompt=False)
                             return
