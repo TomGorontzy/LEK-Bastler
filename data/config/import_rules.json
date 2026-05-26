@@ -8,6 +8,17 @@
   "duplicate_similarity_threshold": 0.70,
   "max_preview_blocks": 10,
   "bulk_max_errors": 5,
+  "category_rules": {
+    "required": true,
+    "block_export_on_missing": true,
+    "missing_values": [
+      "",
+      "ohne kategorie",
+      "-",
+      "n/a",
+      "keine"
+    ]
+  },
   "default_import_metadata": {
     "category": "",
     "difficulty": "mittel",

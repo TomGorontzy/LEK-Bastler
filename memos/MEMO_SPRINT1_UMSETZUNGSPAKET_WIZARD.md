@@ -372,6 +372,7 @@ Regelkonfiguration (Sprint-Fortsetzung):
   - `duplicate_similarity_threshold` (Fallback-Schwellwert)
   - `max_preview_blocks` (Anzahl Detailblöcke in der Vorschau)
   - `bulk_max_errors` (Abbruchgrenze bei Fehlern in Serienübernahme)
+  - `category_rules` (`required`, `block_export_on_missing`, `missing_values`)
   - `default_import_metadata` (`category`, `difficulty`, `keywords`)
 - Ziel: Feinjustierung ohne Codeänderung für künftige Sprint-Iterationen.
 
@@ -390,6 +391,13 @@ Zusätzliche Validierung vor Übernahme:
   blockiert die Übernahme mit klarem Korrekturhinweis.
 - Kategorie ist als Eingabe verpflichtend (leer wird abgewiesen).
 - Schwierigkeitsgrad wird auf `leicht|mittel|schwer` normalisiert (inkl. Alias-Mapping wie `easy`, `normal`, `hard`).
+
+Kategorienlogik (verbindlich umgesetzt):
+
+- Kategorie ist als Pflichtfeld konfiguriert (`category_rules.required=true`).
+- Fehlende/ungültige Kategorien (z. B. `Ohne Kategorie`, leer) werden diagnostisch markiert.
+- Wenn `category_rules.block_export_on_missing=true`, blockiert der Export betroffene Aufgaben,
+  bis die Kategorie in der Quelle korrigiert und neu geladen wurde.
 
 Technische Umsetzung (`src/word_processor.py`):
 

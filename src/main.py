@@ -1129,26 +1129,54 @@ class LEKBastlerGUI:
             description: Beschreibung für die Erfolgsmeldung
         """
         # Verbindliche Vorabprüfung: Inkonsistenzen müssen vor Export bereinigt werden
-        blocked_tasks = []
+        blocked_difficulty_tasks = []
+        blocked_category_tasks = []
+        block_category = bool(self._rule_value('category_rules.block_export_on_missing', True))
+        missing_values = self._rule_value('category_rules.missing_values', ['', 'ohne kategorie']) or []
+        missing_values_norm = {str(v).strip().lower() for v in missing_values}
+
         for task in tasks_to_export:
             warnings = task.get('warnings', []) or []
             if any('Inkonsistenter Schwierigkeitsgrad' in str(w) for w in warnings):
-                blocked_tasks.append(
+                blocked_difficulty_tasks.append(
                     f"#{task.get('number', '?')} {task.get('title', 'Ohne Titel')}"
                 )
 
-        if blocked_tasks:
-            sample = "\n".join(f"- {entry}" for entry in blocked_tasks[:8])
-            if len(blocked_tasks) > 8:
-                sample += f"\n- ... (+{len(blocked_tasks) - 8} weitere)"
+            if block_category:
+                category_value = str(task.get('category', '') or '').strip().lower()
+                category_warning = any('Kategorie fehlt' in str(w) for w in warnings)
+                if category_warning or category_value in missing_values_norm:
+                    blocked_category_tasks.append(
+                        f"#{task.get('number', '?')} {task.get('title', 'Ohne Titel')}"
+                    )
+
+        if blocked_difficulty_tasks or blocked_category_tasks:
+            details = []
+
+            if blocked_difficulty_tasks:
+                sample_diff = "\n".join(f"- {entry}" for entry in blocked_difficulty_tasks[:8])
+                if len(blocked_difficulty_tasks) > 8:
+                    sample_diff += f"\n- ... (+{len(blocked_difficulty_tasks) - 8} weitere)"
+                details.append(
+                    "Inkonsistenter Schwierigkeitsgrad:\n"
+                    f"{sample_diff}"
+                )
+
+            if blocked_category_tasks:
+                sample_cat = "\n".join(f"- {entry}" for entry in blocked_category_tasks[:8])
+                if len(blocked_category_tasks) > 8:
+                    sample_cat += f"\n- ... (+{len(blocked_category_tasks) - 8} weitere)"
+                details.append(
+                    "Fehlende Kategorie (Pflichtfeld):\n"
+                    f"{sample_cat}"
+                )
 
             messagebox.showwarning(
                 "Export blockiert",
-                "Der Export wurde gestoppt, weil Inkonsistenzen erkannt wurden.\n\n"
+                "Der Export wurde gestoppt, weil Pflichtprüfungen fehlgeschlagen sind.\n\n"
                 "Bitte bereinigen Sie die betroffenen Aufgaben direkt in der Quelldatei "
                 "und laden Sie diese erneut.\n\n"
-                "Betroffene Aufgaben:\n"
-                f"{sample}",
+                + "\n\n".join(details),
             )
             return
 

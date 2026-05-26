@@ -51,6 +51,11 @@ class WordProcessor:
                 'difficulty': 'mittel',
                 'keywords': '',
             },
+            'category_rules': {
+                'required': True,
+                'block_export_on_missing': True,
+                'missing_values': ['', 'ohne kategorie', '-', 'n/a', 'keine'],
+            },
         }
 
     def _deep_merge_dict(self, base, override):
@@ -115,6 +120,16 @@ class WordProcessor:
             return float(self.get_import_rule('duplicate_similarity_threshold', 0.70) or 0.70)
         except (TypeError, ValueError):
             return 0.70
+
+    def _is_missing_category(self, value):
+        """Prüft, ob ein Kategorienwert als fehlend gilt (regelbasiert)."""
+        raw = str(value or '').strip().lower()
+        if not raw:
+            return True
+
+        configured = self.get_import_rule('category_rules.missing_values', []) or []
+        normalized_config = {str(v).strip().lower() for v in configured}
+        return raw in normalized_config
 
     def persist_import_rules(self, runtime_base=None):
         """Speichert die aktuell aktiven Importregeln dauerhaft nach data/config/import_rules.json.
@@ -751,8 +766,18 @@ class WordProcessor:
         hint_text = values_by_key.get('loesungsmoeglichkeithinweisoptional') or values_by_key.get('hinweis') or ''
         difficulty_raw = values_by_key.get('schwierigkeitsgrad') or values_by_key.get('schwierigkeit') or ''
         keywords_raw = values_by_key.get('schlagwortekommagetrennt') or values_by_key.get('schlagworte') or ''
-        category = values_by_key.get('kategorie') or 'Ohne Kategorie'
         pre_warnings = []
+
+        raw_category = values_by_key.get('kategorie') or ''
+        category_required = bool(self.get_import_rule('category_rules.required', True))
+        if self._is_missing_category(raw_category):
+            category = 'Ohne Kategorie'
+            if category_required:
+                pre_warnings.append(
+                    "Kategorie fehlt. Bitte vor Export in der Quelle eine gültige Kategorie pflegen."
+                )
+        else:
+            category = str(raw_category).strip()
 
         if self._has_inconsistent_difficulty(difficulty_raw):
             pre_warnings.append(
@@ -864,6 +889,10 @@ class WordProcessor:
 
         if difficulty in ('', 'Unbekannt'):
             warnings.append('Schwierigkeit ist nicht eindeutig.')
+
+        category_required = bool(self.get_import_rule('category_rules.required', True))
+        if category_required and self._is_missing_category(task.get('category')):
+            warnings.append('Kategorie fehlt (Pflichtfeld).')
 
         intro_lines = self._extract_intro_lines(content_lines)
         if intro_lines:
