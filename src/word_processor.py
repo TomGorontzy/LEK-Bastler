@@ -204,6 +204,12 @@ class WordProcessor:
         difficulty_raw = values_by_key.get('schwierigkeitsgrad') or values_by_key.get('schwierigkeit') or ''
         keywords_raw = values_by_key.get('schlagwortekommagetrennt') or values_by_key.get('schlagworte') or ''
         category = values_by_key.get('kategorie') or 'Ohne Kategorie'
+        pre_warnings = []
+
+        if self._has_inconsistent_difficulty(difficulty_raw):
+            pre_warnings.append(
+                "Inkonsistenter Schwierigkeitsgrad erkannt (mehrere Werte). Bitte vor Export in der Quelle bereinigen."
+            )
 
         if difficulty_raw:
             explicit_difficulty = self._extract_explicit_difficulty(f"Schwierigkeit: {difficulty_raw}")
@@ -240,6 +246,7 @@ class WordProcessor:
             'original_paragraphs': [],
             'difficulty': difficulty,
             'keywords': keywords,
+            'pre_warnings': pre_warnings,
         }
 
     def extract_tasks_with_diagnostics(self, file_path):
@@ -296,7 +303,7 @@ class WordProcessor:
         keywords = task.get('keywords') or []
         difficulty = (task.get('difficulty') or '').strip()
 
-        warnings = []
+        warnings = list(task.get('pre_warnings') or [])
 
         if not content_lines:
             warnings.append('Aufgabe enthält keinen verwertbaren Inhalt.')
@@ -1057,6 +1064,19 @@ class WordProcessor:
                         return difficulty_text.capitalize()
         
         return None  # Keine explizite Schwierigkeit gefunden
+
+    def _has_inconsistent_difficulty(self, difficulty_raw):
+        """Prüft, ob ein Rohwert mehrere Schwierigkeitsgrade gleichzeitig enthält."""
+        if not difficulty_raw:
+            return False
+
+        value = str(difficulty_raw).lower()
+        token_count = 0
+        for token in ('leicht', 'mittel', 'schwer'):
+            if token in value:
+                token_count += 1
+
+        return token_count > 1
     
     def create_document_from_tasks(self, tasks, output_path, lek_theme="", debug_context_report=False):
         """

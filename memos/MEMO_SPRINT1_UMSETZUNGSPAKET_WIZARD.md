@@ -305,3 +305,18 @@ Empfohlene Festlegungen (für Team-Entscheid):
 4. **Feldschema für neue Sammlungen verbindlich machen**
   - Pflicht: `ID`, `Aufgabenstellung`, `Schwierigkeitsgrad`, `Kategorie`
   - Optional: `Intro/Einleitung`, `Lösungsmöglichkeit/Hinweis`, `Schlagworte`
+
+## Update nach Anwender-Feedback (2026-05-26)
+
+- `AUFGABEN_MUSTER_STANDARD.docx` und
+  `Aufgaben_Auftragssteuerung und -koordination.docx` wurden um das Tabellenfeld `Kategorie` ergänzt.
+- Aktuelle Validierung:
+  - `AUFGABEN_MUSTER_STANDARD.docx` → Kategorien gesetzt (`Aufgaben-Gerüst (Word)`)
+  - `Aufgaben_Auftragssteuerung und -koordination.docx` → Kategorien gesetzt (`Auftragssteuerung und -koordination`)
+
+Zusätzlich umgesetzt (Verbindliche Qualitätssicherung vor Export):
+
+- Bei erkannten Inkonsistenzen im Schwierigkeitsgrad (z. B. mehrere Werte in einem Feld)
+  wird eine explizite Warnung erzeugt.
+- Solche Inkonsistenzen blockieren den Export in der GUI, bis die Quelle durch den
+  jeweiligen Anwender bereinigt und neu geladen wurde.

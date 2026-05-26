@@ -576,6 +576,30 @@ class LEKBastlerGUI:
             tasks_to_export: Liste der zu exportierenden Aufgaben
             description: Beschreibung für die Erfolgsmeldung
         """
+        # Verbindliche Vorabprüfung: Inkonsistenzen müssen vor Export bereinigt werden
+        blocked_tasks = []
+        for task in tasks_to_export:
+            warnings = task.get('warnings', []) or []
+            if any('Inkonsistenter Schwierigkeitsgrad' in str(w) for w in warnings):
+                blocked_tasks.append(
+                    f"#{task.get('number', '?')} {task.get('title', 'Ohne Titel')}"
+                )
+
+        if blocked_tasks:
+            sample = "\n".join(f"- {entry}" for entry in blocked_tasks[:8])
+            if len(blocked_tasks) > 8:
+                sample += f"\n- ... (+{len(blocked_tasks) - 8} weitere)"
+
+            messagebox.showwarning(
+                "Export blockiert",
+                "Der Export wurde gestoppt, weil Inkonsistenzen erkannt wurden.\n\n"
+                "Bitte bereinigen Sie die betroffenen Aufgaben direkt in der Quelldatei "
+                "und laden Sie diese erneut.\n\n"
+                "Betroffene Aufgaben:\n"
+                f"{sample}",
+            )
+            return
+
         # Generiere Standarddateinamen
         from datetime import datetime
         now = datetime.now()
