@@ -12,8 +12,10 @@ from template_manager import TemplateManager
 import re
 import os
 import sys
+import shutil
 from pathlib import Path
 from copy import deepcopy
+from datetime import datetime
 
 class WordProcessor:
     """Klasse für das Lesen und Schreiben von Word-Dokumenten"""
@@ -215,10 +217,12 @@ class WordProcessor:
 
         self._replace_cell_content_from_document(target_doc, task_cell, source_doc)
 
+        backup_path = self._create_collection_backup(target_collection_path)
         target_doc.save(target_collection_path)
         return {
             'id': resolved_id,
             'target_file': target_collection_path,
+            'backup_file': backup_path,
         }
 
     def preview_task_append(
@@ -499,6 +503,15 @@ class WordProcessor:
             return 'A-001'
 
         return f"A-{max(nums) + 1:03d}"
+
+    def _create_collection_backup(self, target_collection_path):
+        """Erstellt eine zeitgestempelte Sicherungskopie der Ziel-Aufgabensammlung."""
+        source_path = Path(target_collection_path)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_name = f"{source_path.stem}_backup_{timestamp}{source_path.suffix}"
+        backup_path = source_path.with_name(backup_name)
+        shutil.copy2(source_path, backup_path)
+        return str(backup_path)
 
     def _parse_structured_task_table(self, table, task_number):
         """Parst eine einzelne strukturierte Aufgaben-Tabelle in ein Task-Dictionary."""

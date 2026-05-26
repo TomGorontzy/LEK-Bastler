@@ -339,6 +339,12 @@ Optionale Detailansicht vor Bestätigung:
 - Die Ansicht listet die ersten Quellblöcke auf (Absätze + Tabellen inkl. Tabellenabmessungen/erste Zelle),
   um die inhaltliche Plausibilität vor dem Schreiben zu prüfen.
 
+Sicherheitsnetz bei Übernahme:
+
+- Vor dem tatsächlichen Schreiben wird automatisch eine zeitgestempelte Backup-Kopie
+  der Ziel-Aufgabensammlung erstellt.
+- Der Pfad zur Backup-Datei wird im Erfolgsdialog angezeigt.
+
 Zusätzliche Validierung vor Übernahme:
 
 - Inkonsistenter Schwierigkeitsgrad in der Eingabe (z. B. mehrere Werte wie `leicht | mittel`)

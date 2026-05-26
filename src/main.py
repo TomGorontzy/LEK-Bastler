@@ -512,7 +512,8 @@ class LEKBastlerGUI:
             messagebox.showinfo(
                 "Erfolg",
                 "Neue Aufgabe wurde in die Aufgabensammlung übernommen.\n\n"
-                f"ID: {result.get('id', '-')}",
+                f"ID: {result.get('id', '-')}\n"
+                f"Backup: {result.get('backup_file', '-')}",
             )
         except Exception as e:
             messagebox.showerror("Fehler", f"Übernahme fehlgeschlagen: {str(e)}")
