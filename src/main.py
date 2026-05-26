@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 from word_processor import WordProcessor
 from task_selector import TaskSelector
+from import_wizard import ImportSession
 
 
 def _runtime_base_dir() -> Path:
@@ -36,6 +37,7 @@ class LEKBastlerGUI:
         self.current_displayed_tasks = []  # Speichert die aktuell angezeigten Aufgaben
         self.source_filename = ""  # Speichert den Namen der Quelldatei
         self.lek_theme = ""  # Speichert das extrahierte LEK-Thema
+        self.import_session = None  # Wizard-Session (Sprint 1)
         
         self.setup_ui()
 
@@ -95,9 +97,14 @@ class LEKBastlerGUI:
         # Aufgaben-Vorschau
         preview_frame = ttk.LabelFrame(main_frame, text="Gefundene Aufgaben", padding="10")
         preview_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+
+        self.wizard_status_var = tk.StringVar(value="Wizard-Status: Keine Datei geladen")
+        ttk.Label(preview_frame, textvariable=self.wizard_status_var).grid(
+            row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 6)
+        )
         
         # Treeview für Aufgabenvorschau
-        columns = ("Nr", "Kategorie", "Titel", "Schwierigkeit", "Suchbegriffe")
+        columns = ("Nr", "Kategorie", "Titel", "Schwierigkeit", "Confidence", "Warnungen", "Suchbegriffe")
         self.task_tree = ttk.Treeview(preview_frame, columns=columns, show="headings", height=10, selectmode="extended")
         
         # Spaltenbreiten optimiert setzen
@@ -112,15 +119,24 @@ class LEKBastlerGUI:
         
         self.task_tree.heading("Schwierigkeit", text="Schwierigkeit")
         self.task_tree.column("Schwierigkeit", width=100, minwidth=80)
+
+        self.task_tree.heading("Confidence", text="Confidence")
+        self.task_tree.column("Confidence", width=90, minwidth=80)
+
+        self.task_tree.heading("Warnungen", text="Warnungen")
+        self.task_tree.column("Warnungen", width=260, minwidth=160)
         
         self.task_tree.heading("Suchbegriffe", text="Suchbegriffe")
-        self.task_tree.column("Suchbegriffe", width=250, minwidth=150)
+        self.task_tree.column("Suchbegriffe", width=200, minwidth=140)
         
         scrollbar = ttk.Scrollbar(preview_frame, orient=tk.VERTICAL, command=self.task_tree.yview)
         self.task_tree.configure(yscrollcommand=scrollbar.set)
         
-        self.task_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        self.task_tree.tag_configure('confidence_low', background='#ffe6e6')
+        self.task_tree.tag_configure('confidence_medium', background='#fff6dd')
+
+        self.task_tree.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
         
         # Buttons
         button_frame = ttk.Frame(main_frame)
@@ -129,6 +145,8 @@ class LEKBastlerGUI:
         ttk.Button(button_frame, text="Aufgaben filtern", command=self.filter_tasks).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(button_frame, text="Alle auswählen", command=self.select_all_tasks).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(button_frame, text="Auswahl aufheben", command=self.deselect_all_tasks).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text="Auswahl freigeben", command=self.approve_selected_tasks).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text="Freigaben löschen", command=self.clear_task_approvals).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(button_frame, text="Markierte exportieren", command=self.export_selected).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(button_frame, text="Alle exportieren", command=self.export_all).pack(side=tk.LEFT)
         
@@ -136,9 +154,25 @@ class LEKBastlerGUI:
         main_frame.columnconfigure(1, weight=1)
         main_frame.rowconfigure(2, weight=1)
         preview_frame.columnconfigure(0, weight=1)
-        preview_frame.rowconfigure(0, weight=1)
+        preview_frame.rowconfigure(1, weight=1)
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
+
+    def _refresh_wizard_status(self):
+        """Aktualisiert die kompakte Statuszeile für den Wizard-Zustand."""
+        if not self.import_session:
+            self.wizard_status_var.set("Wizard-Status: Keine Datei geladen")
+            return
+
+        stats = self.import_session.get_stats()
+        warnings_total = stats.get('warnings', 0)
+        low_total = stats.get('low', 0)
+        approved = stats.get('approved', 0)
+        total = stats.get('total', 0)
+
+        self.wizard_status_var.set(
+            f"Wizard-Status: Freigegeben {approved}/{total} | Warnungen {warnings_total} | Low-Confidence {low_total}"
+        )
     
     def browse_and_load_file(self):
         """Öffnet einen Dateidialog zur Auswahl der Word-Datei und lädt sie direkt"""
@@ -185,15 +219,40 @@ class LEKBastlerGUI:
             return
         
         try:
-            self.loaded_tasks = self.word_processor.extract_tasks(file_path)
+            diagnostics_report = None
+            self.loaded_tasks = []
+
+            if hasattr(self.word_processor, 'extract_tasks_with_diagnostics'):
+                self.loaded_tasks, diagnostics_report = self.word_processor.extract_tasks_with_diagnostics(file_path)
+            else:
+                self.loaded_tasks = self.word_processor.extract_tasks(file_path)
+
             self.current_displayed_tasks = self.loaded_tasks  # Setze initial alle Aufgaben als angezeigt
             
             # Extrahiere LEK-Thema aus dem Dateinamen
             self.source_filename = os.path.basename(file_path)
             self.lek_theme = self._extract_lek_theme(self.source_filename)
+
+            # Wizard-Session vorbereiten (für geführten Import in Sprint 1+)
+            self.import_session = ImportSession.from_raw_tasks(
+                source_file=file_path,
+                source_filename=self.source_filename,
+                lek_theme=self.lek_theme,
+                raw_tasks=self.loaded_tasks,
+            )
             
             self.populate_task_tree(self.loaded_tasks)
-            messagebox.showinfo("Erfolg", f"{len(self.loaded_tasks)} Aufgaben geladen.")
+            self._refresh_wizard_status()
+            stats = self.import_session.get_stats() if self.import_session else {"total": len(self.loaded_tasks)}
+
+            warning_hint = ""
+            if diagnostics_report:
+                warning_hint = (
+                    f"\nWarnungsbehaftete Aufgaben: {diagnostics_report.get('warning_task_count', 0)}"
+                    f"\nLow-Confidence: {diagnostics_report.get('low_confidence_count', 0)}"
+                )
+
+            messagebox.showinfo("Erfolg", f"{stats['total']} Aufgaben geladen.{warning_hint}")
         except Exception as e:
             messagebox.showerror("Fehler", f"Fehler beim Laden der Datei: {str(e)}")
     
@@ -235,6 +294,7 @@ class LEKBastlerGUI:
         filtered_tasks = self.task_selector.filter_tasks(self.loaded_tasks, criteria)
         self.current_displayed_tasks = filtered_tasks  # Speichere die gefilterten Aufgaben
         self.populate_task_tree(filtered_tasks)
+        self._refresh_wizard_status()
         
         messagebox.showinfo("Filter angewendet", f"{len(filtered_tasks)} Aufgaben entsprechen den Kriterien.")
     
@@ -252,14 +312,69 @@ class LEKBastlerGUI:
             # Keywords sicher formatieren
             keywords = task.get('keywords', [])
             keywords_text = ', '.join(keywords) if keywords else ''
+            confidence = task.get('confidence', '-')
+            warnings = task.get('warnings', [])
+            warnings_text = '; '.join(warnings[:2]) if warnings else ''
             
-            self.task_tree.insert("", "end", values=(
+            item_tags = ()
+            if confidence == 'low':
+                item_tags = ('confidence_low',)
+            elif confidence == 'medium':
+                item_tags = ('confidence_medium',)
+
+            self.task_tree.insert("", "end", iid=str(original_number), values=(
                 original_number,
                 task.get('category', 'Ohne Kategorie'),
                 task.get('title', 'Ohne Titel'),
                 task.get('difficulty', 'Unbekannt'),
+                confidence,
+                warnings_text,
                 keywords_text
-            ))
+            ), tags=item_tags)
+
+    def _selected_task_ids_from_tree(self):
+        """Liefert die aktuell markierten Aufgaben-IDs aus der Treeview."""
+        selected_ids = []
+        for item in self.task_tree.selection():
+            values = self.task_tree.item(item).get("values", [])
+            if not values:
+                continue
+            try:
+                selected_ids.append(int(values[0]))
+            except (TypeError, ValueError):
+                continue
+        return selected_ids
+
+    def approve_selected_tasks(self):
+        """Markiert aktuell ausgewählte Aufgaben als für den Export freigegeben."""
+        if not self.import_session:
+            messagebox.showwarning("Warnung", "Keine Import-Session vorhanden. Bitte zuerst Datei laden.")
+            return
+
+        selected_ids = self._selected_task_ids_from_tree()
+        if not selected_ids:
+            messagebox.showwarning("Warnung", "Bitte mindestens eine Aufgabe auswählen.")
+            return
+
+        for task_id in selected_ids:
+            self.import_session.set_task_approval(task_id, True)
+
+        stats = self.import_session.get_stats()
+        self._refresh_wizard_status()
+        messagebox.showinfo(
+            "Freigabe aktualisiert",
+            f"{len(selected_ids)} Aufgabe(n) freigegeben.\n"
+            f"Aktuell freigegeben: {stats['approved']} von {stats['total']}.",
+        )
+
+    def clear_task_approvals(self):
+        """Entfernt alle aktuellen Aufgaben-Freigaben."""
+        if not self.import_session:
+            return
+
+        self.import_session.clear_approvals()
+        self._refresh_wizard_status()
+        messagebox.showinfo("Freigaben gelöscht", "Alle Freigaben wurden entfernt.")
     
     def select_all_tasks(self):
         """Wählt alle Aufgaben in der Treeview aus"""
@@ -277,20 +392,26 @@ class LEKBastlerGUI:
             messagebox.showwarning("Warnung", "Bitte wählen Sie mindestens eine Aufgabe aus.")
             return
         
-        # Aufgaben basierend auf der Auswahl sammeln
-        current_displayed_tasks = getattr(self, 'current_displayed_tasks', self.loaded_tasks)
+        selected_ids = self._selected_task_ids_from_tree()
         selected_tasks = []
-        
-        for item in selected_items:
-            # Index in der current_displayed_tasks Liste finden
-            values = self.task_tree.item(item)["values"]
-            original_number = int(values[0])
-            
-            # Aufgabe mit entsprechender Nummer finden
-            for task in current_displayed_tasks:
-                if task.get('number', 0) == original_number:
-                    selected_tasks.append(task)
-                    break
+
+        # Bei vorhandener Session: Auswahl = Freigabe + Export aus bestätigten Tasks
+        if self.import_session:
+            for task_id in selected_ids:
+                self.import_session.set_task_approval(task_id, True)
+            selected_set = set(selected_ids)
+            selected_tasks = [
+                task for task in self.import_session.get_approved_raw_tasks()
+                if task.get('number', 0) in selected_set
+            ]
+        else:
+            # Fallback ohne Session
+            current_displayed_tasks = getattr(self, 'current_displayed_tasks', self.loaded_tasks)
+            for task_id in selected_ids:
+                for task in current_displayed_tasks:
+                    if task.get('number', 0) == task_id:
+                        selected_tasks.append(task)
+                        break
         
         if not selected_tasks:
             messagebox.showwarning("Warnung", "Keine gültigen Aufgaben zur Auswahl gefunden.")
@@ -301,13 +422,25 @@ class LEKBastlerGUI:
     
     def export_all(self):
         """Exportiert alle aktuell angezeigten Aufgaben in eine neue Word-Datei"""
+        if self.import_session:
+            approved_tasks = self.import_session.get_approved_raw_tasks()
+            if not approved_tasks:
+                messagebox.showwarning(
+                    "Warnung",
+                    "Keine freigegebenen Aufgaben vorhanden.\n"
+                    "Bitte Aufgaben auswählen und über 'Auswahl freigeben' bestätigen.",
+                )
+                return
+
+            self._perform_export(approved_tasks, f"alle {len(approved_tasks)} freigegebene Aufgabe(n)")
+            return
+
         current_displayed_tasks = getattr(self, 'current_displayed_tasks', self.loaded_tasks)
-        
         if not current_displayed_tasks:
             messagebox.showwarning("Warnung", "Keine Aufgaben zum Exportieren vorhanden.")
             return
-        
-        # Export durchführen
+
+        # Fallback ohne Session
         self._perform_export(current_displayed_tasks, f"alle {len(current_displayed_tasks)} Aufgabe(n)")
     
     def _perform_export(self, tasks_to_export, description):
@@ -333,6 +466,19 @@ class LEKBastlerGUI:
             default_filename = f"LEK_{self.lek_theme}_{year_month_day}_{time_stamp}.docx"
         else:
             default_filename = f"LEK_Aufgaben_{year_month_day}_{time_stamp}.docx"
+
+        # Verbindliche Vorschau vor Export (Vorschau == Export)
+        preview_titles = [t.get('title', 'Ohne Titel') for t in tasks_to_export[:5]]
+        preview_text = "\n".join([f"- {title}" for title in preview_titles])
+        if len(tasks_to_export) > 5:
+            preview_text += f"\n- ... (+{len(tasks_to_export) - 5} weitere)"
+
+        proceed = messagebox.askyesno(
+            "Export bestätigen",
+            f"Es werden {len(tasks_to_export)} Aufgabe(n) exportiert:\n\n{preview_text}\n\nJetzt speichern?",
+        )
+        if not proceed:
+            return
         
         # Speicherpfad wählen
         output_file = filedialog.asksaveasfilename(

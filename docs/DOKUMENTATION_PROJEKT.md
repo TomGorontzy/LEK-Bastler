@@ -34,7 +34,7 @@ LEK-Bastler-Portable/
 │   ├── Vorlagen/
 │   └── LEKs/
 ├── docs/                          # Aktuelle konsolidierte Dokumentation
-│   ├── PROJEKTDOKUMENTATION.md
+│   ├── DOKUMENTATION_PROJEKT.md
 │   ├── DOKUMENTATION_ANWENDER.md
 │   └── DOKUMENTATION_TECHNIK.md
 ├── README.md

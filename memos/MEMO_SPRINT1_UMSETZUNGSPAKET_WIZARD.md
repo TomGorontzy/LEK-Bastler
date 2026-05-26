@@ -1,0 +1,224 @@
+# MEMO: Sprint-1 Umsetzungspaket – Wizard für intuitive Aufgabenübernahme
+
+## Ziel
+
+Sprint 1 liefert einen robusten, geführten Import-Workflow, der typische Fehlimporte (v. a. Intro-Text als Aufgabe) vermeidet und vor dem Export eine verlässliche Vorschau bietet.
+
+## Scope (Sprint 1)
+
+- Wizard-Flow mit 4 Schritten in der GUI
+- Parser-Qualität sichtbar machen (Confidence + Warnungen)
+- Sicherheitsleitplanken (0 Aufgaben, leere Blöcke, unklare Struktur)
+- „Vorschau == Export" sicherstellen
+
+## Nicht-Scope (ab Sprint 2)
+
+- Vollständige Regelkonfiguration via JSON
+- Tiefer Parser-Refactor für Spezialfälle
+- Umfangreiche Regressionstest-Suite
+
+## Bestehende Codebasis (Ist-Analyse)
+
+- GUI: `src/main.py`
+- Extraktion/Erzeugung: `src/word_processor.py`
+- Filterlogik: `src/task_selector.py`
+- Vorlagen: `src/template_manager.py`
+
+### Wichtige Beobachtungen
+
+- `WordProcessor.extract_tasks()` nutzt bereits Struktur-Regeln (H1=Kategorie, H2=Aufgabe).
+- Es fehlt eine explizite Validierungs-/Qualitätsstufe pro Aufgabe.
+- In `word_processor.py` ist `_copy_elements_with_formatting` doppelt definiert (Cleanup nötig).
+- `main.py` arbeitet aktuell direkt im Ein-Fenster-Flow; Wizard braucht eine kontrollierte Schrittlogik.
+
+## Zielbild Architektur (Sprint 1)
+
+## 1) Neues Modul: `src/import_wizard.py`
+
+Enthält den Wizard-Zustand und die Schrittsteuerung.
+
+### Datenmodell
+
+```text
+ImportTask
+- id: int
+- category: str
+- title: str
+- intro: list[str]              # optional
+- content_elements: list        # bestehende all_elements
+- difficulty: str
+- keywords: list[str]
+- confidence: str               # high | medium | low
+- warnings: list[str]
+- accepted: bool
+```
+
+```text
+ImportSession
+- source_file: str
+- source_filename: str
+- lek_theme: str
+- tasks: list[ImportTask]
+- global_warnings: list[str]
+- approved_task_ids: set[int]
+```
+
+## 2) Erweiterung `WordProcessor`
+
+Neue/angepasste Methoden:
+
+- `extract_tasks_with_diagnostics(file_path) -> (tasks, report)`
+  - baut auf `extract_tasks()` auf
+  - ergänzt Diagnoseinfos pro Task:
+    - leere Aufgabe
+    - sehr kurzer Titel
+    - Intro-dominiert
+    - fehlende Keywords
+
+- `_compute_confidence(task) -> str`
+  - einfache Heuristik für Sprint 1:
+    - high: Titel + Inhalt + keine Warnung
+    - medium: leichte Warnungen
+    - low: leer/unklar/strukturell auffällig
+
+- `build_intro_and_body(task) -> (intro, body)`
+  - trennt einleitende Abschnitte vor der Kernaufgabe für Vorschau
+
+## 3) GUI-Anpassung in `main.py`
+
+Neue Sektion „Import-Assistent" (Wizard):
+
+1. Quelle wählen
+2. Erkennung prüfen (Tabelle mit Confidence + Warnungen)
+3. Vorschau (Ausgewählte Aufgaben)
+4. Übernahme bestätigen
+
+### UI-Elemente (minimal-invasiv)
+
+- `ttk.Notebook` mit 4 Tabs oder Schrittpanel mit Weiter/Zurück
+- Treeview-Spalten erweitern:
+  - `Confidence`
+  - `Warnungen`
+- Checkbox/Toggle pro Aufgabe: übernehmen ja/nein
+- Statusbereich oben: `Erkannt: X | Warnungen: Y | Low-Confidence: Z`
+
+## 4) Vorschau==Export Garantie
+
+Vor Export wird ausschließlich die freigegebene `approved_task_ids`-Menge exportiert.
+
+- Keine Re-Extraktion zwischen Schritt 3 und 4.
+- Export nutzt 1:1 die bereits bestätigten `content_elements`.
+
+## Konkrete Umsetzungsschritte (Reihenfolge)
+
+1. **Datenmodelle + Wizard-State**
+   - Neues Modul `import_wizard.py`
+   - Session-Objekt in GUI initialisieren
+
+2. **Diagnostik in Extraktion integrieren**
+   - `extract_tasks_with_diagnostics()` in `word_processor.py`
+   - Confidence + Warnungen ergänzen
+
+3. **GUI Schritt 2 (Erkennung prüfen)**
+   - Treeview um Confidence/Warnungen erweitern
+   - Selektionslogik für Übernahme
+
+4. **GUI Schritt 3 (Vorschau)**
+   - nur freigegebene Aufgaben anzeigen
+   - Warn-Badge bei low confidence
+
+5. **GUI Schritt 4 + Export-Kopplung**
+   - Export nur bestätigter Aufgaben
+   - Success-Dialog mit Zusammenfassung
+
+6. **Cleanup**
+   - doppelte Methode `_copy_elements_with_formatting` in `word_processor.py` bereinigen
+
+## Akzeptanzkriterien (Sprint 1)
+
+- Bei 0 erkannten Aufgaben erscheint ein klarer Hinweis mit Handlungsempfehlung.
+- Jede Aufgabe zeigt Confidence (`high|medium|low`) und ggf. Warnungen.
+- Nutzer kann Aufgaben vor Export explizit freigeben/abwählen.
+- Export enthält nur freigegebene Aufgaben.
+- Inhalt in Vorschau entspricht dem Export (keine stille Neuberechnung).
+- Keine neuen Probleme in der Probleme-Konsole.
+
+## Testfälle (Minimum)
+
+1. Sauberes Quelldokument (nur H2-Aufgaben) → überwiegend `high`.
+2. Dokument mit langem Intro vor erster Aufgabe → Intro-Warnung.
+3. Dokument mit leerem Aufgabenblock → `low` + Warnung.
+4. Nutzer wählt nur Teilmenge aus → Export enthält exakt diese.
+5. Wizard-Abbruch und erneutes Laden → Session wird korrekt zurückgesetzt.
+
+## Risiken + Gegenmaßnahmen
+
+- Risiko: Heuristik zu streng/zu locker.
+  - Gegenmaßnahme: Schwellenwerte zentral in Konstanten, leicht justierbar.
+- Risiko: GUI wird zu komplex.
+  - Gegenmaßnahme: Sprint 1 nur essentielle Elemente; Feinschliff später.
+- Risiko: Code-Duplikate in `word_processor.py`.
+  - Gegenmaßnahme: Cleanup-Schritt fest einplanen.
+
+## Deliverables Sprint 1
+
+- Neues Modul: `src/import_wizard.py`
+- Erweiterungen in `src/main.py` und `src/word_processor.py`
+- Stabiler Wizard-MVP mit Diagnose + sicherem Exportpfad
+- Aktualisierte Doku in `memos/` und ggf. `docs/DOKUMENTATION_TECHNIK.md`
+
+## Umsetzungsstand (2026-05-26)
+
+### Bereits umgesetzt
+
+- `src/import_wizard.py` eingeführt (`ImportTask`, `ImportSession`, Freigabe-Helfer)
+- `WordProcessor.extract_tasks_with_diagnostics()` ergänzt
+- Confidence-/Warnungsdaten in `main.py` eingebunden und in Treeview sichtbar gemacht
+- Freigabe-Workflow ergänzt (`Auswahl freigeben`, `Freigaben löschen`)
+- Exportlogik auf bestätigte Auswahl ausgerichtet
+- Statuszeile + Export-Vorschau vor dem Speichern ergänzt
+- Duplikat-Cleanup in `word_processor.py` abgeschlossen (`_copy_elements_with_formatting` nur noch einmal definiert)
+
+### Noch offen für Sprint-1-Abschluss
+
+- Optional: explizite Wizard-Navigation (z. B. `ttk.Notebook` mit Schrittführung)
+- Optional: kurze Technikdoku-Aktualisierung in `docs/DOKUMENTATION_TECHNIK.md`
+- Abschluss-Smoke-Test mit 2–3 realen Quelldokumenten
+
+## Smoke-Test Ergebnis (2026-05-26)
+
+Automatisierter Testlauf (Python-Snippet in Projekt-Umgebung) mit realen Quelldokumenten:
+
+- `Aufgaben_Auftragssteuerung und -koordination.docx` → `tasks=17`, `warnings=0`, `low=0`
+- `Aufgaben_Mathematik-Grundlagen.docx` → `tasks=0`, `warnings=0`, `low=0`
+- `Aufgaben_Personalwirtschaft.docx` → `tasks=0`, `warnings=0`, `low=0`
+
+Zusätzliche Verifikation:
+
+- ImportSession-Freigabe getestet (`session_approved=2`)
+- Exportpfad getestet: `data/LEKs/_SMOKE_EXPORT.docx` erfolgreich erzeugt
+
+Bewertung:
+
+- Der neue Diagnose-/Freigabe-/Exportpfad funktioniert technisch stabil.
+- Für zwei Quelldokumente wurden 0 Aufgaben erkannt; wahrscheinlich weicht die Struktur (z. B. Heading-Level) von der aktuellen H2-Regel ab und sollte im nächsten Schritt analysiert werden.
+
+## Entscheidung Musterdatei (2026-05-26)
+
+- Die Standard-Musterdatei `data/Vorlagen/AUFGABEN_MUSTER_STANDARD.docx` basiert nun auf
+  `data/Vorlagen/AUFGABEN_GERUEST_WORD.docx`.
+- Begründung: Die tabellenbasierte Struktur ist für die Erfassung robuster und wurde fachlich bevorzugt.
+- Kurzvalidierung nach Umstellung: `TABLES=5`, `PARSED_TASKS=3`, `LOW=0`, `WARNINGS=1`.
+
+## Hinweis zur Erkennungslogik (2026-05-26)
+
+Die zwischenzeitliche Fallback-Nachschärfung für nicht standardisierte Sammlungen
+(u. a. Mathematik/Personalwirtschaft) wurde wieder entfernt, da diese Dateien
+fachlich als irrelevant eingestuft und aus `data/Aufgaben/` gelöscht wurden.
+
+Aktiver Standard bleibt:
+
+- Kategorie über `Heading 1`
+- Aufgabe über `Heading 2`
+
+Damit ist die Erkennung wieder bewusst auf die standardisierte Struktur ausgerichtet.

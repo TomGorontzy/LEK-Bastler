@@ -79,17 +79,18 @@ class WordProcessor:
                     continue
 
                 paragraph = element['content']
+                paragraph_text = paragraph.text.strip()
 
                 if self._is_heading1(paragraph):
                     _finalize_current_task()
                     current_task = None
-                    category_text = paragraph.text.strip()
+                    category_text = paragraph_text
                     current_category = category_text if category_text else "Ohne Kategorie"
                     continue
 
                 if self._is_heading2(paragraph):
                     _finalize_current_task()
-                    task_title = paragraph.text.strip() or f"Aufgabe {len(tasks) + 1}"
+                    task_title = paragraph_text or f"Aufgabe {len(tasks) + 1}"
                     current_task = {
                         'number': len(tasks) + 1,
                         'category': current_category,
@@ -127,6 +128,125 @@ class WordProcessor:
             
         except Exception as e:
             raise Exception(f"Fehler beim Lesen der Word-Datei: {str(e)}")
+
+    def extract_tasks_with_diagnostics(self, file_path):
+        """
+        Extrahiert Aufgaben und ergänzt Diagnoseinformationen pro Aufgabe.
+
+        Returns:
+            tuple[list, dict]: (tasks, diagnostics_report)
+        """
+        tasks = self.extract_tasks(file_path)
+
+        task_diagnostics = []
+        low_confidence_count = 0
+        warning_count = 0
+
+        for task in tasks:
+            diagnostic = self._build_task_diagnostic(task)
+            task['intro'] = diagnostic['intro']
+            task['warnings'] = diagnostic['warnings']
+            task['confidence'] = diagnostic['confidence']
+
+            if diagnostic['confidence'] == 'low':
+                low_confidence_count += 1
+            if diagnostic['warnings']:
+                warning_count += 1
+
+            task_diagnostics.append({
+                'number': task.get('number', 0),
+                'title': task.get('title', ''),
+                'confidence': diagnostic['confidence'],
+                'warnings': list(diagnostic['warnings']),
+            })
+
+        global_warnings = []
+        if len(tasks) == 0:
+            global_warnings.append("Keine Aufgaben erkannt. Prüfen Sie die Formatierung (Überschrift 2 für Aufgaben).")
+
+        report = {
+            'task_count': len(tasks),
+            'low_confidence_count': low_confidence_count,
+            'warning_task_count': warning_count,
+            'global_warnings': global_warnings,
+            'task_diagnostics': task_diagnostics,
+        }
+
+        return tasks, report
+
+    def _build_task_diagnostic(self, task):
+        """
+        Erstellt Diagnosemetadaten (intro/warnings/confidence) für eine Aufgabe.
+        """
+        title = (task.get('title') or '').strip()
+        content_lines = [str(line).strip() for line in (task.get('content') or []) if str(line).strip()]
+        keywords = task.get('keywords') or []
+        difficulty = (task.get('difficulty') or '').strip()
+
+        warnings = []
+
+        if not content_lines:
+            warnings.append('Aufgabe enthält keinen verwertbaren Inhalt.')
+
+        if title and len(title) < 5:
+            warnings.append('Aufgabentitel ist sehr kurz.')
+
+        if not keywords:
+            warnings.append('Keine Schlüsselwörter erkannt.')
+
+        if difficulty in ('', 'Unbekannt'):
+            warnings.append('Schwierigkeit ist nicht eindeutig.')
+
+        intro_lines = self._extract_intro_lines(content_lines)
+        if intro_lines:
+            warnings.append('Einleitungs-/Kontexttext erkannt (Bitte prüfen).')
+
+        # Confidence-Heuristik (Sprint 1)
+        score = 100
+        for warning in warnings:
+            if 'keinen verwertbaren Inhalt' in warning:
+                score -= 45
+            elif 'Einleitungs-/Kontexttext' in warning:
+                score -= 20
+            else:
+                score -= 10
+
+        if score >= 80:
+            confidence = 'high'
+        elif score >= 50:
+            confidence = 'medium'
+        else:
+            confidence = 'low'
+
+        return {
+            'intro': intro_lines,
+            'warnings': warnings,
+            'confidence': confidence,
+        }
+
+    def _extract_intro_lines(self, content_lines):
+        """
+        Erkennt mögliche Intro-/Kontext-Zeilen am Aufgabenanfang.
+        """
+        if not content_lines:
+            return []
+
+        intro_markers = (
+            'einleitung',
+            'intro',
+            'hinweis',
+            'kontext',
+            'ausgangslage',
+            'vorbemerkung',
+        )
+
+        intro = []
+        for line in content_lines[:2]:  # nur die ersten Zeilen als Intro-Kandidaten
+            line_lower = line.lower()
+            if any(marker in line_lower for marker in intro_markers):
+                intro.append(line)
+
+        return intro
     
     def _get_heading_level(self, style_name):
         """
@@ -363,113 +483,6 @@ class WordProcessor:
         date_run.font.color.rgb = primary_color
         date_run.italic = True
     
-    def _copy_elements_with_formatting(self, doc, elements):
-        """
-        Kopiert alle Arten von Word-Elementen (Paragraphen, Tabellen, etc.) mit Formatierung
-        Verwendet python-docx API statt direkte XML-Manipulation für bessere Kompatibilität
-        
-        Args:
-            doc: Ziel-Word-Dokument  
-            elements: Liste von XML-Elementen
-        """
-        from docx import Document
-        
-        # Erstelle temporäres Dokument mit den Original-Elementen
-        temp_doc = Document()
-        
-        for element in elements:
-            try:
-                if element.tag.endswith('p'):  # Paragraph
-                    # Finde den entsprechenden Paragraph im Original-Dokument
-                    # und kopiere ihn über die python-docx API
-                    self._copy_paragraph_safely(doc, element)
-                    
-                elif element.tag.endswith('tbl'):  # Tabelle
-                    # Tabelle über python-docx API kopieren
-                    self._copy_table_safely(doc, element)
-                
-                else:
-                    # Andere Strukturen als Paragraph mit Hinweis
-                    doc.add_paragraph(f"[Struktur: {element.tag.split('}')[-1] if '}' in element.tag else element.tag}]")
-                    
-            except Exception as e:
-                # Fallback: Fehlermeldung als Paragraph
-                doc.add_paragraph(f"[Element konnte nicht kopiert werden: {str(e)[:50]}...]")
-    
-    def _copy_paragraph_safely(self, doc, element):
-        """
-        Kopiert einen Paragraph sicher über python-docx API
-        """
-        try:
-            # Erstelle neuen Paragraph 
-            new_para = doc.add_paragraph()
-            
-            # Kopiere Text-Runs und deren Formatierung
-            for run_elem in element.xpath('.//w:r', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
-                text_content = ""
-                for text_elem in run_elem.xpath('.//w:t', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
-                    text_content += text_elem.text or ""
-                
-                if text_content:
-                    run = new_para.add_run(text_content)
-                    # Basis-Formatierung extrahieren
-                    self._apply_run_formatting(run, run_elem)
-            
-            # Paragraph-Stil versuchen zu übernehmen
-            self._apply_paragraph_formatting(new_para, element)
-            
-        except Exception as e:
-            # Fallback: Nur Text ohne Formatierung
-            doc.add_paragraph(f"[Text konnte nicht formatiert werden]")
-    
-    def _copy_table_safely(self, doc, element):
-        """
-        Kopiert eine Tabelle sicher über python-docx API
-        """
-        try:
-            # Fallback: Tabelle als Beschreibung
-            doc.add_paragraph("[Tabelle aus Original-Dokument]")
-        except Exception as e:
-            doc.add_paragraph("[Tabelle konnte nicht kopiert werden]")
-    
-    def _apply_run_formatting(self, run, run_element):
-        """
-        Wendet Basis-Formatierung auf einen Run an
-        """
-        try:
-            # Bold
-            bold_elem = run_element.xpath('.//w:b', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
-            if bold_elem:
-                run.bold = True
-            
-            # Italic  
-            italic_elem = run_element.xpath('.//w:i', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
-            if italic_elem:
-                run.italic = True
-                
-        except:
-            pass  # Formatierung fehlgeschlagen, aber Text ist da
-    
-    def _apply_paragraph_formatting(self, paragraph, para_element):
-        """
-        Wendet Basis-Paragraph-Formatierung an
-        """
-        try:
-            # Heading-Stil erkennen
-            style_elem = para_element.xpath('.//w:pStyle', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
-            if style_elem and len(style_elem) > 0:
-                style_val = style_elem[0].get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', '')
-                if 'Heading' in style_val or 'Überschrift' in style_val:
-                    # Versuche Heading-Level zu extrahieren
-                    if '1' in style_val:
-                        paragraph.style = 'Heading 1'
-                    elif '2' in style_val:
-                        paragraph.style = 'Heading 2'
-                    elif '3' in style_val:
-                        paragraph.style = 'Heading 3'
-        except:
-            pass  # Stil-Anwendung fehlgeschlagen
-
     def _copy_elements_with_formatting(self, doc, elements):
         """
         Kopiert alle Elemente (Paragraphen und Tabellen) mit ihrer ursprünglichen Formatierung
@@ -755,6 +768,12 @@ class WordProcessor:
             pass
         
         # Sekundäre Erkennung: Verschiedene Textmuster für Aufgabenbeginne
+        return self._matches_task_start_text(text)
+
+    def _matches_task_start_text(self, text):
+        """
+        Prüft rein textbasiert, ob ein String wie ein Aufgabenstart aussieht.
+        """
         patterns = [
             r'^Aufgabe\s*\d+',
             r'^\d+\.',
@@ -768,9 +787,9 @@ class WordProcessor:
         for pattern in patterns:
             if re.match(pattern, text, re.IGNORECASE):
                 return True
-        
+
         return False
-    
+
     def _extract_task_title(self, text):
         """
         Extrahiert den Titel einer Aufgabe

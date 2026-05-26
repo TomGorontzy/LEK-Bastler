@@ -1,0 +1,10 @@
+<!-- markdownlint-disable -->
+
+build/
+dist/
+release/
+
+.venv/
+venv/
+
+LEK-Bastler-Portable/
