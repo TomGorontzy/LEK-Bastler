@@ -222,3 +222,54 @@ Aktiver Standard bleibt:
 - Aufgabe über `Heading 2`
 
 Damit ist die Erkennung wieder bewusst auf die standardisierte Struktur ausgerichtet.
+
+## Zwischenstand Strukturprüfung (2026-05-26, Auftragssteuerung exemplarisch)
+
+Geprüfte Datei:
+
+- `data/Aufgaben/Aufgaben_Auftragssteuerung und -koordination.docx`
+
+Beobachtung:
+
+- Die Datei nutzt eine tabellenbasierte Aufgabenstruktur (17 Tabellen, jeweils 2 Spalten Label/Wert),
+  nicht ausschließlich klassische `Heading 1/Heading 2`-Absätze im Dokument-Body.
+- Dadurch lieferte die reine H1/H2-Erkennung zunächst `0` Aufgaben.
+
+Umsetzung:
+
+- In `src/word_processor.py` wurde ein gezielter Fallback ergänzt:
+  - Wenn H1/H2 keine Aufgaben ergibt, werden strukturierte Tabellen erkannt und geparst.
+  - Unterstützte Kernfelder: `ID`, `Aufgabenstellung`, optional `Intro/Einleitung`,
+   `Lösungsmöglichkeit/Hinweis`, `Schlagworte`, `Schwierigkeitsgrad`, `Kategorie`.
+
+Validierung nach Anpassung:
+
+- `Aufgaben_Auftragssteuerung und -koordination.docx` → `tasks=17`, `warning_task_count=0`, `low=0`
+- `AUFGABEN_MUSTER_STANDARD.docx` → `tasks=3`, `warn=1`, `low=0`
+- `AUFGABEN_GERUEST_WORD.docx` → `tasks=3`, `warn=1`, `low=0`
+
+## Gemeinsame Review-Checkliste (Gliederung & Umsetzung)
+
+Für den späteren gemeinsamen Durchgang der exemplarischen Datei:
+
+1. **Kategorienlogik**
+  - Sollen Kategorien explizit als Tabellenfeld gepflegt werden?
+  - Oder weiterhin aus H1-Struktur außerhalb der Tabellen kommen?
+
+2. **Titelstrategie**
+  - Aktuell wird der Titel aus dem Beginn der Aufgabenstellung gebildet.
+  - Soll es ein eigenes Feld `Titel` geben (stabiler für Übersicht/Filter)?
+
+3. **Schwierigkeitsgrad-Regel**
+  - Werte wie `leicht | mittel | schwer`: gewünschte Interpretation klären
+    (ein Wert, Mehrfachauswahl oder Standardwert).
+
+4. **Pflichtfelder im Template**
+  - Minimal verpflichtend: `ID`, `Aufgabenstellung`
+  - Optional: Intro, Hinweis, Schlagworte, Schwierigkeit, Kategorie
+
+5. **Exportdarstellung**
+  - Prüfen, ob Intro/Hinweis im finalen LEK-Layout genau wie gewünscht erscheinen.
+
+6. **Governance für neue Sammlungen**
+  - Kurzregel in Doku: „Entweder H1/H2-Struktur oder Tabellen-GERUEST nach Feldschema“.

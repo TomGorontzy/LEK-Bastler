@@ -108,6 +108,10 @@ class WordProcessor:
 
             _finalize_current_task()
 
+            # Fallback: strukturierte Tabellenaufgaben (z. B. AUFGABEN_GERUEST_WORD)
+            if not tasks:
+                tasks = self._extract_tasks_from_structured_tables(doc)
+
             # Metadaten für alle Aufgaben extrahieren
             for task in tasks:
                 full_content = ' '.join(task.get('content', []))
@@ -128,6 +132,115 @@ class WordProcessor:
             
         except Exception as e:
             raise Exception(f"Fehler beim Lesen der Word-Datei: {str(e)}")
+
+    def _extract_tasks_from_structured_tables(self, doc):
+        """
+        Extrahiert Aufgaben aus strukturierten 2-Spalten-Tabellen (Label/Wert).
+
+        Erwartetes Muster je Tabelle (mindestens):
+        - ID
+        - Aufgabenstellung (Pflicht)
+        Optional:
+        - Intro/Einleitung
+        - Lösungsmöglichkeit/Hinweis
+        - Schlagworte
+        - Schwierigkeitsgrad
+        - Kategorie
+        """
+        tasks = []
+        task_number = 1
+
+        for table in doc.tables:
+            parsed_task = self._parse_structured_task_table(table, task_number)
+            if parsed_task is None:
+                continue
+
+            tasks.append(parsed_task)
+            task_number += 1
+
+        return tasks
+
+    def _normalize_table_key(self, value):
+        """Normalisiert Tabellen-Keys für robuste Label-Erkennung."""
+        text = (value or '').strip().lower()
+        replacements = {
+            'ä': 'ae',
+            'ö': 'oe',
+            'ü': 'ue',
+            'ß': 'ss',
+        }
+        for src, dst in replacements.items():
+            text = text.replace(src, dst)
+
+        text = re.sub(r'\([^\)]*\)', '', text)
+        text = re.sub(r'[^a-z0-9]+', '', text)
+        return text
+
+    def _parse_structured_task_table(self, table, task_number):
+        """Parst eine einzelne strukturierte Aufgaben-Tabelle in ein Task-Dictionary."""
+        if not table.rows or len(table.columns) < 2:
+            return None
+
+        values_by_key = {}
+
+        for row in table.rows:
+            if len(row.cells) < 2:
+                continue
+
+            raw_key = row.cells[0].text.strip()
+            raw_value = row.cells[1].text.strip()
+            norm_key = self._normalize_table_key(raw_key)
+            if not norm_key:
+                continue
+
+            values_by_key[norm_key] = raw_value
+
+        task_text = values_by_key.get('aufgabenstellungpflicht') or values_by_key.get('aufgabenstellung')
+        if not task_text:
+            return None
+
+        intro_text = values_by_key.get('introeinleitungoptional') or values_by_key.get('einleitung') or ''
+        hint_text = values_by_key.get('loesungsmoeglichkeithinweisoptional') or values_by_key.get('hinweis') or ''
+        difficulty_raw = values_by_key.get('schwierigkeitsgrad') or values_by_key.get('schwierigkeit') or ''
+        keywords_raw = values_by_key.get('schlagwortekommagetrennt') or values_by_key.get('schlagworte') or ''
+        category = values_by_key.get('kategorie') or 'Ohne Kategorie'
+
+        if difficulty_raw:
+            explicit_difficulty = self._extract_explicit_difficulty(f"Schwierigkeit: {difficulty_raw}")
+            difficulty = explicit_difficulty if explicit_difficulty else self._extract_difficulty(difficulty_raw)
+        else:
+            difficulty = self._extract_difficulty(task_text)
+
+        if keywords_raw:
+            keywords = [k.strip().lower() for k in keywords_raw.split(',') if k.strip()]
+        else:
+            keywords = self._extract_keywords(task_text)
+
+        content_lines = []
+        if intro_text:
+            content_lines.append(f"Einleitung: {intro_text}")
+        content_lines.append(task_text)
+        if hint_text:
+            content_lines.append(f"Hinweis: {hint_text}")
+        if difficulty_raw:
+            content_lines.append(f"Schwierigkeit: {difficulty_raw}")
+        if keywords_raw:
+            content_lines.append(f"Schlüsselwörter: {keywords_raw}")
+
+        task_id = values_by_key.get('id') or str(task_number)
+        title_source = task_text.split('\n', 1)[0].strip()
+
+        return {
+            'number': task_number,
+            'id': task_id,
+            'category': category,
+            'title': self._extract_task_title(title_source),
+            'content': content_lines,
+            'all_elements': [{'type': 'table', 'content': table}],
+            'original_paragraphs': [],
+            'difficulty': difficulty,
+            'keywords': keywords,
+        }
 
     def extract_tasks_with_diagnostics(self, file_path):
         """
