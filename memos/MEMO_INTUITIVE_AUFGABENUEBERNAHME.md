@@ -51,3 +51,16 @@ Beiträge sind willkommen, z. B. zu:
 - Beispielquellen und Regressionstests
 
 Gern direkt Vorschläge, Mockups oder PRs verlinken.
+
+## Update 2026-05-26 – Schwierigkeitsgrad-Regel geschärft
+
+- Konfigurierbare Difficulty-Regeln ergänzt (`difficulty_rules` in `data/config/import_rules.json`):
+   - `allowed_values`
+   - `aliases`
+   - `block_export_on_inconsistent`
+- Parser normalisiert Difficulty-Werte regelbasiert (inkl. Alias-Mapping).
+- Inkonsistente Mehrfachwerte (z. B. `leicht | mittel | schwer`) werden robust erkannt.
+- GUI nutzt dieselben Regelwerte bei der Metadaten-Eingabe.
+- Bulk-Import besitzt jetzt eine Korrekturschleife bei abgebrochener Metadaten-Eingabe:
+   - erneut bearbeiten / Datei überspringen / Serie stoppen.
+- Export blockiert optional bei inkonsistenter oder ungültiger Schwierigkeit.

@@ -628,15 +628,42 @@ class LEKBastlerGUI:
                 break
 
             if override_answer is True:
-                custom_metadata = self._ask_import_metadata(
-                    default_category=metadata['category'],
-                    default_difficulty=metadata['difficulty'],
-                    default_keywords=metadata['keywords'],
-                    default_title=metadata.get('title', ''),
-                )
-                if custom_metadata is None:
-                    skipped += 1
+                custom_metadata = None
+                metadata_action = 'apply'
+                while True:
+                    custom_metadata = self._ask_import_metadata(
+                        default_category=metadata['category'],
+                        default_difficulty=metadata['difficulty'],
+                        default_keywords=metadata['keywords'],
+                        default_title=metadata.get('title', ''),
+                    )
+
+                    if custom_metadata is not None:
+                        break
+
+                    correction_choice = messagebox.askyesnocancel(
+                        "Metadaten-Eingabe abgebrochen",
+                        f"Quelle: {os.path.basename(source_file)}\n\n"
+                        "Möchten Sie die Metadaten erneut bearbeiten?\n\n"
+                        "Ja = erneut bearbeiten\n"
+                        "Nein = Datei überspringen\n"
+                        "Abbrechen = Serie stoppen",
+                    )
+                    if correction_choice is True:
+                        continue
+                    if correction_choice is False:
+                        skipped += 1
+                        metadata_action = 'skip-file'
+                        break
+                    # Abbrechen => gesamte Serie stoppen
+                    metadata_action = 'stop-series'
+                    break
+
+                if metadata_action == 'skip-file':
                     continue
+                if metadata_action == 'stop-series' or custom_metadata is None:
+                    break
+
                 metadata_for_file = custom_metadata
                 overridden += 1
 
@@ -723,6 +750,8 @@ class LEKBastlerGUI:
         rules_default_difficulty = self._rule_value('default_import_metadata.difficulty', 'mittel')
         rules_default_keywords = self._rule_value('default_import_metadata.keywords', '')
         rules_default_title = self._rule_value('default_import_metadata.title', '')
+        allowed_values = self._difficulty_allowed_values()
+        difficulty_prompt_values = " | ".join(allowed_values)
 
         category_default = (
             default_category
@@ -750,7 +779,7 @@ class LEKBastlerGUI:
         while True:
             difficulty_input = simpledialog.askstring(
                 "Schwierigkeitsgrad",
-                "Schwierigkeitsgrad (leicht | mittel | schwer):",
+                f"Schwierigkeitsgrad ({difficulty_prompt_values}):",
                 initialvalue=difficulty or difficulty_default,
                 parent=self.root,
             )
@@ -764,7 +793,7 @@ class LEKBastlerGUI:
 
             messagebox.showwarning(
                 "Ungültiger Wert",
-                "Bitte genau einen gültigen Schwierigkeitsgrad eingeben: leicht, mittel oder schwer.",
+                f"Bitte genau einen gültigen Schwierigkeitsgrad eingeben: {difficulty_prompt_values}.",
             )
 
         keywords = simpledialog.askstring(
@@ -900,10 +929,12 @@ class LEKBastlerGUI:
         if not val:
             return None
 
-        if val in ('leicht', 'mittel', 'schwer'):
+        allowed = set(self._difficulty_allowed_values())
+        if val in allowed:
             return val
 
-        aliases = {
+        aliases = self._rule_value('difficulty_rules.aliases', {}) or {}
+        default_aliases = {
             'easy': 'leicht',
             'einfach': 'leicht',
             'medium': 'mittel',
@@ -912,7 +943,23 @@ class LEKBastlerGUI:
             'difficult': 'schwer',
             'komplex': 'schwer',
         }
-        return aliases.get(val)
+        merged_aliases = dict(default_aliases)
+        for key, mapped in aliases.items():
+            k = str(key).strip().lower()
+            v = str(mapped).strip().lower()
+            if k and v:
+                merged_aliases[k] = v
+
+        mapped_val = merged_aliases.get(val)
+        if mapped_val in allowed:
+            return mapped_val
+        return None
+
+    def _difficulty_allowed_values(self):
+        """Liefert erlaubte Difficulty-Werte als normalisierte Kleinbuchstaben."""
+        values = self._rule_value('difficulty_rules.allowed_values', ['leicht', 'mittel', 'schwer']) or []
+        normalized = [str(v).strip().lower() for v in values if str(v).strip()]
+        return normalized or ['leicht', 'mittel', 'schwer']
 
     def _show_task_import_details(self, preview):
         """Zeigt eine detaillierte Vorschau der Quellblöcke vor der Aufgabenübernahme."""
@@ -1151,16 +1198,25 @@ class LEKBastlerGUI:
         # Verbindliche Vorabprüfung: Inkonsistenzen müssen vor Export bereinigt werden
         blocked_difficulty_tasks = []
         blocked_category_tasks = []
+        block_difficulty = bool(self._rule_value('difficulty_rules.block_export_on_inconsistent', True))
+        allowed_difficulty = {str(v).strip().lower() for v in self._difficulty_allowed_values()}
         block_category = bool(self._rule_value('category_rules.block_export_on_missing', True))
         missing_values = self._rule_value('category_rules.missing_values', ['', 'ohne kategorie']) or []
         missing_values_norm = {str(v).strip().lower() for v in missing_values}
 
         for task in tasks_to_export:
             warnings = task.get('warnings', []) or []
-            if any('Inkonsistenter Schwierigkeitsgrad' in str(w) for w in warnings):
-                blocked_difficulty_tasks.append(
-                    f"#{task.get('number', '?')} {task.get('title', 'Ohne Titel')}"
+            if block_difficulty:
+                difficulty_warning = any(
+                    ('Inkonsistenter Schwierigkeitsgrad' in str(w)) or ('Schwierigkeit ist nicht eindeutig' in str(w))
+                    for w in warnings
                 )
+                difficulty_value = str(task.get('difficulty', '') or '').strip().lower()
+                difficulty_invalid = bool(difficulty_value) and difficulty_value not in allowed_difficulty
+                if difficulty_warning or difficulty_invalid:
+                    blocked_difficulty_tasks.append(
+                        f"#{task.get('number', '?')} {task.get('title', 'Ohne Titel')}"
+                    )
 
             if block_category:
                 category_value = str(task.get('category', '') or '').strip().lower()

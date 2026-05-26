@@ -46,6 +46,19 @@ class WordProcessor:
             'duplicate_similarity_threshold': 0.70,
             'max_preview_blocks': 10,
             'bulk_max_errors': 5,
+            'difficulty_rules': {
+                'allowed_values': ['leicht', 'mittel', 'schwer'],
+                'aliases': {
+                    'easy': 'leicht',
+                    'einfach': 'leicht',
+                    'medium': 'mittel',
+                    'normal': 'mittel',
+                    'hard': 'schwer',
+                    'difficult': 'schwer',
+                    'komplex': 'schwer',
+                },
+                'block_export_on_inconsistent': True,
+            },
             'default_import_metadata': {
                 'category': '',
                 'difficulty': 'mittel',
@@ -1655,20 +1668,54 @@ class WordProcessor:
             matches = re.findall(pattern, text, re.IGNORECASE)
             if matches:
                 difficulty_text = matches[0].strip().lower()
-                
-                # Normalisiere auf Standard-Schwierigkeitsgrade
-                if any(word in difficulty_text for word in ['leicht', 'einfach', 'easy', 'simple', '1']):
-                    return 'Leicht'
-                elif any(word in difficulty_text for word in ['schwer', 'difficult', 'hard', 'komplex', 'complex', '3']):
-                    return 'Schwer'
-                elif any(word in difficulty_text for word in ['mittel', 'medium', 'intermediate', '2']):
-                    return 'Mittel'
-                else:
-                    # Fallback: Versuche direkte Zuordnung
-                    if difficulty_text in ['leicht', 'mittel', 'schwer']:
-                        return difficulty_text.capitalize()
+                normalized = self._normalize_difficulty_token(difficulty_text)
+                if normalized:
+                    return normalized.capitalize()
         
         return None  # Keine explizite Schwierigkeit gefunden
+
+    def _difficulty_allowed_values(self):
+        """Liefert erlaubte Schwierigkeitsgrade in Kleinbuchstaben."""
+        values = self.get_import_rule('difficulty_rules.allowed_values', ['leicht', 'mittel', 'schwer']) or []
+        normalized = [str(v).strip().lower() for v in values if str(v).strip()]
+        return normalized or ['leicht', 'mittel', 'schwer']
+
+    def _difficulty_aliases(self):
+        """Liefert Alias-Mapping -> kanonischer Schwierigkeitsgrad (lowercase)."""
+        defaults = {
+            'easy': 'leicht',
+            'einfach': 'leicht',
+            'medium': 'mittel',
+            'normal': 'mittel',
+            'hard': 'schwer',
+            'difficult': 'schwer',
+            'komplex': 'schwer',
+        }
+        configured = self.get_import_rule('difficulty_rules.aliases', {}) or {}
+        merged = dict(defaults)
+        for key, value in configured.items():
+            k = str(key).strip().lower()
+            v = str(value).strip().lower()
+            if k and v:
+                merged[k] = v
+        return merged
+
+    def _normalize_difficulty_token(self, value):
+        """Normalisiert einen Schwierigkeitsgrad-Token auf den kanonischen Lowercase-Wert."""
+        val = str(value or '').strip().lower()
+        if not val:
+            return None
+
+        allowed = set(self._difficulty_allowed_values())
+        if val in allowed:
+            return val
+
+        aliases = self._difficulty_aliases()
+        mapped = aliases.get(val)
+        if mapped in allowed:
+            return mapped
+
+        return None
 
     def _has_inconsistent_difficulty(self, difficulty_raw):
         """Prüft, ob ein Rohwert mehrere Schwierigkeitsgrade gleichzeitig enthält."""
@@ -1676,12 +1723,22 @@ class WordProcessor:
             return False
 
         value = str(difficulty_raw).lower()
-        token_count = 0
-        for token in ('leicht', 'mittel', 'schwer'):
-            if token in value:
-                token_count += 1
+        canonical_hits = set()
 
-        return token_count > 1
+        allowed = self._difficulty_allowed_values()
+        aliases = self._difficulty_aliases()
+
+        token_map = {token: token for token in allowed}
+        token_map.update(aliases)
+
+        for token, canonical in token_map.items():
+            pattern = r'\b' + re.escape(str(token).lower()) + r'\b'
+            if re.search(pattern, value):
+                normalized = self._normalize_difficulty_token(canonical)
+                if normalized:
+                    canonical_hits.add(normalized)
+
+        return len(canonical_hits) > 1
     
     def create_document_from_tasks(self, tasks, output_path, lek_theme="", debug_context_report=False):
         """

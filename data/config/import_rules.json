@@ -8,6 +8,23 @@
   "duplicate_similarity_threshold": 0.70,
   "max_preview_blocks": 10,
   "bulk_max_errors": 5,
+  "difficulty_rules": {
+    "allowed_values": [
+      "leicht",
+      "mittel",
+      "schwer"
+    ],
+    "aliases": {
+      "easy": "leicht",
+      "einfach": "leicht",
+      "medium": "mittel",
+      "normal": "mittel",
+      "hard": "schwer",
+      "difficult": "schwer",
+      "komplex": "schwer"
+    },
+    "block_export_on_inconsistent": true
+  },
   "category_rules": {
     "required": true,
     "block_export_on_missing": true,
