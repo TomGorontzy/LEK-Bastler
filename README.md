@@ -1,4 +1,4 @@
-# LEK-Bastler-Portable v3.5.5
+# LEK-Bastler-Portable v3.5.6
 
 Ein professionelles Tool zum Auswählen und Exportieren von Aufgaben aus Word-Dokumenten mit robuster Strukturübertragung und vollständiger Formatierung.
 

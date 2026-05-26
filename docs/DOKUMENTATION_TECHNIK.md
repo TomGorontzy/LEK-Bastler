@@ -8,7 +8,7 @@
 - Selektion: `src/task_selector.py`
 - Anwendungssymbol: `src/app_icon.ico`
 
-Aktueller Versionsstand: **3.5.5**.
+Aktueller Versionsstand: **3.5.6**.
 
 ## 2. Build-Konfiguration
 
@@ -40,6 +40,19 @@ Aktueller Versionsstand: **3.5.5**.
 - Erhaltung von Formatierungsinformationen
 - Übernahme von Inhaltssteuerelementen (SDT)
 - Kontextabgleich zwischen Quelle und Zielvorlage (Styles/Nummerierung)
+
+## 4a. Wizard-Vorschau und Exportkopplung
+
+- Der Wizard arbeitet mit einer persistenten `ImportSession`; zwischen Schritt 3 und 4 erfolgt keine Re-Extraktion.
+- Exportiert werden ausschließlich die freigegebenen Aufgaben aus `approved_task_ids` bzw. den bestätigten Raw-Tasks.
+- Für strukturierte Aufgaben-Tabellen wird dieselbe fachliche Reihenfolge für Vorschau und Export verwendet:
+  - Titel
+  - Intro/Einleitung (optional)
+  - Aufgabenstellung
+  - Hinweis (optional)
+  - Punkte (optional)
+- Die Schritt-3-`LEK-Gesamtvorschau` in `src/main.py` nutzt dieselbe zentrale Fließtext-Logik wie der Exportpfad in `src/word_processor.py`.
+- Ein zusätzlicher Delta-Check markiert fehlende optionale Blöcke transparent, ohne den Exportinhalt künstlich zu verändern.
 
 ## 5. Konventionen
 

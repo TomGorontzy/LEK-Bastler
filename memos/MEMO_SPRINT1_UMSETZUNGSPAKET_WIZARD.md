@@ -179,11 +179,16 @@ Vor Export wird ausschließlich die freigegebene `approved_task_ids`-Menge expor
 - Statuszeile + Export-Vorschau vor dem Speichern ergänzt
 - Explizite Schrittführung im Wizard ergänzt (Schrittanzeige `1/4` bis `4/4` inkl. `Zurück/Weiter`)
 - Duplikat-Cleanup in `word_processor.py` abgeschlossen (`_copy_elements_with_formatting` nur noch einmal definiert)
+- Schritt-3-`LEK-Gesamtvorschau` ergänzt (exportnahe Gesamtvorschau über freigegebene Aufgaben)
+- Delta-Check für fehlende optionale Blöcke in der Gesamtvorschau ergänzt
+- Technikdoku in `docs/DOKUMENTATION_TECHNIK.md` auf den aktuellen Vorschau-/Exportstand nachgezogen
 
-### Noch offen für Sprint-1-Abschluss
+### Abschlussstatus Sprint 1
 
-- Optional: kurze Technikdoku-Aktualisierung in `docs/DOKUMENTATION_TECHNIK.md`
-- Abschluss-Smoke-Test mit 2–3 realen Quelldokumenten
+- Sprint 1 ist fachlich abgeschlossen.
+- Die Kernziele Diagnose, Freigabe, sichere Exportkopplung und exportnahe Vorschau sind umgesetzt.
+- Offene Restarbeiten sind nur noch laufende Qualitätssicherung / Regression mit Realdaten,
+  nicht mehr Teil des Sprint-1-MVP.
 
 ## Smoke-Test Ergebnis (2026-05-26)
 
@@ -253,26 +258,32 @@ Validierung nach Anpassung:
 Für den späteren gemeinsamen Durchgang der exemplarischen Datei:
 
 1. **Kategorienlogik**
-  - Sollen Kategorien explizit als Tabellenfeld gepflegt werden?
-  - Oder weiterhin aus H1-Struktur außerhalb der Tabellen kommen?
 
-2. **Titelstrategie**
-  - Aktuell wird der Titel aus dem Beginn der Aufgabenstellung gebildet.
-  - Soll es ein eigenes Feld `Titel` geben (stabiler für Übersicht/Filter)?
+   - Sollen Kategorien explizit als Tabellenfeld gepflegt werden?
+   - Oder weiterhin aus H1-Struktur außerhalb der Tabellen kommen?
 
-3. **Schwierigkeitsgrad-Regel**
-  - Werte wie `leicht | mittel | schwer`: gewünschte Interpretation klären
-    (ein Wert, Mehrfachauswahl oder Standardwert).
+1. **Titelstrategie**
 
-4. **Pflichtfelder im Template**
-  - Minimal verpflichtend: `ID`, `Aufgabenstellung`
-  - Optional: Intro, Hinweis, Schlagworte, Schwierigkeit, Kategorie
+   - Aktuell wird der Titel aus dem Beginn der Aufgabenstellung gebildet.
+   - Soll es ein eigenes Feld `Titel` geben (stabiler für Übersicht/Filter)?
 
-5. **Exportdarstellung**
-  - Prüfen, ob Intro/Hinweis im finalen LEK-Layout genau wie gewünscht erscheinen.
+1. **Schwierigkeitsgrad-Regel**
 
-6. **Governance für neue Sammlungen**
-  - Kurzregel in Doku: „Entweder H1/H2-Struktur oder Tabellen-GERUEST nach Feldschema“.
+   - Werte wie `leicht | mittel | schwer`: gewünschte Interpretation klären
+     (ein Wert, Mehrfachauswahl oder Standardwert).
+
+1. **Pflichtfelder im Template**
+
+   - Minimal verpflichtend: `ID`, `Aufgabenstellung`
+   - Optional: Intro, Hinweis, Schlagworte, Schwierigkeit, Kategorie
+
+1. **Exportdarstellung**
+
+   - Prüfen, ob Intro/Hinweis im finalen LEK-Layout genau wie gewünscht erscheinen.
+
+1. **Governance für neue Sammlungen**
+
+   - Kurzregel in Doku: „Entweder H1/H2-Struktur oder Tabellen-GERUEST nach Feldschema“.
 
 ## Entscheidungsgrundlage für den gemeinsamen Review (Stand 2026-05-26)
 
@@ -291,20 +302,24 @@ Aktuelle Messwerte aus `Aufgaben_Auftragssteuerung und -koordination.docx`:
 Empfohlene Festlegungen (für Team-Entscheid):
 
 1. **Kategorie als Pflichtfeld im Tabellenmodus**
-  - Empfehlung: `Kategorie` verpflichtend pflegen.
-  - Fallback ohne Kategorie bleibt technisch erlaubt, wird aber als Doku-Verstoß gewertet.
 
-2. **Mehrdeutige Schwierigkeit normalisieren**
-  - Empfehlung: genau ein Zielwert pro Aufgabe (`leicht|mittel|schwer`).
-  - Falls mehrere Werte eingetragen sind, Standard auf `Mittel` + Warnhinweis im Import.
+  Empfehlung: `Kategorie` verpflichtend pflegen. Fallback ohne Kategorie bleibt technisch erlaubt,
+  wird aber als Doku-Verstoß gewertet.
 
-3. **Titel-Feld perspektivisch ergänzen**
-  - Kurzfristig: Titel aus Aufgabenstellung (funktional ausreichend).
-  - Mittelfristig: eigenes Tabellenfeld `Titel` für bessere Lesbarkeit/Filter.
+1. **Mehrdeutige Schwierigkeit normalisieren**
 
-4. **Feldschema für neue Sammlungen verbindlich machen**
-  - Pflicht: `ID`, `Aufgabenstellung`, `Schwierigkeitsgrad`, `Kategorie`
-  - Optional: `Intro/Einleitung`, `Lösungsmöglichkeit/Hinweis`, `Schlagworte`
+  Empfehlung: genau ein Zielwert pro Aufgabe (`leicht|mittel|schwer`). Falls mehrere Werte
+  eingetragen sind, Standard auf `Mittel` + Warnhinweis im Import.
+
+1. **Titel-Feld perspektivisch ergänzen**
+
+  Kurzfristig: Titel aus Aufgabenstellung (funktional ausreichend). Mittelfristig: eigenes
+  Tabellenfeld `Titel` für bessere Lesbarkeit/Filter.
+
+1. **Feldschema für neue Sammlungen verbindlich machen**
+
+  Pflicht: `ID`, `Aufgabenstellung`, `Schwierigkeitsgrad`, `Kategorie`. Optional:
+  `Intro/Einleitung`, `Lösungsmöglichkeit/Hinweis`, `Schlagworte`.
 
 ## Update nach Anwender-Feedback (2026-05-26)
 
