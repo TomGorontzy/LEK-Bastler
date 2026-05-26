@@ -11,6 +11,7 @@ Features:
 
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+from tkinter import simpledialog
 import os
 import sys
 from pathlib import Path
@@ -79,6 +80,12 @@ class LEKBastlerGUI:
         ttk.Entry(file_frame, textvariable=self.file_path_var, width=50).grid(row=0, column=1, padx=(10, 0))
         self.btn_browse = ttk.Button(file_frame, text="Durchsuchen...", command=self.browse_and_load_file)
         self.btn_browse.grid(row=0, column=2, padx=(10, 0))
+        self.btn_import_task = ttk.Button(
+            file_frame,
+            text="Aufgabe aus Word übernehmen...",
+            command=self.import_task_from_word,
+        )
+        self.btn_import_task.grid(row=1, column=1, sticky=tk.W, pady=(8, 0))
         
         # Kriterien-Auswahl Sektion
         criteria_frame = ttk.LabelFrame(main_frame, text="Auswahlkriterien", padding="10")
@@ -371,6 +378,80 @@ class LEKBastlerGUI:
             messagebox.showinfo("Erfolg", f"{stats['total']} Aufgaben geladen.{warning_hint}")
         except Exception as e:
             messagebox.showerror("Fehler", f"Fehler beim Laden der Datei: {str(e)}")
+
+    def import_task_from_word(self):
+        """Übernimmt eine neue Aufgabe aus einer separaten Word-Datei in die aktuelle Sammlung."""
+        target_collection = self.file_path_var.get().strip()
+        if not target_collection:
+            messagebox.showwarning(
+                "Hinweis",
+                "Bitte zuerst die Ziel-Aufgabensammlung auswählen und laden.",
+            )
+            return
+
+        if not os.path.exists(target_collection):
+            messagebox.showerror("Fehler", "Die ausgewählte Ziel-Aufgabensammlung existiert nicht.")
+            return
+
+        source_file = filedialog.askopenfilename(
+            title="Quell-Datei mit neuer Aufgabe auswählen",
+            initialdir=str(_runtime_base_dir()),
+            filetypes=[("Word-Dokumente", "*.docx"), ("Alle Dateien", "*.*")],
+        )
+        if not source_file:
+            return
+
+        if os.path.abspath(source_file) == os.path.abspath(target_collection):
+            messagebox.showwarning(
+                "Hinweis",
+                "Quell- und Zieldatei dürfen nicht identisch sein.",
+            )
+            return
+
+        default_category = self.lek_theme or "Allgemein"
+        category = simpledialog.askstring(
+            "Kategorie",
+            "Kategorie für die neue Aufgabe:",
+            initialvalue=default_category,
+            parent=self.root,
+        )
+        if category is None:
+            return
+
+        difficulty = simpledialog.askstring(
+            "Schwierigkeitsgrad",
+            "Schwierigkeitsgrad (leicht | mittel | schwer):",
+            initialvalue="mittel",
+            parent=self.root,
+        )
+        if difficulty is None:
+            return
+
+        keywords = simpledialog.askstring(
+            "Schlagworte",
+            "Schlagworte (kommagetrennt, optional):",
+            initialvalue="",
+            parent=self.root,
+        )
+        if keywords is None:
+            return
+
+        try:
+            result = self.word_processor.append_task_from_document(
+                source_doc_path=source_file,
+                target_collection_path=target_collection,
+                category=category,
+                difficulty=difficulty,
+                keywords=keywords,
+            )
+            self.load_tasks()
+            messagebox.showinfo(
+                "Erfolg",
+                "Neue Aufgabe wurde in die Aufgabensammlung übernommen.\n\n"
+                f"ID: {result.get('id', '-')}",
+            )
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Übernahme fehlgeschlagen: {str(e)}")
     
     def _extract_lek_theme(self, filename):
         """

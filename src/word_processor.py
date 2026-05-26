@@ -13,6 +13,7 @@ import re
 import os
 import sys
 from pathlib import Path
+from copy import deepcopy
 
 class WordProcessor:
     """Klasse für das Lesen und Schreiben von Word-Dokumenten"""
@@ -160,6 +161,66 @@ class WordProcessor:
 
         return tasks
 
+    def append_task_from_document(
+        self,
+        source_doc_path,
+        target_collection_path,
+        category,
+        difficulty='Mittel',
+        keywords='',
+        intro='',
+        hint='',
+        task_id=''
+    ):
+        """
+        Übernimmt eine neue Aufgabe aus einer Word-Datei in eine tabellenbasierte Aufgabensammlung.
+
+        Die gesamte Quelle (Paragraphen, Tabellen, Formatierungen; best effort inkl. eingebetteter Inhalte)
+        wird in das Feld "Aufgabenstellung (Pflicht)" der neuen Tabellen-Aufgabe übernommen.
+
+        Returns:
+            dict: Informationen zur übernommenen Aufgabe (id, target_file)
+        """
+        if not os.path.exists(source_doc_path):
+            raise FileNotFoundError(f"Quelldatei nicht gefunden: {source_doc_path}")
+        if not os.path.exists(target_collection_path):
+            raise FileNotFoundError(f"Zieldatei nicht gefunden: {target_collection_path}")
+
+        source_doc = Document(source_doc_path)
+        target_doc = Document(target_collection_path)
+
+        template_table = self._find_first_structured_task_table(target_doc)
+        if template_table is None:
+            raise ValueError(
+                "Die Zieldatei enthält keine erkannte Aufgaben-Tabellenstruktur. "
+                "Bitte eine Sammlung auf Basis des Aufgaben-Gerüsts verwenden."
+            )
+
+        new_table = self._append_table_clone(target_doc, template_table)
+
+        resolved_id = task_id.strip() if str(task_id or '').strip() else self._generate_next_task_id(target_doc)
+        resolved_category = str(category or '').strip() or 'Ohne Kategorie'
+        resolved_difficulty = str(difficulty or '').strip() or 'Mittel'
+
+        self._set_structured_table_value(new_table, 'id', resolved_id)
+        self._set_structured_table_value(new_table, 'kategorie', resolved_category)
+        self._set_structured_table_value(new_table, 'introeinleitungoptional', str(intro or '').strip())
+        self._set_structured_table_value(new_table, 'loesungsmoeglichkeithinweisoptional', str(hint or '').strip())
+        self._set_structured_table_value(new_table, 'schlagwortekommagetrennt', str(keywords or '').strip())
+        self._set_structured_table_value(new_table, 'schwierigkeitsgrad', resolved_difficulty)
+
+        task_cell = self._get_structured_table_value_cell(new_table, 'aufgabenstellungpflicht')
+        if task_cell is None:
+            task_cell = self._ensure_structured_row(new_table, 'Aufgabenstellung (Pflicht)')
+
+        self._replace_cell_content_from_document(target_doc, task_cell, source_doc)
+
+        target_doc.save(target_collection_path)
+        return {
+            'id': resolved_id,
+            'target_file': target_collection_path,
+        }
+
     def _normalize_table_key(self, value):
         """Normalisiert Tabellen-Keys für robuste Label-Erkennung."""
         text = (value or '').strip().lower()
@@ -175,6 +236,195 @@ class WordProcessor:
         text = re.sub(r'\([^\)]*\)', '', text)
         text = re.sub(r'[^a-z0-9]+', '', text)
         return text
+
+    def _find_first_structured_task_table(self, doc):
+        """Liefert die erste erkannte Aufgaben-Tabelle (ID + Aufgabenstellung) oder None."""
+        for table in doc.tables:
+            keys = set()
+            for row in table.rows:
+                if len(row.cells) < 2:
+                    continue
+                keys.add(self._normalize_table_key(row.cells[0].text))
+
+            if 'id' in keys and ('aufgabenstellungpflicht' in keys or 'aufgabenstellung' in keys):
+                return table
+        return None
+
+    def _append_table_clone(self, target_doc, source_table):
+        """Kloniert eine Tabelle ans Ende des Dokuments und liefert die neue Tabelle zurück."""
+        body = target_doc._element.body
+        sect_pr = body.sectPr
+        cloned_tbl = deepcopy(source_table._tbl)
+
+        if sect_pr is not None:
+            body.insert(list(body).index(sect_pr), cloned_tbl)
+        else:
+            body.append(cloned_tbl)
+
+        return target_doc.tables[-1]
+
+    def _iter_table_rows_by_norm_key(self, table):
+        """Iteriert über Tabellenzeilen als Tupel (norm_key, row)."""
+        for row in table.rows:
+            if len(row.cells) < 2:
+                continue
+            key = self._normalize_table_key(row.cells[0].text)
+            if key:
+                yield key, row
+
+    def _clear_cell_content(self, cell):
+        """Entfernt alle Blockinhalte aus einer Tabellenzelle (bis auf tcPr)."""
+        tc = cell._tc
+        for child in list(tc):
+            # tcPr erhalten, Inhaltsknoten löschen
+            tag_local = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+            if tag_local != 'tcPr':
+                tc.remove(child)
+
+    def _set_structured_table_value(self, table, key_norm, value):
+        """Setzt den Wert (2. Spalte) für einen strukturierten Tabellen-Key."""
+        target_cell = self._get_structured_table_value_cell(table, key_norm)
+        if target_cell is None:
+            label = self._key_norm_to_label(key_norm)
+            target_cell = self._ensure_structured_row(table, label)
+
+        self._clear_cell_content(target_cell)
+        target_cell.text = str(value or '')
+
+    def _get_structured_table_value_cell(self, table, key_norm):
+        """Liefert die Wertzelle (2. Spalte) für key_norm oder None."""
+        for row_key, row in self._iter_table_rows_by_norm_key(table):
+            if row_key == key_norm:
+                return row.cells[1]
+        return None
+
+    def _ensure_structured_row(self, table, label):
+        """Stellt sicher, dass eine Label-Zeile existiert, und liefert die Wertzelle zurück."""
+        wanted = self._normalize_table_key(label)
+        for row_key, row in self._iter_table_rows_by_norm_key(table):
+            if row_key == wanted:
+                return row.cells[1]
+
+        new_row = table.add_row()
+        new_row.cells[0].text = label
+        new_row.cells[1].text = ''
+        return new_row.cells[1]
+
+    def _key_norm_to_label(self, key_norm):
+        """Mappt normalisierte Keys auf lesbare Standard-Labels."""
+        mapping = {
+            'id': 'ID',
+            'kategorie': 'Kategorie',
+            'introeinleitungoptional': 'Intro/Einleitung (optional)',
+            'aufgabenstellungpflicht': 'Aufgabenstellung (Pflicht)',
+            'loesungsmoeglichkeithinweisoptional': 'Lösungsmöglichkeit/Hinweis (optional)',
+            'schlagwortekommagetrennt': 'Schlagworte (kommagetrennt)',
+            'schwierigkeitsgrad': 'Schwierigkeitsgrad',
+        }
+        return mapping.get(key_norm, key_norm)
+
+    def _replace_cell_content_from_document(self, target_doc, target_cell, source_doc):
+        """
+        Ersetzt den Zelleninhalt durch den Inhalt eines Quell-Dokuments.
+
+        Hinweis: Beziehungen werden best effort in das Zieldokument übernommen.
+        """
+        self._clear_cell_content(target_cell)
+        tc = target_cell._tc
+
+        # Sicherstellen, dass Beziehungen pro old_rId nur einmal neu angelegt werden
+        rel_map = {}
+
+        for child in source_doc._element.body:
+            tag_local = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+            if tag_local not in ('p', 'tbl'):
+                continue
+
+            cloned = deepcopy(child)
+            self._remap_relationship_ids_in_xml(
+                xml_element=cloned,
+                source_part=source_doc.part,
+                target_part=target_doc.part,
+                rel_map=rel_map,
+            )
+            tc.append(cloned)
+
+        # Word erwartet mindestens einen Absatz in der Zelle
+        has_block = any((c.tag.split('}')[-1] if '}' in c.tag else c.tag) in ('p', 'tbl') for c in tc)
+        if not has_block:
+            target_cell.text = ''
+
+    def _remap_relationship_ids_in_xml(self, xml_element, source_part, target_part, rel_map):
+        """
+        Remappt r:* Beziehungs-IDs in einem XML-Element von source_part auf target_part.
+        """
+        rel_ns = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
+
+        for node in xml_element.iter():
+            for attr_name, old_rid in list(node.attrib.items()):
+                if not attr_name.startswith(rel_ns):
+                    continue
+
+                if old_rid in rel_map:
+                    node.set(attr_name, rel_map[old_rid])
+                    continue
+
+                new_rid = self._clone_relationship(source_part, target_part, old_rid)
+                if new_rid:
+                    rel_map[old_rid] = new_rid
+                    node.set(attr_name, new_rid)
+
+    def _clone_relationship(self, source_part, target_part, old_rid):
+        """
+        Klont eine Relationship von source_part nach target_part und liefert neue rId.
+
+        Best effort: Bei nicht unterstützten Relationship-Typen wird alte rId zurückgegeben.
+        """
+        try:
+            rel = source_part.rels[old_rid]
+        except Exception:
+            return old_rid
+
+        try:
+            if getattr(rel, 'is_external', False):
+                return target_part.relate_to(rel.target_ref, rel.reltype, is_external=True)
+
+            target_obj = getattr(rel, 'target_part', None) or getattr(rel, '_target', None)
+            if target_obj is None:
+                return old_rid
+
+            return target_part.relate_to(target_obj, rel.reltype)
+        except Exception:
+            return old_rid
+
+    def _generate_next_task_id(self, target_doc):
+        """Erzeugt eine nächste Aufgaben-ID auf Basis vorhandener IDs (A-001, A-001.1, ...)."""
+        ids = []
+
+        for table in target_doc.tables:
+            id_cell = self._get_structured_table_value_cell(table, 'id')
+            if id_cell is None:
+                continue
+            val = id_cell.text.strip()
+            if val:
+                ids.append(val)
+
+        if not ids:
+            return 'A-001'
+
+        nums = []
+        for val in ids:
+            m = re.search(r'(\d+)(?!.*\d)', val)
+            if m:
+                try:
+                    nums.append(int(m.group(1)))
+                except ValueError:
+                    pass
+
+        if not nums:
+            return 'A-001'
+
+        return f"A-{max(nums) + 1:03d}"
 
     def _parse_structured_task_table(self, table, task_number):
         """Parst eine einzelne strukturierte Aufgaben-Tabelle in ein Task-Dictionary."""

@@ -320,3 +320,21 @@ Zusätzlich umgesetzt (Verbindliche Qualitätssicherung vor Export):
   wird eine explizite Warnung erzeugt.
 - Solche Inkonsistenzen blockieren den Export in der GUI, bis die Quelle durch den
   jeweiligen Anwender bereinigt und neu geladen wurde.
+
+## Erweiterung: Neue Aufgabe per EXE-GUI übernehmen (2026-05-26)
+
+Neu in der GUI (`src/main.py`):
+
+- Button: `Aufgabe aus Word übernehmen...`
+- Ablauf:
+  1. Ziel-Aufgabensammlung ist die aktuell geladene Datei.
+  2. Separate Quell-Datei auswählen (neue Aufgabe).
+  3. Metadaten erfassen (Kategorie, Schwierigkeitsgrad, Schlagworte).
+  4. Aufgabe wird als neue Tabellenaufgabe in die Sammlung übernommen.
+
+Technische Umsetzung (`src/word_processor.py`):
+
+- Neue Methode `append_task_from_document(...)` ergänzt.
+- Inhalt der Quelldatei wird in das Feld `Aufgabenstellung (Pflicht)` der neuen Aufgabe übernommen.
+- Unterstützt rich content (Absätze, Tabellen, Formatierungen; eingebettete Inhalte best effort).
+- Nach Übernahme wird die Sammlung gespeichert und im GUI neu geladen.
