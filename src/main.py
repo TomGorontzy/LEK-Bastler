@@ -461,6 +461,13 @@ class LEKBastlerGUI:
         if preview.get('source_paragraph_count', 0) > len(lines):
             source_preview_text += f"\n- ... (+{preview['source_paragraph_count'] - len(lines)} weitere Absätze)"
 
+        details_question = messagebox.askyesno(
+            "Details anzeigen",
+            "Möchten Sie vor der Übernahme die Detailansicht der Quellinhalte sehen?",
+        )
+        if details_question:
+            self._show_task_import_details(preview)
+
         proceed = messagebox.askyesno(
             "Übernahme bestätigen",
             "Neue Aufgabe wird in die Aufgabensammlung übernommen.\n\n"
@@ -493,6 +500,36 @@ class LEKBastlerGUI:
             )
         except Exception as e:
             messagebox.showerror("Fehler", f"Übernahme fehlgeschlagen: {str(e)}")
+
+    def _show_task_import_details(self, preview):
+        """Zeigt eine detaillierte Vorschau der Quellblöcke vor der Aufgabenübernahme."""
+        blocks = preview.get('source_preview_blocks', []) or []
+        if not blocks:
+            messagebox.showinfo("Detailansicht", "Keine Detaildaten zur Quelle verfügbar.")
+            return
+
+        lines = []
+        for idx, block in enumerate(blocks, 1):
+            btype = block.get('type')
+            if btype == 'paragraph':
+                text = str(block.get('text', '')).strip().replace('\n', ' ')
+                if len(text) > 120:
+                    text = text[:117] + '...'
+                lines.append(f"{idx}. Absatz: {text}")
+            elif btype == 'table':
+                rows = block.get('rows', 0)
+                cols = block.get('cols', 0)
+                first_cell = str(block.get('first_cell', '')).strip()
+                preview_cell = f" | erste Zelle: {first_cell}" if first_cell else ""
+                lines.append(f"{idx}. Tabelle: {rows}x{cols}{preview_cell}")
+            else:
+                lines.append(f"{idx}. Unbekannter Blocktyp")
+
+        details_text = "\n".join(lines)
+        messagebox.showinfo(
+            "Detailansicht Quellinhalt",
+            "Erste Inhaltsblöcke der Quelle:\n\n" + details_text,
+        )
     
     def _extract_lek_theme(self, filename):
         """

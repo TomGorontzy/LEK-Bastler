@@ -333,6 +333,12 @@ Neu in der GUI (`src/main.py`):
   4. Vorschau-/Bestätigungsdialog zeigt Ziel-ID, Metadaten und Quellstruktur (Absätze/Tabellen).
   5. Aufgabe wird erst nach Bestätigung als neue Tabellenaufgabe in die Sammlung übernommen.
 
+Optionale Detailansicht vor Bestätigung:
+
+- Vor der finalen Übernahme kann der Anwender `Details anzeigen` wählen.
+- Die Ansicht listet die ersten Quellblöcke auf (Absätze + Tabellen inkl. Tabellenabmessungen/erste Zelle),
+  um die inhaltliche Plausibilität vor dem Schreiben zu prüfen.
+
 Zusätzliche Validierung vor Übernahme:
 
 - Inkonsistenter Schwierigkeitsgrad in der Eingabe (z. B. mehrere Werte wie `leicht | mittel`)

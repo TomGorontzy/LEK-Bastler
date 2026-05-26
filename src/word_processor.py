@@ -246,6 +246,37 @@ class WordProcessor:
         next_id = self._generate_next_task_id(target_doc)
         nonempty_paragraphs = [p.text.strip() for p in source_doc.paragraphs if p.text and p.text.strip()]
         preview_lines = nonempty_paragraphs[:3]
+        source_blocks = []
+
+        for child in source_doc._element.body:
+            tag_local = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+            if tag_local == 'p':
+                text = ''
+                for para in source_doc.paragraphs:
+                    if para._element == child:
+                        text = para.text.strip()
+                        break
+                if text:
+                    source_blocks.append({'type': 'paragraph', 'text': text})
+            elif tag_local == 'tbl':
+                table_obj = None
+                for table in source_doc.tables:
+                    if table._element == child:
+                        table_obj = table
+                        break
+
+                if table_obj is not None:
+                    rows = len(table_obj.rows)
+                    cols = len(table_obj.columns) if table_obj.columns else 0
+                    first_cell = ''
+                    if rows > 0 and cols > 0:
+                        first_cell = table_obj.cell(0, 0).text.strip()
+                    source_blocks.append({
+                        'type': 'table',
+                        'rows': rows,
+                        'cols': cols,
+                        'first_cell': first_cell,
+                    })
 
         normalized_difficulty = self._extract_explicit_difficulty(f"Schwierigkeit: {difficulty}")
         if not normalized_difficulty:
@@ -256,6 +287,7 @@ class WordProcessor:
             'source_paragraph_count': len(nonempty_paragraphs),
             'source_table_count': len(source_doc.tables),
             'source_preview_lines': preview_lines,
+            'source_preview_blocks': source_blocks[:10],
             'category': str(category or '').strip() or 'Ohne Kategorie',
             'difficulty_input': str(difficulty or '').strip(),
             'difficulty_normalized': normalized_difficulty,
