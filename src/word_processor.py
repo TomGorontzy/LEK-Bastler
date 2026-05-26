@@ -244,8 +244,10 @@ class WordProcessor:
                 if self._is_heading2(paragraph):
                     _finalize_current_task()
                     task_title = paragraph_text or f"Aufgabe {len(tasks) + 1}"
+                    _main_no, _sub_no, number_label = self._extract_main_sub_number(task_title)
                     current_task = {
                         'number': len(tasks) + 1,
+                        'number_display': number_label or str(len(tasks) + 1),
                         'category': current_category,
                         'title': self._extract_task_title(task_title),
                         'content': [],
@@ -280,6 +282,15 @@ class WordProcessor:
                         task['keywords'] = explicit_keywords
                     else:
                         task['keywords'] = self._extract_keywords(full_content)
+
+                number_display_raw = task.get('number_display') or task.get('number')
+                is_intro_context = self._is_intro_context(
+                    task.get('content', []),
+                    task.get('title', ''),
+                )
+                normalized_number = self._normalize_intro_number_display(number_display_raw, is_intro_context)
+                if normalized_number:
+                    task['number_display'] = normalized_number
             
             return tasks
             
@@ -312,6 +323,60 @@ class WordProcessor:
             task_number += 1
 
         return tasks
+
+    def _extract_main_sub_number(self, text):
+        """Extrahiert Haupt-/Nebennummer am Anfang eines Textes (z. B. 1, 1.1, Aufgabe 2.3)."""
+        raw = str(text or '').strip()
+        if not raw:
+            return None, None, None
+
+        match = re.match(
+            r'^\s*(?:aufgabe\s*)?(\d+)(?:\s*[\.,]\s*(\d+))?(?:\s*[:\)\-]|\s+|$)',
+            raw,
+            flags=re.IGNORECASE,
+        )
+        if not match:
+            return None, None, None
+
+        main_number = match.group(1)
+        sub_number = match.group(2)
+        number_label = f"{main_number}.{sub_number}" if sub_number else main_number
+        return main_number, sub_number, number_label
+
+    def _is_intro_context(self, content_lines, title=''):
+        """Erkennt, ob es sich inhaltlich um einen Einleitungs-/Kontextblock handelt."""
+        markers = (
+            'einleitung',
+            'intro',
+            'kontext',
+            'ausgangslage',
+            'vorbemerkung',
+            'einfuehr',
+            'einführ',
+        )
+
+        candidates = []
+        if str(title or '').strip():
+            candidates.append(str(title).strip().lower())
+
+        for line in (content_lines or [])[:3]:
+            text = str(line or '').strip().lower()
+            if text:
+                candidates.append(text)
+
+        return any(any(marker in text for marker in markers) for text in candidates)
+
+    def _normalize_intro_number_display(self, number_display, is_intro_context):
+        """Normalisiert Einleitungen auf Nebennummer .0 (z. B. 1 -> 1.0)."""
+        label = str(number_display or '').strip()
+        if not label or not is_intro_context:
+            return label
+
+        main_number, sub_number, _label = self._extract_main_sub_number(label)
+        if main_number and sub_number is None:
+            return f"{main_number}.0"
+
+        return label
 
     def append_task_from_document(
         self,
@@ -953,10 +1018,15 @@ class WordProcessor:
             content_lines.append(f"Schlüsselwörter: {keywords_raw}")
 
         task_id = values_by_key.get('id') or str(task_number)
+        _main_no, _sub_no, number_label = self._extract_main_sub_number(task_id)
+        base_number_display = number_label or str(task_number)
+        is_intro_context = bool(str(intro_text or '').strip()) or self._is_intro_context([task_text], explicit_title)
+        number_display = self._normalize_intro_number_display(base_number_display, is_intro_context)
         title_source = explicit_title or task_text.split('\n', 1)[0].strip()
 
         return {
             'number': task_number,
+            'number_display': number_display or base_number_display,
             'id': task_id,
             'category': category,
             'title': self._extract_task_title(title_source),
@@ -1589,6 +1659,159 @@ class WordProcessor:
                     except:
                         # Falls Font-Formatierung nicht kopiert werden kann, ignorieren
                         pass
+
+    def _copy_single_paragraph_with_formatting(self, doc, paragraph):
+        """Kopiert einen einzelnen Paragraph mit Grundformatierung in das Zieldokument."""
+        if paragraph is None:
+            doc.add_paragraph()
+            return
+
+        text = str(paragraph.text or '')
+        if not text.strip() and not paragraph.runs:
+            doc.add_paragraph()
+            return
+
+        new_paragraph = doc.add_paragraph()
+
+        try:
+            if paragraph.style and not (
+                paragraph.style.name.startswith('Heading')
+                or paragraph.style.name.startswith('Überschrift')
+            ):
+                try:
+                    new_paragraph.style = paragraph.style
+                except:
+                    pass
+
+            if paragraph.paragraph_format:
+                try:
+                    new_paragraph.paragraph_format.alignment = paragraph.paragraph_format.alignment
+                    new_paragraph.paragraph_format.left_indent = paragraph.paragraph_format.left_indent
+                    new_paragraph.paragraph_format.right_indent = paragraph.paragraph_format.right_indent
+                    new_paragraph.paragraph_format.first_line_indent = paragraph.paragraph_format.first_line_indent
+                    new_paragraph.paragraph_format.space_before = paragraph.paragraph_format.space_before
+                    new_paragraph.paragraph_format.space_after = paragraph.paragraph_format.space_after
+                    new_paragraph.paragraph_format.line_spacing = paragraph.paragraph_format.line_spacing
+                    new_paragraph.paragraph_format.line_spacing_rule = paragraph.paragraph_format.line_spacing_rule
+                except:
+                    pass
+        except:
+            pass
+
+        if paragraph.runs:
+            for run in paragraph.runs:
+                new_run = new_paragraph.add_run(run.text)
+                try:
+                    if run.font:
+                        if run.font.name:
+                            new_run.font.name = run.font.name
+                        if run.font.size:
+                            new_run.font.size = run.font.size
+                        if run.font.color and run.font.color.rgb:
+                            new_run.font.color.rgb = run.font.color.rgb
+                        new_run.bold = run.bold
+                        new_run.italic = run.italic
+                        new_run.underline = run.underline
+                except:
+                    pass
+        elif text:
+            new_paragraph.add_run(text)
+
+    def _is_structured_task_table_for_export(self, table):
+        """Prüft, ob eine Tabelle einer strukturierten Aufgaben-Tabelle entspricht."""
+        if table is None:
+            return False
+
+        keys = set()
+        for row in table.rows:
+            if len(row.cells) < 2:
+                continue
+            keys.add(self._normalize_table_key(row.cells[0].text))
+
+        return 'id' in keys and ('aufgabenstellungpflicht' in keys or 'aufgabenstellung' in keys)
+
+    def _structured_table_value_cell_by_aliases(self, table, aliases):
+        """Liefert die rechte Wertzelle für den ersten passenden Alias-Key."""
+        alias_set = {self._normalize_table_key(a) for a in aliases if str(a).strip()}
+        for row in table.rows:
+            if len(row.cells) < 2:
+                continue
+            key = self._normalize_table_key(row.cells[0].text)
+            if key in alias_set:
+                return row.cells[1]
+        return None
+
+    def _append_cell_as_flow_text(self, doc, cell, fallback_text=''):
+        """Überträgt den Inhalt einer Tabellenzelle als Fließtext-Absätze ins Dokument."""
+        written = False
+        if cell is not None:
+            for paragraph in cell.paragraphs:
+                if str(paragraph.text or '').strip():
+                    self._copy_single_paragraph_with_formatting(doc, paragraph)
+                    written = True
+
+        if not written and str(fallback_text or '').strip():
+            doc.add_paragraph(str(fallback_text).strip())
+            written = True
+
+        return written
+
+    def _append_structured_task_as_flow_text(self, doc, task, table):
+        """Schreibt strukturierte Aufgaben als Fließtext (ohne Tabelle) in fester Reihenfolge."""
+        section_cells = [
+            ('title', self._structured_table_value_cell_by_aliases(table, ['titel']), task.get('title', '')),
+            ('intro', self._structured_table_value_cell_by_aliases(table, ['introeinleitungoptional', 'einleitung']), ''),
+            ('task', self._structured_table_value_cell_by_aliases(table, ['aufgabenstellungpflicht', 'aufgabenstellung']), ''),
+            ('hint', self._structured_table_value_cell_by_aliases(table, ['loesungsmoeglichkeithinweisoptional', 'hinweis']), ''),
+            ('points', self._structured_table_value_cell_by_aliases(table, ['punkte', 'punktzahl', 'bewertung', 'bewertungpunkte']), ''),
+        ]
+
+        blocks_written = 0
+        for _name, cell, fallback in section_cells:
+            # Intro/Hinweis/Punkte sind optional, Titel/Aufgabenstellung sollen bevorzugt geschrieben werden
+            optional_block = _name in {'intro', 'hint', 'points'}
+            has_content = self._append_cell_as_flow_text(doc, cell, fallback_text=fallback)
+            if not has_content and optional_block:
+                continue
+
+            if has_content:
+                blocks_written += 1
+                # Leerzeile zwischen allen geschriebenen Blöcken
+                doc.add_paragraph()
+
+        if blocks_written == 0:
+            # Fallback: zumindest Titel/Content aus Task übernehmen
+            fallback_title = str(task.get('title') or '').strip()
+            if fallback_title:
+                doc.add_paragraph(fallback_title)
+                doc.add_paragraph()
+
+            for line in task.get('content', []) or []:
+                line_text = str(line or '').strip()
+                if line_text:
+                    doc.add_paragraph(line_text)
+
+    def append_task_content_for_lek(self, doc, task):
+        """Fügt Aufgabeninhalt in LEK ein; strukturierte Tabellen als Fließtext ohne Tabellenlayout."""
+        all_elements = task.get('all_elements') or []
+        if len(all_elements) == 1 and all_elements[0].get('type') == 'table':
+            table = all_elements[0].get('content')
+            if self._is_structured_task_table_for_export(table):
+                self._append_structured_task_as_flow_text(doc, task, table)
+                return
+
+        if all_elements:
+            self._copy_elements_for_lek(doc, all_elements)
+            return
+
+        original_paragraphs = task.get('original_paragraphs') or []
+        if original_paragraphs:
+            self._copy_paragraphs_for_lek(doc, original_paragraphs)
+            return
+
+        for content_line in task.get('content', []) or []:
+            if str(content_line).strip():
+                doc.add_paragraph(str(content_line))
     
     def _is_task_start(self, text, paragraph):
         """
@@ -1644,7 +1867,12 @@ class WordProcessor:
             str: Extrahierter Titel
         """
         # Entfernt Nummerierung und behält den Rest
-        cleaned = re.sub(r'^(Aufgabe\s*\d+[:\.]?\s*|^\d+\.\s*|^Übung\s*\d+[:\.]?\s*)', '', text, flags=re.IGNORECASE)
+        cleaned = re.sub(
+            r'^(?:Aufgabe\s*)?\d+(?:[\.,]\d+)?\s*(?:[:\.]\s*|\)\s*|-\s*|$)|^(?:Übung\s*)?\d+(?:[\.,]\d+)?\s*(?:[:\.]\s*|\)\s*|-\s*|$)',
+            '',
+            text,
+            flags=re.IGNORECASE,
+        )
         
         # Falls der Text sehr lang ist, nur die ersten 50 Zeichen nehmen
         if len(cleaned) > 50:
@@ -1931,20 +2159,9 @@ class WordProcessor:
                 
                 # Jede Aufgabe hinzufügen
                 for i, task in enumerate(tasks, 1):
-                    # Aufgabeninhalt mit vollständiger Struktur - verwende LEK-spezifische Kopier-Logik
+                    # Aufgabeninhalt mit zentraler Exportlogik (strukturierte Tabellen -> Fließtext)
                     try:
-                        if task.get('all_elements'):
-                            # Beste Option: Kopiere alle Elemente mit LEK-angepassten Überschrift-Levels
-                            self._copy_elements_for_lek(doc, task['all_elements'])
-                        elif task.get('original_paragraphs'):
-                            # Sichere Fallback: Kopiere nur Paragraphen mit LEK-Anpassungen
-                            self._copy_paragraphs_for_lek(doc, task['original_paragraphs'])
-                        else:
-                            # Letzter Fallback: Erstelle aus content Array
-                            content_list = task.get('content', [])
-                            for content_line in content_list:
-                                if content_line.strip():
-                                    doc.add_paragraph(content_line)
+                        self.append_task_content_for_lek(doc, task)
                     except Exception as e:
                         # Notfall-Fallback: Verwende original_paragraphs wenn elements-Kopierung fehlschlägt
                         print(f"Warnung: Element-Kopierung fehlgeschlagen für Aufgabe {i}: {e}")

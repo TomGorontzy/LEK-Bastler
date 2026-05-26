@@ -87,3 +87,31 @@ Gern direkt Vorschläge, Mockups oder PRs verlinken.
    (bei vielen Einträgen mit gekürzter Vorschau).
 - Zusätzlich wird eine kompakte Vorschau `ID -> abgeleiteter Titel` angezeigt
    (erste Einträge, bei Bedarf gekürzt).
+
+## Update 2026-05-26 – Anzeige von Haupt-/Nebennummern
+
+- Die Spalte **Nr** zeigt jetzt die erkannte Aufgaben-Nummer aus der Quelle,
+   inklusive Nebennummern (z. B. `1`, `1.1`, `1.2`).
+- Nummern werden aus Überschriften (`Aufgabe 1.1 ...`) bzw. aus der Tabellen-ID
+   (`ID`) extrahiert.
+- Intern bleibt eine stabile numerische technische ID für Auswahl/Freigabe erhalten,
+   sodass die Wizard-Logik robust bleibt.
+- Zusätzliche Regel: Wird eine Aufgabe als Einleitung/Kontext erkannt,
+  wird die sichtbare Nummer auf Nebennummer `.0` normalisiert
+  (z. B. `1` → `1.0`). Bereits vorhandene Nebennummern wie `1.1` bleiben unverändert.
+
+## Update 2026-05-26 – Export strukturierter Aufgaben als Fließtext
+
+- Beim LEK-Export werden strukturierte Aufgaben-Tabellen nicht mehr als Tabelle übernommen.
+- Stattdessen wird ausschließlich der Inhalt der rechten Spalte als Fließtext ausgegeben
+   (inkl. Textformatierungen pro Absatz/Run).
+- Reihenfolge der Blöcke:
+   1. Titel
+   2. (Leerzeile)
+   3. Intro/Einleitung (optional)
+   4. (Leerzeile)
+   5. Aufgabenstellung
+   6. (Leerzeile)
+   7. Hinweis (optional)
+   8. (Leerzeile)
+   9. Punkte (optional)

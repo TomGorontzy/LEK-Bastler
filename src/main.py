@@ -12,6 +12,7 @@ Features:
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from tkinter import simpledialog
+from tkinter import scrolledtext
 import os
 import sys
 from pathlib import Path
@@ -51,13 +52,11 @@ class LEKBastlerGUI:
         self.setup_ui()
 
     def _apply_window_state(self):
-        """Startet das Hauptfenster bevorzugt maximiert (mit Fallback)."""
+        """Startet das Hauptfenster im normalen Fensterzustand."""
         try:
-            # Windows/Tk: bevorzugter Weg
-            self.root.state('zoomed')
+            self.root.state('normal')
         except Exception:
             try:
-                # Fallback für Umgebungen, in denen 'zoomed' nicht verfügbar ist
                 self.root.wm_state('normal')
             except Exception:
                 pass
@@ -238,6 +237,8 @@ class LEKBastlerGUI:
         self.btn_approve.pack(side=tk.LEFT, padx=(0, 10))
         self.btn_clear_approvals = ttk.Button(button_frame, text="Freigaben löschen", command=self.clear_task_approvals)
         self.btn_clear_approvals.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_preview_selected = ttk.Button(button_frame, text="Vorschau Auswahl", command=self.preview_selected_task)
+        self.btn_preview_selected.pack(side=tk.LEFT, padx=(0, 10))
         self.btn_export_selected = ttk.Button(button_frame, text="Markierte exportieren", command=self.export_selected)
         self.btn_export_selected.pack(side=tk.LEFT, padx=(0, 10))
         self.btn_export_all = ttk.Button(button_frame, text="Alle exportieren", command=self.export_all)
@@ -403,6 +404,7 @@ class LEKBastlerGUI:
         self.btn_deselect_all.configure(state=enable_workflow)
         self.btn_approve.configure(state=enable_workflow)
         self.btn_clear_approvals.configure(state=enable_workflow)
+        self.btn_preview_selected.configure(state=enable_workflow)
 
         export_enabled = tk.NORMAL if has_session and self.current_step >= 4 and max_step >= 4 else tk.DISABLED
         self.btn_export_selected.configure(state=export_enabled)
@@ -1093,8 +1095,10 @@ class LEKBastlerGUI:
         
         # Neue Einträge hinzufügen
         for i, task in enumerate(tasks, 1):
-            # Verwende die ursprüngliche Aufgabennummer oder Display-Index
-            original_number = task.get('number', i)
+            # Interne, stabile ID für Auswahl/Freigabe
+            internal_number = task.get('number', i)
+            # Sichtbare Nummer inkl. Haupt-/Nebennummer (z. B. 1, 1.1, 1.2)
+            display_number = self._task_number_label(task)
             
             # Keywords sicher formatieren
             keywords = task.get('keywords', [])
@@ -1109,8 +1113,8 @@ class LEKBastlerGUI:
             elif confidence == 'medium':
                 item_tags = ('confidence_medium',)
 
-            self.task_tree.insert("", "end", iid=str(original_number), values=(
-                original_number,
+            self.task_tree.insert("", "end", iid=str(internal_number), values=(
+                display_number,
                 task.get('category', 'Ohne Kategorie'),
                 task.get('title', 'Ohne Titel'),
                 task.get('difficulty', 'Unbekannt'),
@@ -1119,18 +1123,93 @@ class LEKBastlerGUI:
                 keywords_text
             ), tags=item_tags)
 
+    def _task_number_label(self, task):
+        """Liefert die anzuzeigende Aufgaben-Nummer (Haupt-/Nebennummer), falls vorhanden."""
+        return str(
+            task.get('number_display')
+            or task.get('number_label')
+            or task.get('number')
+            or '-'
+        )
+
     def _selected_task_ids_from_tree(self):
         """Liefert die aktuell markierten Aufgaben-IDs aus der Treeview."""
         selected_ids = []
         for item in self.task_tree.selection():
-            values = self.task_tree.item(item).get("values", [])
-            if not values:
-                continue
             try:
-                selected_ids.append(int(values[0]))
+                selected_ids.append(int(item))
             except (TypeError, ValueError):
                 continue
         return selected_ids
+
+    def _find_task_by_internal_number(self, internal_number):
+        """Sucht eine Aufgabe über die interne Nummer in der aktuell angezeigten Liste."""
+        current_displayed_tasks = getattr(self, 'current_displayed_tasks', self.loaded_tasks)
+        for task in current_displayed_tasks:
+            if task.get('number', 0) == internal_number:
+                return task
+        return None
+
+    def preview_selected_task(self):
+        """Zeigt eine inhaltliche Vorschau der aktuell markierten Aufgabe als Fließtext an."""
+        selected_ids = self._selected_task_ids_from_tree()
+        if not selected_ids:
+            messagebox.showwarning("Warnung", "Bitte mindestens eine Aufgabe auswählen.")
+            return
+
+        if len(selected_ids) > 1:
+            messagebox.showinfo(
+                "Hinweis",
+                "Es wurden mehrere Aufgaben markiert. Für die Vorschau wird die erste Auswahl verwendet.",
+            )
+
+        task_id = selected_ids[0]
+        task = self._find_task_by_internal_number(task_id)
+        if not task:
+            messagebox.showwarning("Hinweis", "Ausgewählte Aufgabe konnte nicht gefunden werden.")
+            return
+
+        title = str(task.get('title') or 'Ohne Titel').strip()
+        category = str(task.get('category') or 'Ohne Kategorie').strip()
+        difficulty = str(task.get('difficulty') or 'Unbekannt').strip()
+        number_label = self._task_number_label(task)
+
+        content_lines = [str(line).strip() for line in (task.get('content') or []) if str(line).strip()]
+        keywords = task.get('keywords') or []
+        warnings = task.get('warnings') or []
+
+        text_lines = [
+            f"Nr: {number_label}",
+            f"Titel: {title}",
+            f"Kategorie: {category}",
+            f"Schwierigkeit: {difficulty}",
+            "",
+            "Inhalt:",
+        ]
+
+        if content_lines:
+            for idx, line in enumerate(content_lines, 1):
+                text_lines.append(f"{idx}. {line}")
+        else:
+            text_lines.append("(kein Inhalt verfügbar)")
+
+        if keywords:
+            text_lines.extend(["", "Schlagworte:", ", ".join(str(k) for k in keywords)])
+
+        if warnings:
+            text_lines.extend(["", "Warnungen:"])
+            text_lines.extend(f"- {w}" for w in warnings)
+
+        preview_text = "\n".join(text_lines)
+
+        preview_window = tk.Toplevel(self.root)
+        preview_window.title(f"Aufgaben-Vorschau #{number_label}")
+        preview_window.geometry("900x620")
+
+        text_widget = scrolledtext.ScrolledText(preview_window, wrap=tk.WORD, font=("Segoe UI", 10))
+        text_widget.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
+        text_widget.insert(tk.END, preview_text)
+        text_widget.configure(state=tk.DISABLED)
 
     def approve_selected_tasks(self):
         """Markiert aktuell ausgewählte Aufgaben als für den Export freigegeben."""
@@ -1269,7 +1348,7 @@ class LEKBastlerGUI:
                 difficulty_invalid = bool(difficulty_value) and difficulty_value not in allowed_difficulty
                 if difficulty_warning or difficulty_invalid:
                     blocked_difficulty_tasks.append(
-                        f"#{task.get('number', '?')} {task.get('title', 'Ohne Titel')}"
+                        f"#{self._task_number_label(task)} {task.get('title', 'Ohne Titel')}"
                     )
 
             if block_category:
@@ -1277,14 +1356,14 @@ class LEKBastlerGUI:
                 category_warning = any('Kategorie fehlt' in str(w) for w in warnings)
                 if category_warning or category_value in missing_values_norm:
                     blocked_category_tasks.append(
-                        f"#{task.get('number', '?')} {task.get('title', 'Ohne Titel')}"
+                        f"#{self._task_number_label(task)} {task.get('title', 'Ohne Titel')}"
                     )
 
             if block_required:
                 required_warning = any('Pflichtfeld fehlt:' in str(w) for w in warnings)
                 if required_warning:
                     blocked_required_tasks.append(
-                        f"#{task.get('number', '?')} {task.get('title', 'Ohne Titel')}"
+                        f"#{self._task_number_label(task)} {task.get('title', 'Ohne Titel')}"
                     )
 
         if blocked_difficulty_tasks or blocked_category_tasks or blocked_required_tasks:

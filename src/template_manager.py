@@ -269,19 +269,14 @@ class TemplateManager:
         
         # Seitennummerierung ab Seite 2 einrichten (beginnt mit 1)
         self._add_page_numbering_from_page_2(doc)
+
+        from word_processor import WordProcessor
+        wp = WordProcessor()
         
         # Aufgaben hinzufügen
         for i, task in enumerate(tasks, 1):
-            # Aufgabeninhalt mit vollständiger Struktur (inkl. Originalformatierung)
-            if task.get('all_elements'):
-                from word_processor import WordProcessor
-                wp = WordProcessor()
-                wp._copy_elements_for_lek(doc, task['all_elements'])
-            elif task.get('original_paragraphs'):
-                self._copy_paragraphs_with_formatting(doc, task['original_paragraphs'])
-            else:
-                content_text = '\n'.join(task.get('content', []))
-                doc.add_paragraph(content_text)
+            # Zentrale Exportlogik (strukturierte Tabellen => rechte Spalte als Fließtext)
+            wp.append_task_content_for_lek(doc, task)
             
             # Metadaten (optional, auskommentiert für sauberes Layout)
             # if task.get('difficulty') or task.get('keywords'):

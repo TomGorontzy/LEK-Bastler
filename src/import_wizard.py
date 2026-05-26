@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
+import re
 
 
 Confidence = str  # "high" | "medium" | "low"
@@ -20,6 +21,7 @@ class ImportTask:
     """Repräsentiert eine importierte Aufgabe inkl. Diagnosemetadaten."""
 
     id: int
+    number_display: str
     category: str
     title: str
     intro: list[str] = field(default_factory=list)
@@ -32,8 +34,23 @@ class ImportTask:
     raw_task: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_raw_task(cls, task: dict[str, Any], default_confidence: Confidence = "medium") -> "ImportTask":
-        task_id = int(task.get("number", 0) or 0)
+    def from_raw_task(
+        cls,
+        task: dict[str, Any],
+        default_confidence: Confidence = "medium",
+        fallback_id: int = 0,
+    ) -> "ImportTask":
+        task_number_raw = task.get("number", fallback_id)
+        task_id = cls._to_internal_id(task_number_raw, fallback_id=fallback_id)
+        number_display = str(
+            task.get("number_display")
+            or task.get("number_label")
+            or task_number_raw
+            or task_id
+        ).strip()
+        if not number_display:
+            number_display = str(task_id)
+
         category = task.get("category", "Ohne Kategorie")
         title = task.get("title", "Ohne Titel")
         difficulty = task.get("difficulty", "Mittel")
@@ -45,6 +62,7 @@ class ImportTask:
 
         return cls(
             id=task_id,
+            number_display=number_display,
             category=category,
             title=title,
             intro=intro,
@@ -55,6 +73,28 @@ class ImportTask:
             warnings=warnings,
             raw_task=task,
         )
+
+    @staticmethod
+    def _to_internal_id(value: Any, fallback_id: int = 0) -> int:
+        """Ermittelt eine stabile numerische interne ID (auch bei 1.1/1.2-Nummern)."""
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            pass
+
+        text = str(value or "").strip()
+        if text:
+            match = re.match(r"^(\d+)", text)
+            if match:
+                try:
+                    return int(match.group(1))
+                except ValueError:
+                    pass
+
+        try:
+            return int(fallback_id)
+        except (TypeError, ValueError):
+            return 0
 
 
 @dataclass
@@ -76,7 +116,7 @@ class ImportSession:
         lek_theme: str,
         raw_tasks: list[dict[str, Any]],
     ) -> "ImportSession":
-        tasks = [ImportTask.from_raw_task(t) for t in raw_tasks]
+        tasks = [ImportTask.from_raw_task(t, fallback_id=i) for i, t in enumerate(raw_tasks, 1)]
         approved_ids = {t.id for t in tasks if t.accepted and t.id > 0}
 
         global_warnings: list[str] = []
