@@ -375,6 +375,13 @@ Regelkonfiguration (Sprint-Fortsetzung):
   - `default_import_metadata` (`category`, `difficulty`, `keywords`)
 - Ziel: Feinjustierung ohne Codeänderung für künftige Sprint-Iterationen.
 
+GUI-Erweiterung (Laufzeit-Preset):
+
+- In `src/main.py` wurde ein Preset-Umschalter für die Duplikaterkennung ergänzt.
+- Anwender können in der EXE/GUI zwischen `strict`, `normal`, `relaxed` wechseln.
+- Die aktive Schwellwertzahl wird direkt im UI angezeigt (z. B. `0.82` bei `strict`).
+- Der Modus wird für die laufende Sitzung angewendet (ohne Dateiedit nötig).
+
 Zusätzliche Validierung vor Übernahme:
 
 - Inkonsistenter Schwierigkeitsgrad in der Eingabe (z. B. mehrere Werte wie `leicht | mittel`)

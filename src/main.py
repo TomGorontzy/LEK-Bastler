@@ -105,6 +105,35 @@ class LEKBastlerGUI:
             command=self.import_tasks_bulk_from_word,
         )
         self.btn_import_tasks_bulk.grid(row=1, column=2, sticky=tk.W, padx=(10, 0), pady=(8, 0))
+
+        ttk.Label(file_frame, text="Duplikat-Preset:").grid(row=2, column=0, sticky=tk.W, pady=(8, 0))
+        self.duplicate_mode_var = tk.StringVar()
+        self.duplicate_mode_combo = ttk.Combobox(
+            file_frame,
+            textvariable=self.duplicate_mode_var,
+            values=self._available_duplicate_modes(),
+            state="readonly",
+            width=18,
+        )
+        self.duplicate_mode_combo.grid(row=2, column=1, sticky=tk.W, padx=(10, 0), pady=(8, 0))
+        self.duplicate_mode_combo.bind("<<ComboboxSelected>>", lambda _e: self._apply_duplicate_mode_from_ui())
+
+        self.btn_apply_duplicate_mode = ttk.Button(
+            file_frame,
+            text="Preset anwenden",
+            command=self._apply_duplicate_mode_from_ui,
+        )
+        self.btn_apply_duplicate_mode.grid(row=2, column=2, sticky=tk.W, padx=(10, 0), pady=(8, 0))
+
+        self.duplicate_threshold_var = tk.StringVar(value="Aktive Duplikat-Schwelle: -")
+        ttk.Label(file_frame, textvariable=self.duplicate_threshold_var).grid(
+            row=3,
+            column=1,
+            columnspan=2,
+            sticky=tk.W,
+            padx=(10, 0),
+            pady=(4, 0),
+        )
         
         # Kriterien-Auswahl Sektion
         criteria_frame = ttk.LabelFrame(main_frame, text="Auswahlkriterien", padding="10")
@@ -214,7 +243,66 @@ class LEKBastlerGUI:
         preview_frame.rowconfigure(1, weight=1)
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
+        self._sync_duplicate_mode_ui()
         self._set_step(1, show_message=False)
+
+    def _available_duplicate_modes(self):
+        """Liefert verfügbare Duplikat-Presets aus den Regeln."""
+        thresholds = self._rule_value('duplicate_similarity_thresholds', {})
+        if isinstance(thresholds, dict) and thresholds:
+            return [str(mode) for mode in thresholds.keys()]
+        return ['strict', 'normal', 'relaxed']
+
+    def _sync_duplicate_mode_ui(self):
+        """Synchronisiert Preset-Auswahl und aktive Schwellenwert-Anzeige."""
+        modes = self._available_duplicate_modes()
+        if hasattr(self, 'duplicate_mode_combo'):
+            self.duplicate_mode_combo.configure(values=modes)
+
+        current_mode = str(self._rule_value('duplicate_mode', 'normal') or 'normal').lower()
+        if current_mode not in modes and modes:
+            current_mode = modes[0]
+
+        if hasattr(self, 'duplicate_mode_var'):
+            self.duplicate_mode_var.set(current_mode)
+
+        threshold = '-'
+        resolver = getattr(self.word_processor, '_resolve_duplicate_threshold', None)
+        if callable(resolver):
+            try:
+                threshold = f"{float(resolver()):.2f}"
+            except Exception:
+                threshold = '-'
+
+        if hasattr(self, 'duplicate_threshold_var'):
+            self.duplicate_threshold_var.set(
+                f"Aktive Duplikat-Schwelle: {threshold} (Modus: {current_mode})"
+            )
+
+    def _apply_duplicate_mode_from_ui(self, show_message=True):
+        """Übernimmt den im UI gewählten Duplikat-Modus in die Laufzeitregeln."""
+        selected = str(self.duplicate_mode_var.get() or '').strip().lower()
+        if not selected:
+            return
+
+        modes = self._available_duplicate_modes()
+        if selected not in modes:
+            messagebox.showwarning(
+                "Ungültiges Preset",
+                f"Der Modus '{selected}' ist nicht verfügbar.",
+            )
+            return
+
+        if not isinstance(getattr(self.word_processor, 'rules', None), dict):
+            self.word_processor.rules = {}
+        self.word_processor.rules['duplicate_mode'] = selected
+
+        self._sync_duplicate_mode_ui()
+        if show_message:
+            messagebox.showinfo(
+                "Preset aktiv",
+                f"Duplikat-Preset '{selected}' wurde für diese Sitzung aktiviert.",
+            )
 
     def _max_reachable_step(self):
         """Ermittelt den maximal zulässigen Wizard-Schritt anhand des aktuellen Zustands."""
