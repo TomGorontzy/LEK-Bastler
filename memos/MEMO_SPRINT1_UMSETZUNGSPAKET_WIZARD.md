@@ -273,3 +273,35 @@ Für den späteren gemeinsamen Durchgang der exemplarischen Datei:
 
 6. **Governance für neue Sammlungen**
   - Kurzregel in Doku: „Entweder H1/H2-Struktur oder Tabellen-GERUEST nach Feldschema“.
+
+## Entscheidungsgrundlage für den gemeinsamen Review (Stand 2026-05-26)
+
+Aktuelle Messwerte aus `Aufgaben_Auftragssteuerung und -koordination.docx`:
+
+- Import: `17` Aufgaben erkannt
+- Diagnostik: `warning_task_count=0`, `low_confidence_count=0`
+- IDs: `17/17` eindeutig, `0` fehlend
+- Kategorien: aktuell `17x Ohne Kategorie` (kein Tabellenfeld `Kategorie` befüllt)
+- Schwierigkeit (roh):
+  - `leicht`: 8
+  - `mittel`: 6
+  - `schwer`: 2
+  - `leicht | mittel | schwer`: 1 (mehrdeutig)
+
+Empfohlene Festlegungen (für Team-Entscheid):
+
+1. **Kategorie als Pflichtfeld im Tabellenmodus**
+  - Empfehlung: `Kategorie` verpflichtend pflegen.
+  - Fallback ohne Kategorie bleibt technisch erlaubt, wird aber als Doku-Verstoß gewertet.
+
+2. **Mehrdeutige Schwierigkeit normalisieren**
+  - Empfehlung: genau ein Zielwert pro Aufgabe (`leicht|mittel|schwer`).
+  - Falls mehrere Werte eingetragen sind, Standard auf `Mittel` + Warnhinweis im Import.
+
+3. **Titel-Feld perspektivisch ergänzen**
+  - Kurzfristig: Titel aus Aufgabenstellung (funktional ausreichend).
+  - Mittelfristig: eigenes Tabellenfeld `Titel` für bessere Lesbarkeit/Filter.
+
+4. **Feldschema für neue Sammlungen verbindlich machen**
+  - Pflicht: `ID`, `Aufgabenstellung`, `Schwierigkeitsgrad`, `Kategorie`
+  - Optional: `Intro/Einleitung`, `Lösungsmöglichkeit/Hinweis`, `Schlagworte`
