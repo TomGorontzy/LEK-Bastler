@@ -31,7 +31,8 @@ class LEKBastlerGUI:
         self.root = root
         self._apply_window_icon()
         self.root.title("LEK-Bastler - Aufgabenauswahl")
-        self.root.geometry("800x600")
+        self.root.geometry("1120x760")
+        self.root.minsize(1024, 700)
         self._apply_window_state()
         
         self.word_processor = WordProcessor()
@@ -214,14 +215,16 @@ class LEKBastlerGUI:
         self.task_tree.heading("Suchbegriffe", text="Suchbegriffe")
         self.task_tree.column("Suchbegriffe", width=200, minwidth=140)
         
-        scrollbar = ttk.Scrollbar(preview_frame, orient=tk.VERTICAL, command=self.task_tree.yview)
-        self.task_tree.configure(yscrollcommand=scrollbar.set)
+        v_scrollbar = ttk.Scrollbar(preview_frame, orient=tk.VERTICAL, command=self.task_tree.yview)
+        h_scrollbar = ttk.Scrollbar(preview_frame, orient=tk.HORIZONTAL, command=self.task_tree.xview)
+        self.task_tree.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
         
         self.task_tree.tag_configure('confidence_low', background='#ffe6e6')
         self.task_tree.tag_configure('confidence_medium', background='#fff6dd')
 
         self.task_tree.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
+        v_scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
+        h_scrollbar.grid(row=2, column=0, sticky=(tk.W, tk.E))
         
         # Buttons
         button_frame = ttk.Frame(main_frame)
