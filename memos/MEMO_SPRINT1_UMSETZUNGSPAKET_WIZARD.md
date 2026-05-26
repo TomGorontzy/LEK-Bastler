@@ -345,6 +345,14 @@ Sicherheitsnetz bei Übernahme:
   der Ziel-Aufgabensammlung erstellt.
 - Der Pfad zur Backup-Datei wird im Erfolgsdialog angezeigt.
 
+Bulk-Übernahme (mehrere Quell-Dateien):
+
+- Neuer GUI-Button: `Mehrere Aufgaben aus Word übernehmen...`
+- Einmalige Metadatenabfrage (Kategorie, Schwierigkeit, Schlagworte) für die Serie.
+- Für jede Quell-Datei: Preview + optionale Detailansicht + Entscheidung
+  `übernehmen / überspringen / Serie abbrechen`.
+- Abschlussdialog mit Serienzusammenfassung (`übernommen`, `übersprungen`, `Fehler`).
+
 Zusätzliche Validierung vor Übernahme:
 
 - Inkonsistenter Schwierigkeitsgrad in der Eingabe (z. B. mehrere Werte wie `leicht | mittel`)

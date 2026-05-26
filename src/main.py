@@ -86,6 +86,12 @@ class LEKBastlerGUI:
             command=self.import_task_from_word,
         )
         self.btn_import_task.grid(row=1, column=1, sticky=tk.W, pady=(8, 0))
+        self.btn_import_tasks_bulk = ttk.Button(
+            file_frame,
+            text="Mehrere Aufgaben aus Word übernehmen...",
+            command=self.import_tasks_bulk_from_word,
+        )
+        self.btn_import_tasks_bulk.grid(row=1, column=2, sticky=tk.W, padx=(10, 0), pady=(8, 0))
         
         # Kriterien-Auswahl Sektion
         criteria_frame = ttk.LabelFrame(main_frame, text="Auswahlkriterien", padding="10")
@@ -381,16 +387,8 @@ class LEKBastlerGUI:
 
     def import_task_from_word(self):
         """Übernimmt eine neue Aufgabe aus einer separaten Word-Datei in die aktuelle Sammlung."""
-        target_collection = self.file_path_var.get().strip()
+        target_collection = self._get_valid_import_target_collection()
         if not target_collection:
-            messagebox.showwarning(
-                "Hinweis",
-                "Bitte zuerst die Ziel-Aufgabensammlung auswählen und laden.",
-            )
-            return
-
-        if not os.path.exists(target_collection):
-            messagebox.showerror("Fehler", "Die ausgewählte Ziel-Aufgabensammlung existiert nicht.")
             return
 
         source_file = filedialog.askopenfilename(
@@ -408,6 +406,129 @@ class LEKBastlerGUI:
             )
             return
 
+        metadata = self._ask_import_metadata()
+        if metadata is None:
+            return
+
+        should_import = self._preview_and_confirm_import(
+            source_file=source_file,
+            target_collection=target_collection,
+            category=metadata['category'],
+            difficulty=metadata['difficulty'],
+            keywords=metadata['keywords'],
+            allow_cancel=False,
+        )
+        if not should_import:
+            return
+
+        try:
+            result = self.word_processor.append_task_from_document(
+                source_doc_path=source_file,
+                target_collection_path=target_collection,
+                category=metadata['category'],
+                difficulty=metadata['difficulty'],
+                keywords=metadata['keywords'],
+            )
+            self.load_tasks()
+            messagebox.showinfo(
+                "Erfolg",
+                "Neue Aufgabe wurde in die Aufgabensammlung übernommen.\n\n"
+                f"ID: {result.get('id', '-')}\n"
+                f"Backup: {result.get('backup_file', '-')}",
+            )
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Übernahme fehlgeschlagen: {str(e)}")
+
+    def import_tasks_bulk_from_word(self):
+        """Übernimmt mehrere neue Aufgaben aus separaten Word-Dateien in die aktuelle Sammlung."""
+        target_collection = self._get_valid_import_target_collection()
+        if not target_collection:
+            return
+
+        source_files = filedialog.askopenfilenames(
+            title="Quell-Dateien mit neuen Aufgaben auswählen",
+            initialdir=str(_runtime_base_dir()),
+            filetypes=[("Word-Dokumente", "*.docx"), ("Alle Dateien", "*.*")],
+        )
+        if not source_files:
+            return
+
+        source_files = [str(s) for s in source_files]
+        source_files = [s for s in source_files if os.path.abspath(s) != os.path.abspath(target_collection)]
+        if not source_files:
+            messagebox.showwarning("Hinweis", "Keine gültigen Quelldateien ausgewählt.")
+            return
+
+        metadata = self._ask_import_metadata()
+        if metadata is None:
+            return
+
+        imported = 0
+        skipped = 0
+        failed = []
+
+        for source_file in source_files:
+            decision = self._preview_and_confirm_import(
+                source_file=source_file,
+                target_collection=target_collection,
+                category=metadata['category'],
+                difficulty=metadata['difficulty'],
+                keywords=metadata['keywords'],
+                allow_cancel=True,
+            )
+
+            # None => Abbruch der gesamten Serie
+            if decision is None:
+                break
+            if decision is False:
+                skipped += 1
+                continue
+
+            try:
+                self.word_processor.append_task_from_document(
+                    source_doc_path=source_file,
+                    target_collection_path=target_collection,
+                    category=metadata['category'],
+                    difficulty=metadata['difficulty'],
+                    keywords=metadata['keywords'],
+                )
+                imported += 1
+            except Exception as e:
+                failed.append(f"{os.path.basename(source_file)}: {str(e)}")
+
+        self.load_tasks()
+
+        details = [
+            f"Übernommen: {imported}",
+            f"Übersprungen: {skipped}",
+            f"Fehler: {len(failed)}",
+        ]
+        if failed:
+            details.append("\nFehlerdetails:")
+            details.extend(f"- {entry}" for entry in failed[:8])
+            if len(failed) > 8:
+                details.append(f"- ... (+{len(failed) - 8} weitere)")
+
+        messagebox.showinfo("Bulk-Übernahme abgeschlossen", "\n".join(details))
+
+    def _get_valid_import_target_collection(self):
+        """Liefert den validierten Pfad der aktuell geladenen Ziel-Aufgabensammlung."""
+        target_collection = self.file_path_var.get().strip()
+        if not target_collection:
+            messagebox.showwarning(
+                "Hinweis",
+                "Bitte zuerst die Ziel-Aufgabensammlung auswählen und laden.",
+            )
+            return None
+
+        if not os.path.exists(target_collection):
+            messagebox.showerror("Fehler", "Die ausgewählte Ziel-Aufgabensammlung existiert nicht.")
+            return None
+
+        return target_collection
+
+    def _ask_import_metadata(self):
+        """Fragt Metadaten für Aufgabenimport ab und gibt diese normalisiert zurück."""
         default_category = self.lek_theme or "Allgemein"
         category = simpledialog.askstring(
             "Kategorie",
@@ -416,11 +537,12 @@ class LEKBastlerGUI:
             parent=self.root,
         )
         if category is None:
-            return
+            return None
+
         category = category.strip()
         if not category:
             messagebox.showwarning("Hinweis", "Kategorie darf nicht leer sein.")
-            return
+            return None
 
         difficulty = ""
         while True:
@@ -431,7 +553,7 @@ class LEKBastlerGUI:
                 parent=self.root,
             )
             if difficulty_input is None:
-                return
+                return None
 
             normalized_difficulty = self._normalize_difficulty_value(difficulty_input)
             if normalized_difficulty:
@@ -450,8 +572,20 @@ class LEKBastlerGUI:
             parent=self.root,
         )
         if keywords is None:
-            return
+            return None
 
+        return {
+            'category': category,
+            'difficulty': difficulty,
+            'keywords': keywords,
+        }
+
+    def _preview_and_confirm_import(self, source_file, target_collection, category, difficulty, keywords, allow_cancel=False):
+        """Zeigt Preview/Details und liefert Import-Entscheidung zurück.
+
+        Returns:
+            bool|None: True=importieren, False=überspringen, None=abbrechen (nur wenn allow_cancel=True)
+        """
         try:
             preview = self.word_processor.preview_task_append(
                 source_doc_path=source_file,
@@ -461,8 +595,8 @@ class LEKBastlerGUI:
                 keywords=keywords,
             )
         except Exception as e:
-            messagebox.showerror("Fehler", f"Vorschau fehlgeschlagen: {str(e)}")
-            return
+            messagebox.showerror("Fehler", f"Vorschau fehlgeschlagen ({os.path.basename(source_file)}): {str(e)}")
+            return False
 
         if preview.get('difficulty_inconsistent'):
             messagebox.showwarning(
@@ -470,7 +604,7 @@ class LEKBastlerGUI:
                 "Der eingegebene Schwierigkeitsgrad ist inkonsistent (mehrere Werte).\n\n"
                 "Bitte genau einen Wert verwenden: leicht, mittel oder schwer.",
             )
-            return
+            return None if allow_cancel else False
 
         lines = preview.get('source_preview_lines', [])
         source_preview_text = "\n".join(f"- {line}" for line in lines) if lines else "- (kein Textvorschau verfügbar)"
@@ -479,13 +613,14 @@ class LEKBastlerGUI:
 
         details_question = messagebox.askyesno(
             "Details anzeigen",
-            "Möchten Sie vor der Übernahme die Detailansicht der Quellinhalte sehen?",
+            f"Möchten Sie vor der Übernahme die Detailansicht sehen?\n\nQuelle: {os.path.basename(source_file)}",
         )
         if details_question:
             self._show_task_import_details(preview)
 
-        proceed = messagebox.askyesno(
-            "Übernahme bestätigen",
+        title = "Übernahme bestätigen"
+        text = (
+            f"Quelle: {os.path.basename(source_file)}\n"
             "Neue Aufgabe wird in die Aufgabensammlung übernommen.\n\n"
             f"Ziel-ID: {preview.get('next_id', '-')}\n"
             f"Kategorie: {preview.get('category', '-') }\n"
@@ -495,28 +630,16 @@ class LEKBastlerGUI:
             f"{preview.get('source_table_count', 0)} Tabellen\n\n"
             "Quell-Vorschau:\n"
             f"{source_preview_text}\n\n"
-            "Fortfahren?",
         )
-        if not proceed:
-            return
 
-        try:
-            result = self.word_processor.append_task_from_document(
-                source_doc_path=source_file,
-                target_collection_path=target_collection,
-                category=category,
-                difficulty=difficulty,
-                keywords=keywords,
+        if allow_cancel:
+            answer = messagebox.askyesnocancel(
+                title,
+                text + "Ja = übernehmen | Nein = überspringen | Abbrechen = Serie stoppen",
             )
-            self.load_tasks()
-            messagebox.showinfo(
-                "Erfolg",
-                "Neue Aufgabe wurde in die Aufgabensammlung übernommen.\n\n"
-                f"ID: {result.get('id', '-')}\n"
-                f"Backup: {result.get('backup_file', '-')}",
-            )
-        except Exception as e:
-            messagebox.showerror("Fehler", f"Übernahme fehlgeschlagen: {str(e)}")
+            return answer
+
+        return messagebox.askyesno(title, text + "Fortfahren?")
 
     def _normalize_difficulty_value(self, value):
         """Normalisiert Benutzereingaben auf leicht/mittel/schwer oder liefert None."""
