@@ -974,10 +974,28 @@ class WordProcessor:
             if req_key in required_fields and self._is_missing_required_value(req_value):
                 pre_warnings.append(f"Pflichtfeld fehlt: {req_label}")
 
-        intro_text = values_by_key.get('introeinleitungoptional') or values_by_key.get('einleitung') or ''
-        hint_text = values_by_key.get('loesungsmoeglichkeithinweisoptional') or values_by_key.get('hinweis') or ''
+        intro_text = (
+            values_by_key.get('introeinleitungoptional')
+            or values_by_key.get('introeinleitung')
+            or values_by_key.get('einleitung')
+            or values_by_key.get('intro')
+            or values_by_key.get('kontext')
+            or ''
+        )
+        hint_text = (
+            values_by_key.get('loesungsmoeglichkeithinweisoptional')
+            or values_by_key.get('loesungsmoeglichkeithinweis')
+            or values_by_key.get('hinweis')
+            or ''
+        )
         difficulty_raw = values_by_key.get('schwierigkeitsgrad') or values_by_key.get('schwierigkeit') or ''
-        keywords_raw = values_by_key.get('schlagwortekommagetrennt') or values_by_key.get('schlagworte') or ''
+        keywords_raw = (
+            values_by_key.get('schlagwortekommagetrennt')
+            or values_by_key.get('schlagworte')
+            or values_by_key.get('schluesselwoerter')
+            or values_by_key.get('schlusselwoerter')
+            or ''
+        )
 
         raw_category = values_by_key.get('kategorie') or ''
         category_required = bool(self.get_import_rule('category_rules.required', True))
@@ -1760,9 +1778,9 @@ class WordProcessor:
         """Schreibt strukturierte Aufgaben als Fließtext (ohne Tabelle) in fester Reihenfolge."""
         section_cells = [
             ('title', self._structured_table_value_cell_by_aliases(table, ['titel']), task.get('title', '')),
-            ('intro', self._structured_table_value_cell_by_aliases(table, ['introeinleitungoptional', 'einleitung']), ''),
+            ('intro', self._structured_table_value_cell_by_aliases(table, ['introeinleitungoptional', 'introeinleitung', 'einleitung', 'intro', 'kontext']), ''),
             ('task', self._structured_table_value_cell_by_aliases(table, ['aufgabenstellungpflicht', 'aufgabenstellung']), ''),
-            ('hint', self._structured_table_value_cell_by_aliases(table, ['loesungsmoeglichkeithinweisoptional', 'hinweis']), ''),
+            ('hint', self._structured_table_value_cell_by_aliases(table, ['loesungsmoeglichkeithinweisoptional', 'loesungsmoeglichkeithinweis', 'hinweis']), ''),
             ('points', self._structured_table_value_cell_by_aliases(table, ['punkte', 'punktzahl', 'bewertung', 'bewertungpunkte']), ''),
         ]
 

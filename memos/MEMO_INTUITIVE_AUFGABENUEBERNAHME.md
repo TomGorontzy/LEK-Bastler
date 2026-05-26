@@ -115,3 +115,10 @@ Gern direkt Vorschläge, Mockups oder PRs verlinken.
    7. Hinweis (optional)
    8. (Leerzeile)
    9. Punkte (optional)
+
+### Nachfix
+
+- Feldalias-Erkennung im Parser/Export erweitert (`introeinleitung`,
+   `loesungsmoeglichkeithinweis`, weitere Varianten ohne "optional").
+- Dadurch werden Introtexte bei Aufgaben mit Nebennummer `.0`
+   zuverlässig in die LEK übernommen.
