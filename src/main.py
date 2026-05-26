@@ -459,7 +459,7 @@ class LEKBastlerGUI:
         if filename:
             self.file_path_var.set(filename)
     
-    def load_tasks(self):
+    def load_tasks(self, allow_title_migration_prompt=True):
         """Lädt Aufgaben aus der ausgewählten Word-Datei"""
         file_path = self.file_path_var.get()
         if not file_path:
@@ -480,6 +480,36 @@ class LEKBastlerGUI:
                 self.loaded_tasks = self.word_processor.extract_tasks(file_path)
 
             self.current_displayed_tasks = self.loaded_tasks  # Setze initial alle Aufgaben als angezeigt
+
+            missing_title_tasks = []
+            for task in self.loaded_tasks:
+                warnings = task.get('warnings', []) or task.get('pre_warnings', []) or []
+                if any('Pflichtfeld fehlt: Titel' in str(w) for w in warnings):
+                    missing_title_tasks.append(task)
+
+            if allow_title_migration_prompt and missing_title_tasks and hasattr(self.word_processor, 'migrate_missing_titles_in_collection'):
+                auto_fix = messagebox.askyesno(
+                    "Titel automatisch ergänzen",
+                    f"Es wurden {len(missing_title_tasks)} Aufgabe(n) ohne Titel erkannt.\n\n"
+                    "Soll der Titel automatisch aus der Aufgabenstellung ergänzt werden?\n"
+                    "Vor der Änderung wird ein Backup erstellt.",
+                )
+                if auto_fix:
+                    try:
+                        result = self.word_processor.migrate_missing_titles_in_collection(file_path)
+                        if result.get('changed_tasks', 0) > 0:
+                            messagebox.showinfo(
+                                "Titel ergänzt",
+                                f"Titel wurden für {result.get('changed_tasks', 0)} Aufgabe(n) ergänzt.\n"
+                                f"Backup: {result.get('backup_file', '-')}",
+                            )
+                            self.load_tasks(allow_title_migration_prompt=False)
+                            return
+                    except Exception as migration_error:
+                        messagebox.showerror(
+                            "Migration fehlgeschlagen",
+                            f"Automatische Titelergänzung fehlgeschlagen:\n{str(migration_error)}",
+                        )
             
             # Extrahiere LEK-Thema aus dem Dateinamen
             self.source_filename = os.path.basename(file_path)

@@ -786,6 +786,70 @@ class WordProcessor:
         shutil.copy2(source_path, backup_path)
         return str(backup_path)
 
+    def migrate_missing_titles_in_collection(self, collection_path):
+        """Ergänzt fehlende Titel in einer tabellenbasierten Aufgabensammlung automatisch.
+
+        Für jede erkannte Aufgaben-Tabelle (ID + Aufgabenstellung) wird bei leerem/fehlendem
+        Feld `Titel` ein Titel aus der Aufgabenstellung abgeleitet.
+
+        Returns:
+            dict: {
+                changed_tasks: int,
+                scanned_tasks: int,
+                backup_file: str|None,
+                updated_ids: list[str],
+            }
+        """
+        if not os.path.exists(collection_path):
+            raise FileNotFoundError(f"Datei nicht gefunden: {collection_path}")
+
+        doc = Document(collection_path)
+        scanned = 0
+        changed = 0
+        updated_ids = []
+
+        for table in doc.tables:
+            keys = {key for key, _row in self._iter_table_rows_by_norm_key(table)}
+            is_task_table = 'id' in keys and ('aufgabenstellungpflicht' in keys or 'aufgabenstellung' in keys)
+            if not is_task_table:
+                continue
+
+            scanned += 1
+
+            title_cell = self._get_structured_table_value_cell(table, 'titel')
+            current_title = str(title_cell.text or '').strip() if title_cell is not None else ''
+            if current_title:
+                continue
+
+            task_cell = self._get_structured_table_value_cell(table, 'aufgabenstellungpflicht')
+            if task_cell is None:
+                task_cell = self._get_structured_table_value_cell(table, 'aufgabenstellung')
+
+            task_text = str(task_cell.text or '').strip() if task_cell is not None else ''
+            derived_title = self._extract_task_title(task_text.split('\n', 1)[0].strip()) if task_text else ''
+            if not derived_title:
+                derived_title = 'Ohne Titel'
+
+            self._set_structured_table_value(table, 'titel', derived_title)
+            changed += 1
+
+            id_cell = self._get_structured_table_value_cell(table, 'id')
+            task_id = str(id_cell.text or '').strip() if id_cell is not None else ''
+            if task_id:
+                updated_ids.append(task_id)
+
+        backup_path = None
+        if changed > 0:
+            backup_path = self._create_collection_backup(collection_path)
+            doc.save(collection_path)
+
+        return {
+            'changed_tasks': changed,
+            'scanned_tasks': scanned,
+            'backup_file': backup_path,
+            'updated_ids': updated_ids,
+        }
+
     def _parse_structured_task_table(self, table, task_number):
         """Parst eine einzelne strukturierte Aufgaben-Tabelle in ein Task-Dictionary."""
         if not table.rows or len(table.columns) < 2:

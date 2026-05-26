@@ -75,3 +75,11 @@ Gern direkt Vorschläge, Mockups oder PRs verlinken.
 - Fehlt ein Pflichtfeld (z. B. `Titel`), wird eine Diagnosewarnung erzeugt (`Pflichtfeld fehlt: ...`).
 - Bei aktivem `template_rules.block_export_on_missing_required=true` wird der Export blockiert,
    bis die Pflichtfelder in der Quelle ergänzt und neu geladen wurden.
+
+## Update 2026-05-26 – Migrationshilfe für Altdokumente
+
+- Beim Laden einer Aufgabensammlung erkennt die GUI fehlende Titel (`Pflichtfeld fehlt: Titel`).
+- Anwender erhalten eine direkte Rückfrage zur automatischen Korrektur.
+- Bei Zustimmung werden fehlende Titel aus der Aufgabenstellung abgeleitet,
+  die Sammlung gespeichert und automatisch neu geladen.
+- Vor der Änderung wird eine zeitgestempelte Backup-Datei erstellt.
