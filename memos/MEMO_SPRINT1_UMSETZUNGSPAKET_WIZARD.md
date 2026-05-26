@@ -373,7 +373,7 @@ Regelkonfiguration (Sprint-Fortsetzung):
   - `max_preview_blocks` (Anzahl Detailblöcke in der Vorschau)
   - `bulk_max_errors` (Abbruchgrenze bei Fehlern in Serienübernahme)
   - `category_rules` (`required`, `block_export_on_missing`, `missing_values`)
-  - `default_import_metadata` (`category`, `difficulty`, `keywords`)
+  - `default_import_metadata` (`category`, `difficulty`, `keywords`, `title`)
 - Ziel: Feinjustierung ohne Codeänderung für künftige Sprint-Iterationen.
 
 GUI-Erweiterung (Laufzeit-Preset):
@@ -398,6 +398,13 @@ Kategorienlogik (verbindlich umgesetzt):
 - Fehlende/ungültige Kategorien (z. B. `Ohne Kategorie`, leer) werden diagnostisch markiert.
 - Wenn `category_rules.block_export_on_missing=true`, blockiert der Export betroffene Aufgaben,
   bis die Kategorie in der Quelle korrigiert und neu geladen wurde.
+
+Titelstrategie (umgesetzt):
+
+- Tabellenfeld `Titel` wird unterstützt, wenn in der Sammlung vorhanden.
+- Fehlt `Titel`, wird der Titel robust aus der Aufgabenstellung/Quelle abgeleitet (Fallback).
+- Im GUI-Import ist `Titel` als optionales Metadatum verfügbar
+  (leer = automatische Ableitung aus der Quelle).
 
 Technische Umsetzung (`src/word_processor.py`):
 

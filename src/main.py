@@ -554,6 +554,7 @@ class LEKBastlerGUI:
             category=metadata['category'],
             difficulty=metadata['difficulty'],
             keywords=metadata['keywords'],
+            title=metadata.get('title', ''),
             allow_cancel=False,
         )
         if not should_import:
@@ -566,12 +567,14 @@ class LEKBastlerGUI:
                 category=metadata['category'],
                 difficulty=metadata['difficulty'],
                 keywords=metadata['keywords'],
+                title=metadata.get('title', ''),
             )
             self.load_tasks()
             messagebox.showinfo(
                 "Erfolg",
                 "Neue Aufgabe wurde in die Aufgabensammlung übernommen.\n\n"
                 f"ID: {result.get('id', '-')}\n"
+                f"Titel: {result.get('title', '-')}\n"
                 f"Backup: {result.get('backup_file', '-')}",
             )
         except Exception as e:
@@ -629,6 +632,7 @@ class LEKBastlerGUI:
                     default_category=metadata['category'],
                     default_difficulty=metadata['difficulty'],
                     default_keywords=metadata['keywords'],
+                    default_title=metadata.get('title', ''),
                 )
                 if custom_metadata is None:
                     skipped += 1
@@ -642,6 +646,7 @@ class LEKBastlerGUI:
                 category=metadata_for_file['category'],
                 difficulty=metadata_for_file['difficulty'],
                 keywords=metadata_for_file['keywords'],
+                title=metadata_for_file.get('title', ''),
                 allow_cancel=True,
             )
 
@@ -659,10 +664,11 @@ class LEKBastlerGUI:
                     category=metadata_for_file['category'],
                     difficulty=metadata_for_file['difficulty'],
                     keywords=metadata_for_file['keywords'],
+                    title=metadata_for_file.get('title', ''),
                 )
                 imported += 1
                 imported_entries.append(
-                    f"{os.path.basename(source_file)} → {result.get('id', '-') }"
+                    f"{os.path.basename(source_file)} → {result.get('id', '-') } ({result.get('title', '-')})"
                 )
             except Exception as e:
                 failed.append(f"{os.path.basename(source_file)}: {str(e)}")
@@ -711,11 +717,12 @@ class LEKBastlerGUI:
 
         return target_collection
 
-    def _ask_import_metadata(self, default_category=None, default_difficulty=None, default_keywords=None):
+    def _ask_import_metadata(self, default_category=None, default_difficulty=None, default_keywords=None, default_title=None):
         """Fragt Metadaten für Aufgabenimport ab und gibt diese normalisiert zurück."""
         rules_default_category = self._rule_value('default_import_metadata.category', '')
         rules_default_difficulty = self._rule_value('default_import_metadata.difficulty', 'mittel')
         rules_default_keywords = self._rule_value('default_import_metadata.keywords', '')
+        rules_default_title = self._rule_value('default_import_metadata.title', '')
 
         category_default = (
             default_category
@@ -724,6 +731,7 @@ class LEKBastlerGUI:
         )
         difficulty_default = default_difficulty if default_difficulty is not None else rules_default_difficulty
         keywords_default = default_keywords if default_keywords is not None else rules_default_keywords
+        title_default = default_title if default_title is not None else rules_default_title
         category = simpledialog.askstring(
             "Kategorie",
             "Kategorie für die neue Aufgabe:",
@@ -768,10 +776,20 @@ class LEKBastlerGUI:
         if keywords is None:
             return None
 
+        title = simpledialog.askstring(
+            "Titel (optional)",
+            "Titel (optional, leer = automatisch aus Quelle ableiten):",
+            initialvalue=title_default,
+            parent=self.root,
+        )
+        if title is None:
+            return None
+
         return {
             'category': category,
             'difficulty': difficulty,
             'keywords': keywords,
+            'title': str(title or '').strip(),
         }
 
     def _rule_value(self, key, default=None):
@@ -781,7 +799,7 @@ class LEKBastlerGUI:
             return getter(key, default)
         return default
 
-    def _preview_and_confirm_import(self, source_file, target_collection, category, difficulty, keywords, allow_cancel=False):
+    def _preview_and_confirm_import(self, source_file, target_collection, category, difficulty, keywords, title='', allow_cancel=False):
         """Zeigt Preview/Details und liefert Import-Entscheidung zurück.
 
         Returns:
@@ -794,6 +812,7 @@ class LEKBastlerGUI:
                 category=category,
                 difficulty=difficulty,
                 keywords=keywords,
+                title=title,
             )
         except Exception as e:
             messagebox.showerror("Fehler", f"Vorschau fehlgeschlagen ({os.path.basename(source_file)}): {str(e)}")
@@ -856,6 +875,7 @@ class LEKBastlerGUI:
             f"Quelle: {os.path.basename(source_file)}\n"
             "Neue Aufgabe wird in die Aufgabensammlung übernommen.\n\n"
             f"Ziel-ID: {preview.get('next_id', '-')}\n"
+            f"Titel: {preview.get('title', '-') }\n"
             f"Kategorie: {preview.get('category', '-') }\n"
             f"Schwierigkeit: {preview.get('difficulty_normalized', '-') }\n"
             f"Schlagworte: {preview.get('keywords', '-') or '-'}\n"

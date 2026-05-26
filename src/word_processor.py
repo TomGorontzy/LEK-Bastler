@@ -50,6 +50,7 @@ class WordProcessor:
                 'category': '',
                 'difficulty': 'mittel',
                 'keywords': '',
+                'title': '',
             },
             'category_rules': {
                 'required': True,
@@ -300,7 +301,8 @@ class WordProcessor:
         keywords='',
         intro='',
         hint='',
-        task_id=''
+        task_id='',
+        title=''
     ):
         """
         Übernimmt eine neue Aufgabe aus einer Word-Datei in eine tabellenbasierte Aufgabensammlung.
@@ -331,8 +333,10 @@ class WordProcessor:
         resolved_id = task_id.strip() if str(task_id or '').strip() else self._generate_next_task_id(target_doc)
         resolved_category = str(category or '').strip() or 'Ohne Kategorie'
         resolved_difficulty = str(difficulty or '').strip() or 'Mittel'
+        resolved_title = str(title or '').strip() or self._derive_title_from_source_document(source_doc)
 
         self._set_structured_table_value(new_table, 'id', resolved_id)
+        self._set_structured_table_value(new_table, 'titel', resolved_title)
         self._set_structured_table_value(new_table, 'kategorie', resolved_category)
         self._set_structured_table_value(new_table, 'introeinleitungoptional', str(intro or '').strip())
         self._set_structured_table_value(new_table, 'loesungsmoeglichkeithinweisoptional', str(hint or '').strip())
@@ -349,6 +353,7 @@ class WordProcessor:
         target_doc.save(target_collection_path)
         return {
             'id': resolved_id,
+            'title': resolved_title,
             'target_file': target_collection_path,
             'backup_file': backup_path,
         }
@@ -360,6 +365,7 @@ class WordProcessor:
         category,
         difficulty='Mittel',
         keywords='',
+        title='',
     ):
         """
         Liefert eine Vorschau für die Aufgabenübernahme ohne Dateiänderung.
@@ -376,6 +382,7 @@ class WordProcessor:
         target_doc = Document(target_collection_path)
 
         next_id = self._generate_next_task_id(target_doc)
+        resolved_title = str(title or '').strip() or self._derive_title_from_source_document(source_doc)
         nonempty_paragraphs = [p.text.strip() for p in source_doc.paragraphs if p.text and p.text.strip()]
         preview_lines = nonempty_paragraphs[:3]
         source_blocks = []
@@ -420,6 +427,7 @@ class WordProcessor:
 
         return {
             'next_id': next_id,
+            'title': resolved_title,
             'source_paragraph_count': len(nonempty_paragraphs),
             'source_table_count': len(source_doc.tables),
             'source_preview_lines': preview_lines,
@@ -618,6 +626,7 @@ class WordProcessor:
         """Mappt normalisierte Keys auf lesbare Standard-Labels."""
         mapping = {
             'id': 'ID',
+            'titel': 'Titel',
             'kategorie': 'Kategorie',
             'introeinleitungoptional': 'Intro/Einleitung (optional)',
             'aufgabenstellungpflicht': 'Aufgabenstellung (Pflicht)',
@@ -626,6 +635,23 @@ class WordProcessor:
             'schwierigkeitsgrad': 'Schwierigkeitsgrad',
         }
         return mapping.get(key_norm, key_norm)
+
+    def _derive_title_from_source_document(self, source_doc):
+        """Leitet einen robusten Titel aus der Quellaufgabe ab (erste nicht-leere Zeile)."""
+        for para in source_doc.paragraphs:
+            text = str(para.text or '').strip()
+            if text:
+                return self._extract_task_title(text)
+
+        # Fallback über Tabelleninhalt
+        for table in source_doc.tables:
+            table_text = self._extract_table_text_for_keywords(table)
+            if table_text:
+                first_line = table_text.split('\n', 1)[0].strip() if '\n' in table_text else table_text.strip()
+                if first_line:
+                    return self._extract_task_title(first_line)
+
+        return 'Ohne Titel'
 
     def _replace_cell_content_from_document(self, target_doc, target_cell, source_doc):
         """
@@ -762,6 +788,8 @@ class WordProcessor:
         if not task_text:
             return None
 
+        explicit_title = str(values_by_key.get('titel') or '').strip()
+
         intro_text = values_by_key.get('introeinleitungoptional') or values_by_key.get('einleitung') or ''
         hint_text = values_by_key.get('loesungsmoeglichkeithinweisoptional') or values_by_key.get('hinweis') or ''
         difficulty_raw = values_by_key.get('schwierigkeitsgrad') or values_by_key.get('schwierigkeit') or ''
@@ -807,7 +835,7 @@ class WordProcessor:
             content_lines.append(f"Schlüsselwörter: {keywords_raw}")
 
         task_id = values_by_key.get('id') or str(task_number)
-        title_source = task_text.split('\n', 1)[0].strip()
+        title_source = explicit_title or task_text.split('\n', 1)[0].strip()
 
         return {
             'number': task_number,
