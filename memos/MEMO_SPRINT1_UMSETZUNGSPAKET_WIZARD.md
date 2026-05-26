@@ -343,6 +343,8 @@ Zusätzliche Validierung vor Übernahme:
 
 - Inkonsistenter Schwierigkeitsgrad in der Eingabe (z. B. mehrere Werte wie `leicht | mittel`)
   blockiert die Übernahme mit klarem Korrekturhinweis.
+- Kategorie ist als Eingabe verpflichtend (leer wird abgewiesen).
+- Schwierigkeitsgrad wird auf `leicht|mittel|schwer` normalisiert (inkl. Alias-Mapping wie `easy`, `normal`, `hard`).
 
 Technische Umsetzung (`src/word_processor.py`):
 

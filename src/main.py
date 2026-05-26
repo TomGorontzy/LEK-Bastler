@@ -417,15 +417,31 @@ class LEKBastlerGUI:
         )
         if category is None:
             return
-
-        difficulty = simpledialog.askstring(
-            "Schwierigkeitsgrad",
-            "Schwierigkeitsgrad (leicht | mittel | schwer):",
-            initialvalue="mittel",
-            parent=self.root,
-        )
-        if difficulty is None:
+        category = category.strip()
+        if not category:
+            messagebox.showwarning("Hinweis", "Kategorie darf nicht leer sein.")
             return
+
+        difficulty = ""
+        while True:
+            difficulty_input = simpledialog.askstring(
+                "Schwierigkeitsgrad",
+                "Schwierigkeitsgrad (leicht | mittel | schwer):",
+                initialvalue=difficulty or "mittel",
+                parent=self.root,
+            )
+            if difficulty_input is None:
+                return
+
+            normalized_difficulty = self._normalize_difficulty_value(difficulty_input)
+            if normalized_difficulty:
+                difficulty = normalized_difficulty
+                break
+
+            messagebox.showwarning(
+                "Ungültiger Wert",
+                "Bitte genau einen gültigen Schwierigkeitsgrad eingeben: leicht, mittel oder schwer.",
+            )
 
         keywords = simpledialog.askstring(
             "Schlagworte",
@@ -500,6 +516,26 @@ class LEKBastlerGUI:
             )
         except Exception as e:
             messagebox.showerror("Fehler", f"Übernahme fehlgeschlagen: {str(e)}")
+
+    def _normalize_difficulty_value(self, value):
+        """Normalisiert Benutzereingaben auf leicht/mittel/schwer oder liefert None."""
+        val = str(value or '').strip().lower()
+        if not val:
+            return None
+
+        if val in ('leicht', 'mittel', 'schwer'):
+            return val
+
+        aliases = {
+            'easy': 'leicht',
+            'einfach': 'leicht',
+            'medium': 'mittel',
+            'normal': 'mittel',
+            'hard': 'schwer',
+            'difficult': 'schwer',
+            'komplex': 'schwer',
+        }
+        return aliases.get(val)
 
     def _show_task_import_details(self, preview):
         """Zeigt eine detaillierte Vorschau der Quellblöcke vor der Aufgabenübernahme."""
