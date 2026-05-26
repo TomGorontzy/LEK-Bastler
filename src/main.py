@@ -1198,9 +1198,11 @@ class LEKBastlerGUI:
         # Verbindliche Vorabprüfung: Inkonsistenzen müssen vor Export bereinigt werden
         blocked_difficulty_tasks = []
         blocked_category_tasks = []
+        blocked_required_tasks = []
         block_difficulty = bool(self._rule_value('difficulty_rules.block_export_on_inconsistent', True))
         allowed_difficulty = {str(v).strip().lower() for v in self._difficulty_allowed_values()}
         block_category = bool(self._rule_value('category_rules.block_export_on_missing', True))
+        block_required = bool(self._rule_value('template_rules.block_export_on_missing_required', True))
         missing_values = self._rule_value('category_rules.missing_values', ['', 'ohne kategorie']) or []
         missing_values_norm = {str(v).strip().lower() for v in missing_values}
 
@@ -1226,7 +1228,14 @@ class LEKBastlerGUI:
                         f"#{task.get('number', '?')} {task.get('title', 'Ohne Titel')}"
                     )
 
-        if blocked_difficulty_tasks or blocked_category_tasks:
+            if block_required:
+                required_warning = any('Pflichtfeld fehlt:' in str(w) for w in warnings)
+                if required_warning:
+                    blocked_required_tasks.append(
+                        f"#{task.get('number', '?')} {task.get('title', 'Ohne Titel')}"
+                    )
+
+        if blocked_difficulty_tasks or blocked_category_tasks or blocked_required_tasks:
             details = []
 
             if blocked_difficulty_tasks:
@@ -1245,6 +1254,15 @@ class LEKBastlerGUI:
                 details.append(
                     "Fehlende Kategorie (Pflichtfeld):\n"
                     f"{sample_cat}"
+                )
+
+            if blocked_required_tasks:
+                sample_required = "\n".join(f"- {entry}" for entry in blocked_required_tasks[:8])
+                if len(blocked_required_tasks) > 8:
+                    sample_required += f"\n- ... (+{len(blocked_required_tasks) - 8} weitere)"
+                details.append(
+                    "Fehlende Template-Pflichtfelder (z. B. Titel):\n"
+                    f"{sample_required}"
                 )
 
             messagebox.showwarning(

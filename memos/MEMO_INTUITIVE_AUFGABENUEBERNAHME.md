@@ -64,3 +64,14 @@ Gern direkt Vorschläge, Mockups oder PRs verlinken.
 - Bulk-Import besitzt jetzt eine Korrekturschleife bei abgebrochener Metadaten-Eingabe:
    - erneut bearbeiten / Datei überspringen / Serie stoppen.
 - Export blockiert optional bei inkonsistenter oder ungültiger Schwierigkeit.
+
+## Update 2026-05-26 – Titel als Pflichtfeld aufgenommen
+
+- Ja, das Feld `Titel` wurde als Template-Pflichtfeld aufgenommen.
+- Neue Regelkonfiguration `template_rules.required_fields` enthält jetzt standardmäßig:
+   - `id`
+   - `aufgabenstellungpflicht`
+   - `titel`
+- Fehlt ein Pflichtfeld (z. B. `Titel`), wird eine Diagnosewarnung erzeugt (`Pflichtfeld fehlt: ...`).
+- Bei aktivem `template_rules.block_export_on_missing_required=true` wird der Export blockiert,
+   bis die Pflichtfelder in der Quelle ergänzt und neu geladen wurden.

@@ -25,6 +25,14 @@
     },
     "block_export_on_inconsistent": true
   },
+  "template_rules": {
+    "required_fields": [
+      "id",
+      "aufgabenstellungpflicht",
+      "titel"
+    ],
+    "block_export_on_missing_required": true
+  },
   "category_rules": {
     "required": true,
     "block_export_on_missing": true,

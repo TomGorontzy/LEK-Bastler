@@ -59,6 +59,10 @@ class WordProcessor:
                 },
                 'block_export_on_inconsistent': True,
             },
+            'template_rules': {
+                'required_fields': ['id', 'aufgabenstellungpflicht', 'titel'],
+                'block_export_on_missing_required': True,
+            },
             'default_import_metadata': {
                 'category': '',
                 'difficulty': 'mittel',
@@ -144,6 +148,10 @@ class WordProcessor:
         configured = self.get_import_rule('category_rules.missing_values', []) or []
         normalized_config = {str(v).strip().lower() for v in configured}
         return raw in normalized_config
+
+    def _is_missing_required_value(self, value):
+        """Prüft, ob ein Pflichtfeldwert als fehlend gilt."""
+        return str(value or '').strip() == ''
 
     def persist_import_rules(self, runtime_base=None):
         """Speichert die aktuell aktiven Importregeln dauerhaft nach data/config/import_rules.json.
@@ -801,13 +809,38 @@ class WordProcessor:
         if not task_text:
             return None
 
+        required_fields = {
+            str(v).strip().lower()
+            for v in (self.get_import_rule('template_rules.required_fields', []) or [])
+            if str(v).strip()
+        }
+        pre_warnings = []
+
+        # Pflichtfelder prüfen (mit Fallback-Werten bleibt Verarbeitung robust, aber Warnung wird erzeugt)
+        raw_id = str(values_by_key.get('id') or '').strip()
         explicit_title = str(values_by_key.get('titel') or '').strip()
+        raw_task = str(values_by_key.get('aufgabenstellungpflicht') or values_by_key.get('aufgabenstellung') or '').strip()
+        raw_difficulty = str(values_by_key.get('schwierigkeitsgrad') or values_by_key.get('schwierigkeit') or '').strip()
+        raw_keywords = str(values_by_key.get('schlagwortekommagetrennt') or values_by_key.get('schlagworte') or '').strip()
+        raw_category = str(values_by_key.get('kategorie') or '').strip()
+
+        required_mapping = {
+            'id': ('ID', raw_id),
+            'titel': ('Titel', explicit_title),
+            'aufgabenstellungpflicht': ('Aufgabenstellung (Pflicht)', raw_task),
+            'schwierigkeitsgrad': ('Schwierigkeitsgrad', raw_difficulty),
+            'schlagwortekommagetrennt': ('Schlagworte (kommagetrennt)', raw_keywords),
+            'kategorie': ('Kategorie', raw_category),
+        }
+
+        for req_key, (req_label, req_value) in required_mapping.items():
+            if req_key in required_fields and self._is_missing_required_value(req_value):
+                pre_warnings.append(f"Pflichtfeld fehlt: {req_label}")
 
         intro_text = values_by_key.get('introeinleitungoptional') or values_by_key.get('einleitung') or ''
         hint_text = values_by_key.get('loesungsmoeglichkeithinweisoptional') or values_by_key.get('hinweis') or ''
         difficulty_raw = values_by_key.get('schwierigkeitsgrad') or values_by_key.get('schwierigkeit') or ''
         keywords_raw = values_by_key.get('schlagwortekommagetrennt') or values_by_key.get('schlagworte') or ''
-        pre_warnings = []
 
         raw_category = values_by_key.get('kategorie') or ''
         category_required = bool(self.get_import_rule('category_rules.required', True))
