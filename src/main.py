@@ -31,6 +31,7 @@ class LEKBastlerGUI:
         self._apply_window_icon()
         self.root.title("LEK-Bastler - Aufgabenauswahl")
         self.root.geometry("800x600")
+        self._apply_window_state()
         
         self.word_processor = WordProcessor()
         self.task_selector = TaskSelector()
@@ -48,6 +49,18 @@ class LEKBastlerGUI:
         }
         
         self.setup_ui()
+
+    def _apply_window_state(self):
+        """Startet das Hauptfenster bevorzugt maximiert (mit Fallback)."""
+        try:
+            # Windows/Tk: bevorzugter Weg
+            self.root.state('zoomed')
+        except Exception:
+            try:
+                # Fallback für Umgebungen, in denen 'zoomed' nicht verfügbar ist
+                self.root.wm_state('normal')
+            except Exception:
+                pass
 
     def _apply_window_icon(self):
         """Setzt das Fenster-Icon (Titelleiste) wenn verfügbar."""
