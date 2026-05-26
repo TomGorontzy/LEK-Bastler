@@ -437,6 +437,47 @@ class LEKBastlerGUI:
             return
 
         try:
+            preview = self.word_processor.preview_task_append(
+                source_doc_path=source_file,
+                target_collection_path=target_collection,
+                category=category,
+                difficulty=difficulty,
+                keywords=keywords,
+            )
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Vorschau fehlgeschlagen: {str(e)}")
+            return
+
+        if preview.get('difficulty_inconsistent'):
+            messagebox.showwarning(
+                "Übernahme blockiert",
+                "Der eingegebene Schwierigkeitsgrad ist inkonsistent (mehrere Werte).\n\n"
+                "Bitte genau einen Wert verwenden: leicht, mittel oder schwer.",
+            )
+            return
+
+        lines = preview.get('source_preview_lines', [])
+        source_preview_text = "\n".join(f"- {line}" for line in lines) if lines else "- (kein Textvorschau verfügbar)"
+        if preview.get('source_paragraph_count', 0) > len(lines):
+            source_preview_text += f"\n- ... (+{preview['source_paragraph_count'] - len(lines)} weitere Absätze)"
+
+        proceed = messagebox.askyesno(
+            "Übernahme bestätigen",
+            "Neue Aufgabe wird in die Aufgabensammlung übernommen.\n\n"
+            f"Ziel-ID: {preview.get('next_id', '-')}\n"
+            f"Kategorie: {preview.get('category', '-') }\n"
+            f"Schwierigkeit: {preview.get('difficulty_normalized', '-') }\n"
+            f"Schlagworte: {preview.get('keywords', '-') or '-'}\n"
+            f"Quellstruktur: {preview.get('source_paragraph_count', 0)} Absätze, "
+            f"{preview.get('source_table_count', 0)} Tabellen\n\n"
+            "Quell-Vorschau:\n"
+            f"{source_preview_text}\n\n"
+            "Fortfahren?",
+        )
+        if not proceed:
+            return
+
+        try:
             result = self.word_processor.append_task_from_document(
                 source_doc_path=source_file,
                 target_collection_path=target_collection,

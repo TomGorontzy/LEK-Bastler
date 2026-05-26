@@ -330,7 +330,13 @@ Neu in der GUI (`src/main.py`):
   1. Ziel-Aufgabensammlung ist die aktuell geladene Datei.
   2. Separate Quell-Datei auswählen (neue Aufgabe).
   3. Metadaten erfassen (Kategorie, Schwierigkeitsgrad, Schlagworte).
-  4. Aufgabe wird als neue Tabellenaufgabe in die Sammlung übernommen.
+  4. Vorschau-/Bestätigungsdialog zeigt Ziel-ID, Metadaten und Quellstruktur (Absätze/Tabellen).
+  5. Aufgabe wird erst nach Bestätigung als neue Tabellenaufgabe in die Sammlung übernommen.
+
+Zusätzliche Validierung vor Übernahme:
+
+- Inkonsistenter Schwierigkeitsgrad in der Eingabe (z. B. mehrere Werte wie `leicht | mittel`)
+  blockiert die Übernahme mit klarem Korrekturhinweis.
 
 Technische Umsetzung (`src/word_processor.py`):
 

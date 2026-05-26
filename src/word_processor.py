@@ -221,6 +221,48 @@ class WordProcessor:
             'target_file': target_collection_path,
         }
 
+    def preview_task_append(
+        self,
+        source_doc_path,
+        target_collection_path,
+        category,
+        difficulty='Mittel',
+        keywords='',
+    ):
+        """
+        Liefert eine Vorschau für die Aufgabenübernahme ohne Dateiänderung.
+
+        Returns:
+            dict mit Ziel-ID, Quellstruktur, Metadaten und ggf. Validierungshinweisen.
+        """
+        if not os.path.exists(source_doc_path):
+            raise FileNotFoundError(f"Quelldatei nicht gefunden: {source_doc_path}")
+        if not os.path.exists(target_collection_path):
+            raise FileNotFoundError(f"Zieldatei nicht gefunden: {target_collection_path}")
+
+        source_doc = Document(source_doc_path)
+        target_doc = Document(target_collection_path)
+
+        next_id = self._generate_next_task_id(target_doc)
+        nonempty_paragraphs = [p.text.strip() for p in source_doc.paragraphs if p.text and p.text.strip()]
+        preview_lines = nonempty_paragraphs[:3]
+
+        normalized_difficulty = self._extract_explicit_difficulty(f"Schwierigkeit: {difficulty}")
+        if not normalized_difficulty:
+            normalized_difficulty = self._extract_difficulty(str(difficulty or ''))
+
+        return {
+            'next_id': next_id,
+            'source_paragraph_count': len(nonempty_paragraphs),
+            'source_table_count': len(source_doc.tables),
+            'source_preview_lines': preview_lines,
+            'category': str(category or '').strip() or 'Ohne Kategorie',
+            'difficulty_input': str(difficulty or '').strip(),
+            'difficulty_normalized': normalized_difficulty,
+            'keywords': str(keywords or '').strip(),
+            'difficulty_inconsistent': self._has_inconsistent_difficulty(difficulty),
+        }
+
     def _normalize_table_key(self, value):
         """Normalisiert Tabellen-Keys für robuste Label-Erkennung."""
         text = (value or '').strip().lower()
