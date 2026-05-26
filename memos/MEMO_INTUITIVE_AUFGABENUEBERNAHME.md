@@ -85,3 +85,5 @@ Gern direkt Vorschläge, Mockups oder PRs verlinken.
 - Vor der Änderung wird eine zeitgestempelte Backup-Datei erstellt.
 - Der Erfolgsdialog zeigt zusätzlich die betroffenen Aufgaben-IDs
    (bei vielen Einträgen mit gekürzter Vorschau).
+- Zusätzlich wird eine kompakte Vorschau `ID -> abgeleiteter Titel` angezeigt
+   (erste Einträge, bei Bedarf gekürzt).

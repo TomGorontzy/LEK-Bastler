@@ -499,6 +499,7 @@ class LEKBastlerGUI:
                         result = self.word_processor.migrate_missing_titles_in_collection(file_path)
                         if result.get('changed_tasks', 0) > 0:
                             updated_ids = result.get('updated_ids', []) or []
+                            updated_entries = result.get('updated_entries', []) or []
                             ids_preview = ''
                             if updated_ids:
                                 preview_list = updated_ids[:10]
@@ -506,11 +507,23 @@ class LEKBastlerGUI:
                                 if len(updated_ids) > 10:
                                     ids_preview += f"\n- ... (+{len(updated_ids) - 10} weitere)"
 
+                            entry_preview = ''
+                            if updated_entries:
+                                pairs = []
+                                for item in updated_entries[:5]:
+                                    item_id = str(item.get('id', '') or '-').strip() or '-'
+                                    item_title = str(item.get('title', '') or 'Ohne Titel').strip() or 'Ohne Titel'
+                                    pairs.append(f"- {item_id} → {item_title}")
+                                entry_preview = "\n\nAbgeleitete Titel (Auszug):\n" + "\n".join(pairs)
+                                if len(updated_entries) > 5:
+                                    entry_preview += f"\n- ... (+{len(updated_entries) - 5} weitere)"
+
                             messagebox.showinfo(
                                 "Titel ergänzt",
                                 f"Titel wurden für {result.get('changed_tasks', 0)} Aufgabe(n) ergänzt.\n"
                                 f"Backup: {result.get('backup_file', '-')}"
-                                f"{ids_preview}",
+                                f"{ids_preview}"
+                                f"{entry_preview}",
                             )
                             self.load_tasks(allow_title_migration_prompt=False)
                             return

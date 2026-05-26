@@ -798,6 +798,7 @@ class WordProcessor:
                 scanned_tasks: int,
                 backup_file: str|None,
                 updated_ids: list[str],
+                updated_entries: list[dict],
             }
         """
         if not os.path.exists(collection_path):
@@ -807,6 +808,7 @@ class WordProcessor:
         scanned = 0
         changed = 0
         updated_ids = []
+        updated_entries = []
 
         for table in doc.tables:
             keys = {key for key, _row in self._iter_table_rows_by_norm_key(table)}
@@ -838,6 +840,11 @@ class WordProcessor:
             if task_id:
                 updated_ids.append(task_id)
 
+            updated_entries.append({
+                'id': task_id,
+                'title': derived_title,
+            })
+
         backup_path = None
         if changed > 0:
             backup_path = self._create_collection_backup(collection_path)
@@ -848,6 +855,7 @@ class WordProcessor:
             'scanned_tasks': scanned,
             'backup_file': backup_path,
             'updated_ids': updated_ids,
+            'updated_entries': updated_entries,
         }
 
     def _parse_structured_task_table(self, table, task_number):
