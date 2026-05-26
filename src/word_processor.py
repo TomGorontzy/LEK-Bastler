@@ -115,6 +115,34 @@ class WordProcessor:
             return float(self.get_import_rule('duplicate_similarity_threshold', 0.70) or 0.70)
         except (TypeError, ValueError):
             return 0.70
+
+    def persist_import_rules(self, runtime_base=None):
+        """Speichert die aktuell aktiven Importregeln dauerhaft nach data/config/import_rules.json.
+
+        Args:
+            runtime_base (Path|str|None): Basisverzeichnis der App. Bei None wird es automatisch ermittelt.
+
+        Returns:
+            str: Vollständiger Pfad der geschriebenen Konfigurationsdatei.
+        """
+        if runtime_base is None:
+            if getattr(sys, 'frozen', False):
+                runtime_base = Path(sys.executable).resolve().parent
+            else:
+                runtime_base = Path(__file__).resolve().parents[1]
+        else:
+            runtime_base = Path(runtime_base)
+
+        cfg_path = runtime_base / 'data' / 'config' / 'import_rules.json'
+        cfg_path.parent.mkdir(parents=True, exist_ok=True)
+
+        merged = self._deep_merge_dict(self._default_import_rules(), self.rules if isinstance(self.rules, dict) else {})
+        with cfg_path.open('w', encoding='utf-8') as f:
+            json.dump(merged, f, ensure_ascii=False, indent=2)
+            f.write('\n')
+
+        self.rules = merged
+        return str(cfg_path)
     
     def extract_tasks(self, file_path):
         """

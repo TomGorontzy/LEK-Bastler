@@ -116,7 +116,7 @@ class LEKBastlerGUI:
             width=18,
         )
         self.duplicate_mode_combo.grid(row=2, column=1, sticky=tk.W, padx=(10, 0), pady=(8, 0))
-        self.duplicate_mode_combo.bind("<<ComboboxSelected>>", lambda _e: self._apply_duplicate_mode_from_ui())
+        self.duplicate_mode_combo.bind("<<ComboboxSelected>>", lambda _e: self._apply_duplicate_mode_from_ui(show_message=False))
 
         self.btn_apply_duplicate_mode = ttk.Button(
             file_frame,
@@ -124,6 +124,13 @@ class LEKBastlerGUI:
             command=self._apply_duplicate_mode_from_ui,
         )
         self.btn_apply_duplicate_mode.grid(row=2, column=2, sticky=tk.W, padx=(10, 0), pady=(8, 0))
+
+        self.btn_save_duplicate_mode = ttk.Button(
+            file_frame,
+            text="Als Standard speichern",
+            command=self._save_duplicate_mode_as_default,
+        )
+        self.btn_save_duplicate_mode.grid(row=2, column=3, sticky=tk.W, padx=(10, 0), pady=(8, 0))
 
         self.duplicate_threshold_var = tk.StringVar(value="Aktive Duplikat-Schwelle: -")
         ttk.Label(file_frame, textvariable=self.duplicate_threshold_var).grid(
@@ -303,6 +310,36 @@ class LEKBastlerGUI:
                 "Preset aktiv",
                 f"Duplikat-Preset '{selected}' wurde für diese Sitzung aktiviert.",
             )
+
+    def _save_duplicate_mode_as_default(self, show_message=True):
+        """Speichert den aktuell gewählten Duplikat-Modus dauerhaft in der Konfiguration."""
+        # Sicherstellen, dass der UI-Wert in die Laufzeitregeln übernommen wurde
+        self._apply_duplicate_mode_from_ui(show_message=False)
+
+        persister = getattr(self.word_processor, 'persist_import_rules', None)
+        if not callable(persister):
+            messagebox.showerror(
+                "Speichern fehlgeschlagen",
+                "Persistenzfunktion ist nicht verfügbar.",
+            )
+            return False
+
+        try:
+            config_path = persister(runtime_base=_runtime_base_dir())
+            self._sync_duplicate_mode_ui()
+            if show_message:
+                messagebox.showinfo(
+                    "Standard gespeichert",
+                    "Duplikat-Preset wurde dauerhaft gespeichert.\n\n"
+                    f"Datei: {config_path}",
+                )
+            return True
+        except Exception as e:
+            messagebox.showerror(
+                "Speichern fehlgeschlagen",
+                f"Konfiguration konnte nicht gespeichert werden:\n{str(e)}",
+            )
+            return False
 
     def _max_reachable_step(self):
         """Ermittelt den maximal zulässigen Wizard-Schritt anhand des aktuellen Zustands."""

@@ -381,6 +381,8 @@ GUI-Erweiterung (Laufzeit-Preset):
 - Anwender können in der EXE/GUI zwischen `strict`, `normal`, `relaxed` wechseln.
 - Die aktive Schwellwertzahl wird direkt im UI angezeigt (z. B. `0.82` bei `strict`).
 - Der Modus wird für die laufende Sitzung angewendet (ohne Dateiedit nötig).
+- Zusätzlich kann der gewählte Modus per Button `Als Standard speichern` dauerhaft in
+  `data/config/import_rules.json` geschrieben werden.
 
 Zusätzliche Validierung vor Übernahme:
 
