@@ -252,6 +252,18 @@ class LEKBastlerGUI:
                     f"\nLow-Confidence: {diagnostics_report.get('low_confidence_count', 0)}"
                 )
 
+            if stats.get('total', 0) == 0:
+                messagebox.showwarning(
+                    "Keine Aufgaben erkannt",
+                    "In der gewählten Datei wurden keine Aufgaben erkannt.\n\n"
+                    "Bitte prüfen Sie die Struktur:\n"
+                    "- Kategorie als 'Überschrift 1'\n"
+                    "- Aufgabe als 'Überschrift 2'\n\n"
+                    "Empfehlung: Nutzen Sie die Musterdatei\n"
+                    "data/Vorlagen/AUFGABEN_MUSTER_STANDARD.docx",
+                )
+                return
+
             messagebox.showinfo("Erfolg", f"{stats['total']} Aufgaben geladen.{warning_hint}")
         except Exception as e:
             messagebox.showerror("Fehler", f"Fehler beim Laden der Datei: {str(e)}")
