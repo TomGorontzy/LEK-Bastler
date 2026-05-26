@@ -466,14 +466,41 @@ class LEKBastlerGUI:
         imported = 0
         skipped = 0
         failed = []
+        overridden = 0
 
         for source_file in source_files:
+            metadata_for_file = dict(metadata)
+
+            override_answer = messagebox.askyesnocancel(
+                "Metadaten pro Datei",
+                f"Quelle: {os.path.basename(source_file)}\n\n"
+                "Serien-Standardmetadaten verwenden?\n\n"
+                "Ja = Metadaten für diese Datei anpassen\n"
+                "Nein = Serien-Standard übernehmen\n"
+                "Abbrechen = Bulk-Serie stoppen",
+            )
+
+            if override_answer is None:
+                break
+
+            if override_answer is True:
+                custom_metadata = self._ask_import_metadata(
+                    default_category=metadata['category'],
+                    default_difficulty=metadata['difficulty'],
+                    default_keywords=metadata['keywords'],
+                )
+                if custom_metadata is None:
+                    skipped += 1
+                    continue
+                metadata_for_file = custom_metadata
+                overridden += 1
+
             decision = self._preview_and_confirm_import(
                 source_file=source_file,
                 target_collection=target_collection,
-                category=metadata['category'],
-                difficulty=metadata['difficulty'],
-                keywords=metadata['keywords'],
+                category=metadata_for_file['category'],
+                difficulty=metadata_for_file['difficulty'],
+                keywords=metadata_for_file['keywords'],
                 allow_cancel=True,
             )
 
@@ -488,9 +515,9 @@ class LEKBastlerGUI:
                 self.word_processor.append_task_from_document(
                     source_doc_path=source_file,
                     target_collection_path=target_collection,
-                    category=metadata['category'],
-                    difficulty=metadata['difficulty'],
-                    keywords=metadata['keywords'],
+                    category=metadata_for_file['category'],
+                    difficulty=metadata_for_file['difficulty'],
+                    keywords=metadata_for_file['keywords'],
                 )
                 imported += 1
             except Exception as e:
@@ -502,6 +529,7 @@ class LEKBastlerGUI:
             f"Übernommen: {imported}",
             f"Übersprungen: {skipped}",
             f"Fehler: {len(failed)}",
+            f"Metadaten pro Datei angepasst: {overridden}",
         ]
         if failed:
             details.append("\nFehlerdetails:")
@@ -527,13 +555,13 @@ class LEKBastlerGUI:
 
         return target_collection
 
-    def _ask_import_metadata(self):
+    def _ask_import_metadata(self, default_category=None, default_difficulty='mittel', default_keywords=''):
         """Fragt Metadaten für Aufgabenimport ab und gibt diese normalisiert zurück."""
-        default_category = self.lek_theme or "Allgemein"
+        category_default = default_category if default_category is not None else (self.lek_theme or "Allgemein")
         category = simpledialog.askstring(
             "Kategorie",
             "Kategorie für die neue Aufgabe:",
-            initialvalue=default_category,
+            initialvalue=category_default,
             parent=self.root,
         )
         if category is None:
@@ -549,7 +577,7 @@ class LEKBastlerGUI:
             difficulty_input = simpledialog.askstring(
                 "Schwierigkeitsgrad",
                 "Schwierigkeitsgrad (leicht | mittel | schwer):",
-                initialvalue=difficulty or "mittel",
+                initialvalue=difficulty or default_difficulty,
                 parent=self.root,
             )
             if difficulty_input is None:
@@ -568,7 +596,7 @@ class LEKBastlerGUI:
         keywords = simpledialog.askstring(
             "Schlagworte",
             "Schlagworte (kommagetrennt, optional):",
-            initialvalue="",
+            initialvalue=default_keywords,
             parent=self.root,
         )
         if keywords is None:

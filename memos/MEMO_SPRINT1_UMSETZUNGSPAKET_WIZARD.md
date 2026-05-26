@@ -351,6 +351,8 @@ Bulk-Übernahme (mehrere Quell-Dateien):
 - Einmalige Metadatenabfrage (Kategorie, Schwierigkeit, Schlagworte) für die Serie.
 - Für jede Quell-Datei: Preview + optionale Detailansicht + Entscheidung
   `übernehmen / überspringen / Serie abbrechen`.
+- Optional können pro Datei die Metadaten (Kategorie, Schwierigkeit, Schlagworte)
+  vor der Übernahme individuell überschrieben werden.
 - Abschlussdialog mit Serienzusammenfassung (`übernommen`, `übersprungen`, `Fehler`).
 
 Zusätzliche Validierung vor Übernahme:
