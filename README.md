@@ -24,10 +24,10 @@ Ein professionelles Tool zum Auswählen und Exportieren von Aufgaben aus Word-Do
 ### Option 2: Python-Version
 
 1. Python 3.13+ installieren
-2. Abhängigkeiten installieren:
+2. Virtuelle Umgebung und Abhängigkeiten installieren:
 
-   ```bash
-   pip install python-docx lxml
+   ```powershell
+   .\src\setup.ps1
    ```
 
 3. Programm starten:
@@ -53,6 +53,7 @@ LEK-Bastler-Portable/
 │   ├── template_manager.py # Vorlagen-Management und LEK-Erstellung
 │   └── task_selector.py    # Filterlogik
 │   ├── build.ps1
+│   ├── setup.ps1
 │   ├── LEK-Bastler-Portable.spec
 │   ├── build_version_info.txt
 │   ├── REQUIREMENTS.txt
@@ -94,6 +95,11 @@ LEK-Bastler-Portable/
 - **Word-Verarbeitung**: python-docx mit XML-Manipulation
 - **Build**: PyInstaller für portable .exe
 - **Kompatibilität**: Windows 10/11
+
+## 🔧 Build/Setup-Konvention
+
+- Primäre Skripte: `src/build.ps1`, `src/setup.ps1`
+- Root-Skripte `build.ps1` und `setup.ps1` sind Kompatibilitäts-Entrypoints.
 
 ## 📄 Lizenz
 

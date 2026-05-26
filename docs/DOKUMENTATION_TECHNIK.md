@@ -20,6 +20,7 @@ Aktueller Versionsstand: **3.5.0**.
   - EXE-Basisname: `LEK-Bastler-Portable`
 
 - Build-Skript: `src/build.ps1`
+  - Setup-Skript: `src/setup.ps1` (venv + Abhängigkeiten aus `src/REQUIREMENTS.txt`)
   - Führt PyInstaller aus
   - Erzeugt versionierten Deploy-Ordner `dist/LEK-Bastler-Portable_<Version>`
   - Erzeugt versionierte EXE `LEK-Bastler-Portable_<Version>.exe`
