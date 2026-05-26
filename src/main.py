@@ -467,6 +467,7 @@ class LEKBastlerGUI:
         skipped = 0
         failed = []
         overridden = 0
+        imported_entries = []
 
         for source_file in source_files:
             metadata_for_file = dict(metadata)
@@ -474,7 +475,7 @@ class LEKBastlerGUI:
             override_answer = messagebox.askyesnocancel(
                 "Metadaten pro Datei",
                 f"Quelle: {os.path.basename(source_file)}\n\n"
-                "Serien-Standardmetadaten verwenden?\n\n"
+                "Metadaten für diese Datei überschreiben?\n\n"
                 "Ja = Metadaten für diese Datei anpassen\n"
                 "Nein = Serien-Standard übernehmen\n"
                 "Abbrechen = Bulk-Serie stoppen",
@@ -512,7 +513,7 @@ class LEKBastlerGUI:
                 continue
 
             try:
-                self.word_processor.append_task_from_document(
+                result = self.word_processor.append_task_from_document(
                     source_doc_path=source_file,
                     target_collection_path=target_collection,
                     category=metadata_for_file['category'],
@@ -520,6 +521,9 @@ class LEKBastlerGUI:
                     keywords=metadata_for_file['keywords'],
                 )
                 imported += 1
+                imported_entries.append(
+                    f"{os.path.basename(source_file)} → {result.get('id', '-') }"
+                )
             except Exception as e:
                 failed.append(f"{os.path.basename(source_file)}: {str(e)}")
 
@@ -536,6 +540,12 @@ class LEKBastlerGUI:
             details.extend(f"- {entry}" for entry in failed[:8])
             if len(failed) > 8:
                 details.append(f"- ... (+{len(failed) - 8} weitere)")
+
+        if imported_entries:
+            details.append("\nImportierte Aufgaben:")
+            details.extend(f"- {entry}" for entry in imported_entries[:10])
+            if len(imported_entries) > 10:
+                details.append(f"- ... (+{len(imported_entries) - 10} weitere)")
 
         messagebox.showinfo("Bulk-Übernahme abgeschlossen", "\n".join(details))
 
