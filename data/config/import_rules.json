@@ -1,4 +1,16 @@
 {
+  "duplicate_mode": "normal",
+  "duplicate_similarity_thresholds": {
+    "strict": 0.82,
+    "normal": 0.70,
+    "relaxed": 0.58
+  },
   "duplicate_similarity_threshold": 0.70,
-  "max_preview_blocks": 10
+  "max_preview_blocks": 10,
+  "bulk_max_errors": 5,
+  "default_import_metadata": {
+    "category": "",
+    "difficulty": "mittel",
+    "keywords": ""
+  }
 }

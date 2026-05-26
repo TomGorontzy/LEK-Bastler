@@ -367,8 +367,12 @@ Regelkonfiguration (Sprint-Fortsetzung):
 
 - Neue Konfigurationsdatei: `data/config/import_rules.json`
 - Aktuell konfigurierbar:
-  - `duplicate_similarity_threshold` (Schwellwert Duplikatverdacht)
+  - `duplicate_mode` (`strict|normal|relaxed`)
+  - `duplicate_similarity_thresholds` (Modusabhängige Schwellwerte)
+  - `duplicate_similarity_threshold` (Fallback-Schwellwert)
   - `max_preview_blocks` (Anzahl Detailblöcke in der Vorschau)
+  - `bulk_max_errors` (Abbruchgrenze bei Fehlern in Serienübernahme)
+  - `default_import_metadata` (`category`, `difficulty`, `keywords`)
 - Ziel: Feinjustierung ohne Codeänderung für künftige Sprint-Iterationen.
 
 Zusätzliche Validierung vor Übernahme:

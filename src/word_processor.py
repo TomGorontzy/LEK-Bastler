@@ -37,8 +37,20 @@ class WordProcessor:
     def _default_import_rules(self):
         """Liefert Standardregeln für Import/Diagnostik."""
         return {
+            'duplicate_mode': 'normal',
+            'duplicate_similarity_thresholds': {
+                'strict': 0.82,
+                'normal': 0.70,
+                'relaxed': 0.58,
+            },
             'duplicate_similarity_threshold': 0.70,
             'max_preview_blocks': 10,
+            'bulk_max_errors': 5,
+            'default_import_metadata': {
+                'category': '',
+                'difficulty': 'mittel',
+                'keywords': '',
+            },
         }
 
     def _deep_merge_dict(self, base, override):
@@ -71,6 +83,38 @@ class WordProcessor:
     def _rule_value(self, key, default=None):
         """Liefert einen Regelwert aus self.rules mit Fallback."""
         return self.rules.get(key, default)
+
+    def get_import_rule(self, key, default=None):
+        """Öffentliche Regelabfrage mit optionaler Punktnotation (z. B. a.b.c)."""
+        if not key:
+            return default
+
+        if '.' not in key:
+            return self.rules.get(key, default)
+
+        current = self.rules
+        for part in key.split('.'):
+            if not isinstance(current, dict) or part not in current:
+                return default
+            current = current[part]
+        return current
+
+    def _resolve_duplicate_threshold(self):
+        """Ermittelt den aktiven Duplikat-Schwellwert anhand des konfigurierten Modus."""
+        mode = str(self.get_import_rule('duplicate_mode', 'normal') or 'normal').lower()
+        thresholds = self.get_import_rule('duplicate_similarity_thresholds', {}) or {}
+
+        if mode in thresholds:
+            try:
+                return float(thresholds[mode])
+            except (TypeError, ValueError):
+                pass
+
+        # Fallback: direkter Schwellwert
+        try:
+            return float(self.get_import_rule('duplicate_similarity_threshold', 0.70) or 0.70)
+        except (TypeError, ValueError):
+            return 0.70
     
     def extract_tasks(self, file_path):
         """
@@ -396,7 +440,7 @@ class WordProcessor:
             dict: {is_duplicate, similarity, matched_title, matched_id, matched_category}
         """
         if threshold is None:
-            threshold = float(self._rule_value('duplicate_similarity_threshold', 0.70) or 0.70)
+            threshold = self._resolve_duplicate_threshold()
 
         source_sig = self._build_source_signature(source_doc)
         if not source_sig:

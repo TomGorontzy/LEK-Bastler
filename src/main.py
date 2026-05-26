@@ -481,6 +481,8 @@ class LEKBastlerGUI:
         failed = []
         overridden = 0
         imported_entries = []
+        max_errors = int(self._rule_value('bulk_max_errors', 5) or 5)
+        bulk_stopped_reason = ""
 
         for source_file in source_files:
             metadata_for_file = dict(metadata)
@@ -539,6 +541,9 @@ class LEKBastlerGUI:
                 )
             except Exception as e:
                 failed.append(f"{os.path.basename(source_file)}: {str(e)}")
+                if max_errors > 0 and len(failed) >= max_errors:
+                    bulk_stopped_reason = f"Fehlerlimit erreicht ({len(failed)}/{max_errors})."
+                    break
 
         self.load_tasks()
 
@@ -560,6 +565,9 @@ class LEKBastlerGUI:
             if len(imported_entries) > 10:
                 details.append(f"- ... (+{len(imported_entries) - 10} weitere)")
 
+        if bulk_stopped_reason:
+            details.append(f"\nSerie gestoppt: {bulk_stopped_reason}")
+
         messagebox.showinfo("Bulk-Übernahme abgeschlossen", "\n".join(details))
 
     def _get_valid_import_target_collection(self):
@@ -578,9 +586,19 @@ class LEKBastlerGUI:
 
         return target_collection
 
-    def _ask_import_metadata(self, default_category=None, default_difficulty='mittel', default_keywords=''):
+    def _ask_import_metadata(self, default_category=None, default_difficulty=None, default_keywords=None):
         """Fragt Metadaten für Aufgabenimport ab und gibt diese normalisiert zurück."""
-        category_default = default_category if default_category is not None else (self.lek_theme or "Allgemein")
+        rules_default_category = self._rule_value('default_import_metadata.category', '')
+        rules_default_difficulty = self._rule_value('default_import_metadata.difficulty', 'mittel')
+        rules_default_keywords = self._rule_value('default_import_metadata.keywords', '')
+
+        category_default = (
+            default_category
+            if default_category is not None
+            else (self.lek_theme or rules_default_category or "Allgemein")
+        )
+        difficulty_default = default_difficulty if default_difficulty is not None else rules_default_difficulty
+        keywords_default = default_keywords if default_keywords is not None else rules_default_keywords
         category = simpledialog.askstring(
             "Kategorie",
             "Kategorie für die neue Aufgabe:",
@@ -600,7 +618,7 @@ class LEKBastlerGUI:
             difficulty_input = simpledialog.askstring(
                 "Schwierigkeitsgrad",
                 "Schwierigkeitsgrad (leicht | mittel | schwer):",
-                initialvalue=difficulty or default_difficulty,
+                initialvalue=difficulty or difficulty_default,
                 parent=self.root,
             )
             if difficulty_input is None:
@@ -619,7 +637,7 @@ class LEKBastlerGUI:
         keywords = simpledialog.askstring(
             "Schlagworte",
             "Schlagworte (kommagetrennt, optional):",
-            initialvalue=default_keywords,
+            initialvalue=keywords_default,
             parent=self.root,
         )
         if keywords is None:
@@ -630,6 +648,13 @@ class LEKBastlerGUI:
             'difficulty': difficulty,
             'keywords': keywords,
         }
+
+    def _rule_value(self, key, default=None):
+        """Liest Import-Regelwerte über den WordProcessor (inkl. Punktnotation)."""
+        getter = getattr(self.word_processor, 'get_import_rule', None)
+        if callable(getter):
+            return getter(key, default)
+        return default
 
     def _preview_and_confirm_import(self, source_file, target_collection, category, difficulty, keywords, allow_cancel=False):
         """Zeigt Preview/Details und liefert Import-Entscheidung zurück.
