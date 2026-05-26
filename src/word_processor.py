@@ -13,6 +13,7 @@ from difflib import SequenceMatcher
 import re
 import os
 import sys
+import json
 import shutil
 from pathlib import Path
 from copy import deepcopy
@@ -29,8 +30,47 @@ class WordProcessor:
 
         template_folder = runtime_base / 'data' / 'Vorlagen'
         self.template_manager = TemplateManager(str(template_folder))
+        self.rules = self._load_import_rules(runtime_base)
         self._num_id_map = {}
         self._last_context_report = None
+
+    def _default_import_rules(self):
+        """Liefert Standardregeln für Import/Diagnostik."""
+        return {
+            'duplicate_similarity_threshold': 0.70,
+            'max_preview_blocks': 10,
+        }
+
+    def _deep_merge_dict(self, base, override):
+        """Merged zwei Dicts rekursiv (override gewinnt)."""
+        result = dict(base)
+        for key, value in (override or {}).items():
+            if isinstance(value, dict) and isinstance(result.get(key), dict):
+                result[key] = self._deep_merge_dict(result[key], value)
+            else:
+                result[key] = value
+        return result
+
+    def _load_import_rules(self, runtime_base):
+        """Lädt optionale Regelkonfiguration aus data/config/import_rules.json."""
+        defaults = self._default_import_rules()
+        cfg_path = Path(runtime_base) / 'data' / 'config' / 'import_rules.json'
+
+        if not cfg_path.exists():
+            return defaults
+
+        try:
+            with cfg_path.open('r', encoding='utf-8') as f:
+                raw = json.load(f)
+            if not isinstance(raw, dict):
+                return defaults
+            return self._deep_merge_dict(defaults, raw)
+        except Exception:
+            return defaults
+
+    def _rule_value(self, key, default=None):
+        """Liefert einen Regelwert aus self.rules mit Fallback."""
+        return self.rules.get(key, default)
     
     def extract_tasks(self, file_path):
         """
@@ -289,12 +329,14 @@ class WordProcessor:
 
         duplicate_check = self._detect_potential_duplicate(source_doc, target_doc)
 
+        max_preview_blocks = int(self._rule_value('max_preview_blocks', 10) or 10)
+
         return {
             'next_id': next_id,
             'source_paragraph_count': len(nonempty_paragraphs),
             'source_table_count': len(source_doc.tables),
             'source_preview_lines': preview_lines,
-            'source_preview_blocks': source_blocks[:10],
+            'source_preview_blocks': source_blocks[:max_preview_blocks],
             'category': str(category or '').strip() or 'Ohne Kategorie',
             'difficulty_input': str(difficulty or '').strip(),
             'difficulty_normalized': normalized_difficulty,
@@ -346,13 +388,16 @@ class WordProcessor:
         value = re.sub(r'\s+', ' ', value).strip()
         return value
 
-    def _detect_potential_duplicate(self, source_doc, target_doc, threshold=0.70):
+    def _detect_potential_duplicate(self, source_doc, target_doc, threshold=None):
         """
         Prüft die Quellaufgabe gegen vorhandene Aufgaben der Zielsammlung.
 
         Returns:
             dict: {is_duplicate, similarity, matched_title, matched_id, matched_category}
         """
+        if threshold is None:
+            threshold = float(self._rule_value('duplicate_similarity_threshold', 0.70) or 0.70)
+
         source_sig = self._build_source_signature(source_doc)
         if not source_sig:
             return {

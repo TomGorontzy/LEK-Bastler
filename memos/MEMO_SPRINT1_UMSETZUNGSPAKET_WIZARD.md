@@ -363,6 +363,14 @@ Duplikat-Check vor Import:
   - Einzelimport: `trotzdem fortfahren?`
   - Bulk-Import: `fortfahren / überspringen / Serie stoppen`
 
+Regelkonfiguration (Sprint-Fortsetzung):
+
+- Neue Konfigurationsdatei: `data/config/import_rules.json`
+- Aktuell konfigurierbar:
+  - `duplicate_similarity_threshold` (Schwellwert Duplikatverdacht)
+  - `max_preview_blocks` (Anzahl Detailblöcke in der Vorschau)
+- Ziel: Feinjustierung ohne Codeänderung für künftige Sprint-Iterationen.
+
 Zusätzliche Validierung vor Übernahme:
 
 - Inkonsistenter Schwierigkeitsgrad in der Eingabe (z. B. mehrere Werte wie `leicht | mittel`)
