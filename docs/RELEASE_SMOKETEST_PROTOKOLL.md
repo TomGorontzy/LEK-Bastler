@@ -1,0 +1,44 @@
+# Release-Smoketest-Protokoll
+
+## Zweck
+
+Nachvollziehbare, wiederholbare Dokumentation der Release-Smoketests je Version.
+
+## Prüfschema (pro Release)
+
+1. Integrität des ZIP-Artefakts (Existenz, Größe, SHA256)
+2. Entpacktest in isoliertes Temp-Verzeichnis
+3. Pflichtinhalte vorhanden
+4. EXE-Startprobe bis GUI-Idle
+5. Ergebnisse + Auffälligkeiten dokumentieren
+
+## Protokoll: v3.6.1 (2026-05-27)
+
+### Eingangsdaten
+
+- Artefakt: `release/LEK-Bastler-Portable_3.6.1.zip`
+- Größe: `15.73 MB`
+- SHA256: `2A3BC0F88FBA2AFBE8190EABADDA39F297113767D882E63F1AB0E1C598026E8E`
+
+### Entpack- und Inhaltsprüfung
+
+- Entpackziel: `%TEMP%/LEK-Bastler-smoke-3.6.1`
+- Paketstruktur: Dateien/Ordner direkt im ZIP-Root (kein zusätzlicher Top-Level-Unterordner)
+- Pflichtinhalte geprüft: OK
+  - `LEK-Bastler-Portable_3.6.1.exe`
+  - `README.md`
+  - `LIZENZ.txt`
+  - `data/`
+  - `docs/`
+  - `data/LEKs/README.md`
+
+### Startprobe EXE
+
+- Prozessstart: OK (`INPUT_IDLE=True`)
+- Test-PID: `12204`
+- Prozess danach kontrolliert beendet: OK
+
+### Ergebnis
+
+- **Smoketest bestanden**
+- Keine technischen Auffälligkeiten im Post-Release-Check

@@ -18,6 +18,14 @@ Kurzer, reproduzierbarer Pflichtdurchlauf vor jedem Release.
 5. Export durchführen
 6. Ergebnisdokument fachlich gegenprüfen
 
+## 2a) Post-Release-Verifikation (skriptbar)
+
+- ZIP-Artefakt vorhanden, Größe + SHA256 protokolliert
+- ZIP in isoliertes Temp-Verzeichnis entpackt
+- Pflichtinhalte vorhanden (`*.exe`, `README.md`, `LIZENZ.txt`, `data/`, `docs/`, `data/LEKs/README.md`)
+- EXE startet bis GUI-Idle (kurzer Starttest), danach kontrolliert beendet
+- Ergebnisse im Release-Smoketest-Protokoll dokumentiert
+
 ## 3) Sollkriterien
 
 - Vorschau == Export-Reihenfolge für strukturierte Aufgaben
@@ -31,4 +39,5 @@ Release nur freigeben, wenn:
 
 - automatisierte Regression grün
 - Smoke-Checkliste vollständig durchlaufen
+- Post-Release-Verifikation inkl. Protokoll abgeschlossen
 - keine offenen Blocker in Kernpfaden
