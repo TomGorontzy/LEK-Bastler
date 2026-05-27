@@ -12,7 +12,7 @@ Kernfunktionen:
 - Erhaltung von Struktur und Formatierungen (inkl. Tabellen und Inhaltssteuerelemente)
 - Automatische Ablage im Verzeichnis `data/LEKs/`
 
-Aktueller Versionsstand: **3.6.0** (aus `src/build_version_info.txt`).
+Aktueller Versionsstand: **3.6.1** (aus `src/build_version_info.txt`).
 
 ## 2. Projektstruktur (aktuell)
 

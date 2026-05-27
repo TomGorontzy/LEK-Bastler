@@ -8,7 +8,7 @@
 - Selektion: `src/task_selector.py`
 - Anwendungssymbol: `src/app_icon.ico`
 
-Aktueller Versionsstand: **3.6.0**.
+Aktueller Versionsstand: **3.6.1**.
 
 ## 2. Build-Konfiguration
 
@@ -88,13 +88,18 @@ Technische Leitlinie:
 `src/word_processor.py` trennt den Extraktionspfad in klarere Stufen:
 
 1. **Strukturerkennung**
-  - `_extract_tasks_from_headings(...)` für H1/H2-Dokumente.
-  - `_extract_tasks_from_structured_tables(...)` für strukturierte Tabellen.
-2. **Modus-/Fallback-Auswahl**
-  - `_extract_tasks_with_parser_mode(...)` steuert Priorität/Fallback.
-  - Konfigurierbar über `parser_rules` in `import_rules.json`.
-3. **Normalisierung**
-  - `_normalize_task_collection(...)` bündelt Difficulty/Keyword/Nummern-Normalisierung.
+
+- `_extract_tasks_from_headings(...)` für H1/H2-Dokumente.
+- `_extract_tasks_from_structured_tables(...)` für strukturierte Tabellen.
+
+1. **Modus-/Fallback-Auswahl**
+
+- `_extract_tasks_with_parser_mode(...)` steuert Priorität/Fallback.
+- Konfigurierbar über `parser_rules` in `import_rules.json`.
+
+1. **Normalisierung**
+
+- `_normalize_task_collection(...)` bündelt Difficulty/Keyword/Nummern-Normalisierung.
 
 `parser_rules`:
 

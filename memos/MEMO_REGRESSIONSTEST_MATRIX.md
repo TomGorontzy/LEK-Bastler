@@ -7,7 +7,7 @@ Diese Matrix definiert die stabil zu haltenden Kernverhalten und deren Soll-Erge
 ## Matrix
 
 | ID | Bereich | Eingabe/Fixture | Erwartung |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | R1 | Strukturierte Tabelle (voll) | Tabelle mit Titel, Intro, Aufgabenstellung, Hinweis, Punkte | Vorschau/Export-Reihenfolge: Titel → Intro → Aufgabenstellung → Hinweis → Punkte |
 | R2 | Strukturierte Tabelle (minimal) | Tabelle ohne Intro/Hinweis/Punkte | Delta-Check meldet fehlende optionale Blöcke, Export bleibt stabil |
 | R3 | Kategoriepflicht | Tabelle mit leerer Kategorie | Warnung „Kategorie fehlt“, Exportblockade-Regel ist aktiv |

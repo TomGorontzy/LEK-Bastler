@@ -13,6 +13,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from tkinter import simpledialog
 from tkinter import scrolledtext
+from typing import Any
 import os
 import sys
 from pathlib import Path
@@ -82,11 +83,11 @@ class LEKBastlerGUI:
         
         # Hauptframe
         main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        main_frame.grid(row=0, column=0, sticky="wens")
         
         # Datei-Auswahl Sektion
         file_frame = ttk.LabelFrame(main_frame, text="Aufgabensammlung laden", padding="10")
-        file_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        file_frame.grid(row=0, column=0, columnspan=2, sticky="we", pady=(0, 10))
         
         self.file_path_var = tk.StringVar()
         ttk.Label(file_frame, text="Word-Datei:").grid(row=0, column=0, sticky=tk.W)
@@ -144,7 +145,7 @@ class LEKBastlerGUI:
         
         # Kriterien-Auswahl Sektion
         criteria_frame = ttk.LabelFrame(main_frame, text="Auswahlkriterien", padding="10")
-        criteria_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        criteria_frame.grid(row=1, column=0, columnspan=2, sticky="we", pady=(0, 10))
         
         # Suchbegriffe
         ttk.Label(criteria_frame, text="Suchbegriffe (kommagetrennt):").grid(row=0, column=0, sticky=tk.W)
@@ -166,7 +167,7 @@ class LEKBastlerGUI:
         
         # Wizard-Navigation
         wizard_frame = ttk.LabelFrame(main_frame, text="Import-Assistent", padding="10")
-        wizard_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        wizard_frame.grid(row=2, column=0, columnspan=2, sticky="we", pady=(0, 10))
 
         self.wizard_step_var = tk.StringVar(value="Schritt 1/4: Quelle wählen")
         ttk.Label(wizard_frame, textvariable=self.wizard_step_var).grid(row=0, column=0, sticky=tk.W)
@@ -182,15 +183,15 @@ class LEKBastlerGUI:
 
         # Aufgaben-Vorschau
         preview_frame = ttk.LabelFrame(main_frame, text="Gefundene Aufgaben", padding="10")
-        preview_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        preview_frame.grid(row=3, column=0, columnspan=2, sticky="wens", pady=(0, 10))
 
         self.wizard_status_var = tk.StringVar(value="Wizard-Status: Keine Datei geladen")
         ttk.Label(preview_frame, textvariable=self.wizard_status_var).grid(
-            row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 6)
+            row=0, column=0, sticky="we", pady=(0, 6)
         )
         
         # Treeview für Aufgabenvorschau
-        columns = ("Nr", "Kategorie", "Titel", "Schwierigkeit", "Confidence", "Warnungen", "Suchbegriffe")
+        columns = ("Nr", "Kategorie", "Titel", "Schwierigkeit", "Warnungen", "Suchbegriffe")
         self.task_tree = ttk.Treeview(preview_frame, columns=columns, show="headings", height=10, selectmode="extended")
         
         # Spaltenbreiten optimiert setzen
@@ -206,9 +207,6 @@ class LEKBastlerGUI:
         self.task_tree.heading("Schwierigkeit", text="Schwierigkeit")
         self.task_tree.column("Schwierigkeit", width=100, minwidth=80)
 
-        self.task_tree.heading("Confidence", text="Confidence")
-        self.task_tree.column("Confidence", width=90, minwidth=80)
-
         self.task_tree.heading("Warnungen", text="Warnungen")
         self.task_tree.column("Warnungen", width=260, minwidth=160)
         
@@ -222,9 +220,9 @@ class LEKBastlerGUI:
         self.task_tree.tag_configure('confidence_low', background='#ffe6e6')
         self.task_tree.tag_configure('confidence_medium', background='#fff6dd')
 
-        self.task_tree.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        v_scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
-        h_scrollbar.grid(row=2, column=0, sticky=(tk.W, tk.E))
+        self.task_tree.grid(row=1, column=0, sticky="wens")
+        v_scrollbar.grid(row=1, column=1, sticky="ns")
+        h_scrollbar.grid(row=2, column=0, sticky="we")
         
         # Buttons
         button_frame = ttk.Frame(main_frame)
@@ -283,7 +281,8 @@ class LEKBastlerGUI:
         resolver = getattr(self.word_processor, '_resolve_duplicate_threshold', None)
         if callable(resolver):
             try:
-                threshold = f"{float(resolver()):.2f}"
+                resolved = resolver()
+                threshold = f"{float(str(resolved)):.2f}"
             except Exception:
                 threshold = '-'
 
@@ -678,7 +677,11 @@ class LEKBastlerGUI:
         failed = []
         overridden = 0
         imported_entries = []
-        max_errors = int(self._rule_value('bulk_max_errors', 5) or 5)
+        raw_max_errors: Any = self._rule_value('bulk_max_errors', 5)
+        try:
+            max_errors = int(raw_max_errors or 5)
+        except (TypeError, ValueError):
+            max_errors = 5
         bulk_stopped_reason = ""
 
         for source_file in source_files:
@@ -815,10 +818,10 @@ class LEKBastlerGUI:
 
     def _ask_import_metadata(self, default_category=None, default_difficulty=None, default_keywords=None, default_title=None):
         """Fragt Metadaten für Aufgabenimport ab und gibt diese normalisiert zurück."""
-        rules_default_category = self._rule_value('default_import_metadata.category', '')
-        rules_default_difficulty = self._rule_value('default_import_metadata.difficulty', 'mittel')
-        rules_default_keywords = self._rule_value('default_import_metadata.keywords', '')
-        rules_default_title = self._rule_value('default_import_metadata.title', '')
+        rules_default_category = str(self._rule_value('default_import_metadata.category', '') or '')
+        rules_default_difficulty = str(self._rule_value('default_import_metadata.difficulty', 'mittel') or 'mittel')
+        rules_default_keywords = str(self._rule_value('default_import_metadata.keywords', '') or '')
+        rules_default_title = str(self._rule_value('default_import_metadata.title', '') or '')
         allowed_values = self._difficulty_allowed_values()
         difficulty_prompt_values = " | ".join(allowed_values)
 
@@ -1002,7 +1005,9 @@ class LEKBastlerGUI:
         if val in allowed:
             return val
 
-        aliases = self._rule_value('difficulty_rules.aliases', {}) or {}
+        aliases: Any = self._rule_value('difficulty_rules.aliases', {}) or {}
+        if not isinstance(aliases, dict):
+            aliases = {}
         merged_aliases = {}
         for key, mapped in aliases.items():
             k = str(key).strip().lower()
@@ -1017,7 +1022,9 @@ class LEKBastlerGUI:
 
     def _difficulty_allowed_values(self):
         """Liefert erlaubte Difficulty-Werte als normalisierte Kleinbuchstaben."""
-        values = self._rule_value('difficulty_rules.allowed_values', ['leicht', 'mittel', 'schwer']) or []
+        values: Any = self._rule_value('difficulty_rules.allowed_values', ['leicht', 'mittel', 'schwer']) or []
+        if not isinstance(values, (list, tuple, set)):
+            values = []
         normalized = [str(v).strip().lower() for v in values if str(v).strip()]
         return normalized or ['leicht', 'mittel', 'schwer']
 
@@ -1124,7 +1131,6 @@ class LEKBastlerGUI:
                 task.get('category', 'Ohne Kategorie'),
                 task.get('title', 'Ohne Titel'),
                 task.get('difficulty', 'Unbekannt'),
-                confidence,
                 warnings_text,
                 keywords_text
             ), tags=item_tags)
@@ -1263,6 +1269,9 @@ class LEKBastlerGUI:
                 except Exception:
                     section_lines = []
 
+            if not isinstance(section_lines, list):
+                section_lines = []
+
             if not section_lines:
                 section_lines = [
                     str(line).strip()
@@ -1276,7 +1285,8 @@ class LEKBastlerGUI:
             if callable(delta_checker):
                 try:
                     delta = delta_checker(task) or {}
-                    missing_optionals = list(delta.get('missing_optional_sections') or [])
+                    if isinstance(delta, dict):
+                        missing_optionals = list(delta.get('missing_optional_sections') or [])
                 except Exception:
                     missing_optionals = []
 
@@ -1428,7 +1438,9 @@ class LEKBastlerGUI:
         allowed_difficulty = {str(v).strip().lower() for v in self._difficulty_allowed_values()}
         block_category = bool(self._rule_value('category_rules.block_export_on_missing', True))
         block_required = bool(self._rule_value('template_rules.block_export_on_missing_required', True))
-        missing_values = self._rule_value('category_rules.missing_values', ['', 'ohne kategorie']) or []
+        missing_values: Any = self._rule_value('category_rules.missing_values', ['', 'ohne kategorie']) or []
+        if not isinstance(missing_values, (list, tuple, set)):
+            missing_values = []
         missing_values_norm = {str(v).strip().lower() for v in missing_values}
 
         for task in tasks_to_export:
