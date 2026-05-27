@@ -8,7 +8,7 @@
 - Selektion: `src/task_selector.py`
 - Anwendungssymbol: `src/app_icon.ico`
 
-Aktueller Versionsstand: **3.5.6**.
+Aktueller Versionsstand: **3.6.0**.
 
 ## 2. Build-Konfiguration
 
@@ -53,6 +53,74 @@ Aktueller Versionsstand: **3.5.6**.
   - Punkte (optional)
 - Die Schritt-3-`LEK-Gesamtvorschau` in `src/main.py` nutzt dieselbe zentrale Fließtext-Logik wie der Exportpfad in `src/word_processor.py`.
 - Ein zusätzlicher Delta-Check markiert fehlende optionale Blöcke transparent, ohne den Exportinhalt künstlich zu verändern.
+
+## 4b. Regelwerk und Konfiguration (Sprint 2)
+
+Zentrale Regelquelle ist `data/config/import_rules.json`.
+
+Wesentliche Bereiche:
+
+- `field_alias_rules`
+  - `structured_task_fields`: kanonische Felder mit Aliaslisten (z. B. Intro/Hinweis/Schlagworte).
+  - `labels`: zentrale Feldbezeichnungen für Warnungen und Tabellen-Mapping.
+- `preview_rules`
+  - `task_flow_sections`: feste Reihenfolge und Optionalität für Vorschau/Export-Fließtext.
+  - `optional_sections` + `show_optional_missing_sections`: steuert Delta-Hinweise in der Vorschau.
+- `template_rules`
+  - `required_fields` + `block_export_on_missing_required` für Pflichtfeldprüfung.
+- `category_rules`
+  - `required`, `missing_values`, `block_export_on_missing`.
+- `difficulty_rules`
+  - `allowed_values`, `aliases`, `block_export_on_inconsistent`.
+- `duplicate_rules` (+ kompatible Legacy-Keys)
+  - Modus-/Schwellwertsteuerung für Duplikatprüfung.
+- `default_import_metadata`
+  - GUI-Defaults für Kategorie, Schwierigkeitsgrad, Schlagworte, Titel.
+
+Technische Leitlinie:
+
+- Fachliche Entscheidungen erfolgen über `WordProcessor.get_import_rule(...)`.
+- Harte Aliaslisten im Verarbeitungs- und Vorschaupfad wurden durch regelbasierte Resolver ersetzt.
+- GUI und Backend verwenden dieselben Difficulty-Aliasregeln aus der Konfiguration.
+
+## 4c. Parser-Pipeline und Erkennungsmodi (Sprint 3)
+
+`src/word_processor.py` trennt den Extraktionspfad in klarere Stufen:
+
+1. **Strukturerkennung**
+  - `_extract_tasks_from_headings(...)` für H1/H2-Dokumente.
+  - `_extract_tasks_from_structured_tables(...)` für strukturierte Tabellen.
+2. **Modus-/Fallback-Auswahl**
+  - `_extract_tasks_with_parser_mode(...)` steuert Priorität/Fallback.
+  - Konfigurierbar über `parser_rules` in `import_rules.json`.
+3. **Normalisierung**
+  - `_normalize_task_collection(...)` bündelt Difficulty/Keyword/Nummern-Normalisierung.
+
+`parser_rules`:
+
+- `mode`: `auto` | `headings` | `tables` | `mixed`
+- `prefer_mode_on_mixed`: `headings` oder `tables`
+- `fallback_to_secondary_on_empty`: aktiviert Fallback auf sekundären Modus
+- `include_secondary_in_mixed`: kombiniert beide Modi bei gemischten Dokumenten
+
+Standardverhalten (`auto`) bleibt kompatibel:
+
+- H1/H2 wird bevorzugt.
+- Tabellenmodus greift als Fallback, wenn H1/H2 keine Aufgaben liefert.
+
+## 4d. Regressionstests und Release-QA (Sprint 4)
+
+- Regressionstest-Suite: `tests/test_regression_core.py`
+  - Kernfälle R1–R6 (Vorschau/Export-Reihenfolge, Delta-Check, Kategoriepflicht,
+    Titel-Fallback, Difficulty-Blockade, Teilfreigabe).
+- Testfallmatrix: `memos/MEMO_REGRESSIONSTEST_MATRIX.md`
+- Release-QA-Checkliste: `docs/RELEASE_QA_CHECKLISTE.md`
+
+Empfohlener lokaler Testlauf vor Release:
+
+- Python-Umgebung aktivieren
+- Regressionstests ausführen
+- Smoke-Checkliste vollständig durchlaufen
 
 ## 5. Konventionen
 

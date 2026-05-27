@@ -12,7 +12,7 @@ Kernfunktionen:
 - Erhaltung von Struktur und Formatierungen (inkl. Tabellen und Inhaltssteuerelemente)
 - Automatische Ablage im Verzeichnis `data/LEKs/`
 
-Aktueller Versionsstand: **3.5.6** (aus `src/build_version_info.txt`).
+Aktueller Versionsstand: **3.6.0** (aus `src/build_version_info.txt`).
 
 ## 2. Projektstruktur (aktuell)
 
@@ -46,8 +46,15 @@ LEK-Bastler-Portable/
 ### 3.1 Aufgaben-/Inhaltsübernahme
 
 - Aufgaben werden strukturiert aus den Quelldokumenten entnommen.
+- Erkennungsmodi sind konfigurierbar (`auto`, `headings`, `tables`, `mixed`).
 - Inhalte werden in der Exportphase inklusive komplexer Elemente übertragen.
 - Metadaten wie Schwierigkeit/Keywords werden für Auswahl- und Exportzwecke verwendet.
+
+### 3.5 Regelwerk und Parser (Sprints 2–3)
+
+- Fachregeln sind zentral in `data/config/import_rules.json` gebündelt.
+- Feldaliase, Pflichtfelder und Blockierregeln werden konsistent in GUI und Verarbeitung genutzt.
+- Parser-Pipeline trennt Strukturerkennung, Moduswahl/Fallback und Normalisierung.
 
 ### 3.2 Vorlagen-System
 
@@ -109,6 +116,12 @@ Empfohlene Mindestprüfungen:
 4. ZIP-Inhalt vollständig
 5. Testexport mit einer Datei aus `data/Aufgaben/`
 6. Icon-Prüfung (EXE + Fenstertitel)
+
+Automatisierte Regression:
+
+- `tests/test_regression_core.py` deckt zentrale Kernpfade (R1–R6) ab.
+- Testfallmatrix: `memos/MEMO_REGRESSIONSTEST_MATRIX.md`.
+- Release-QA-Checkliste: `docs/RELEASE_QA_CHECKLISTE.md`.
 
 ## 7. Historischer Kontext
 

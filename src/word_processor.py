@@ -37,6 +37,15 @@ class WordProcessor:
     def _default_import_rules(self):
         """Liefert Standardregeln für Import/Diagnostik."""
         return {
+            'duplicate_rules': {
+                'mode': 'normal',
+                'similarity_thresholds': {
+                    'strict': 0.82,
+                    'normal': 0.70,
+                    'relaxed': 0.58,
+                },
+                'fallback_similarity_threshold': 0.70,
+            },
             'duplicate_mode': 'normal',
             'duplicate_similarity_thresholds': {
                 'strict': 0.82,
@@ -46,6 +55,83 @@ class WordProcessor:
             'duplicate_similarity_threshold': 0.70,
             'max_preview_blocks': 10,
             'bulk_max_errors': 5,
+            'preview_rules': {
+                'show_optional_missing_sections': True,
+                'optional_sections': ['Intro/Einleitung', 'Hinweis', 'Punkte'],
+                'task_flow_sections': [
+                    {
+                        'name': 'title',
+                        'label': 'Titel',
+                        'fields': ['titel'],
+                        'optional': False,
+                    },
+                    {
+                        'name': 'intro',
+                        'label': 'Intro/Einleitung',
+                        'fields': ['introeinleitungoptional'],
+                        'optional': True,
+                    },
+                    {
+                        'name': 'task',
+                        'label': 'Aufgabenstellung',
+                        'fields': ['aufgabenstellungpflicht'],
+                        'optional': False,
+                    },
+                    {
+                        'name': 'hint',
+                        'label': 'Hinweis',
+                        'fields': ['loesungsmoeglichkeithinweisoptional'],
+                        'optional': True,
+                    },
+                    {
+                        'name': 'points',
+                        'label': 'Punkte',
+                        'fields': ['punkte'],
+                        'optional': True,
+                    },
+                ],
+            },
+            'field_alias_rules': {
+                'labels': {
+                    'id': 'ID',
+                    'titel': 'Titel',
+                    'kategorie': 'Kategorie',
+                    'introeinleitungoptional': 'Intro/Einleitung (optional)',
+                    'aufgabenstellungpflicht': 'Aufgabenstellung (Pflicht)',
+                    'loesungsmoeglichkeithinweisoptional': 'Lösungsmöglichkeit/Hinweis (optional)',
+                    'schlagwortekommagetrennt': 'Schlagworte (kommagetrennt)',
+                    'schwierigkeitsgrad': 'Schwierigkeitsgrad',
+                    'punkte': 'Punkte',
+                },
+                'structured_task_fields': {
+                    'id': ['id'],
+                    'titel': ['titel'],
+                    'kategorie': ['kategorie'],
+                    'introeinleitungoptional': ['introeinleitungoptional', 'introeinleitung', 'einleitung', 'intro', 'kontext'],
+                    'aufgabenstellungpflicht': ['aufgabenstellungpflicht', 'aufgabenstellung'],
+                    'loesungsmoeglichkeithinweisoptional': ['loesungsmoeglichkeithinweisoptional', 'loesungsmoeglichkeithinweis', 'hinweis'],
+                    'schlagwortekommagetrennt': ['schlagwortekommagetrennt', 'schlagworte', 'schluesselwoerter', 'schlusselwoerter'],
+                    'schwierigkeitsgrad': ['schwierigkeitsgrad', 'schwierigkeit'],
+                    'punkte': ['punkte', 'punktzahl', 'bewertung', 'bewertungpunkte'],
+                },
+            },
+            'collection_governance': {
+                'recommended_heading_structure': {
+                    'level1': 'Kategorie',
+                    'level2': 'Aufgabe',
+                },
+                'notes': [
+                    'Neue Sammlungen bevorzugt als strukturierte 2-Spalten-Tabellen pflegen.',
+                    'Pflichtfelder über template_rules.required_fields steuern.',
+                    'Alias-Erweiterungen ausschließlich in field_alias_rules pflegen.',
+                ],
+            },
+            'parser_rules': {
+                'mode': 'auto',
+                'prefer_mode_on_mixed': 'headings',
+                'fallback_to_secondary_on_empty': True,
+                'include_secondary_in_mixed': False,
+            },
             'difficulty_rules': {
                 'allowed_values': ['leicht', 'mittel', 'schwer'],
                 'aliases': {
@@ -124,8 +210,12 @@ class WordProcessor:
 
     def _resolve_duplicate_threshold(self):
         """Ermittelt den aktiven Duplikat-Schwellwert anhand des konfigurierten Modus."""
-        mode = str(self.get_import_rule('duplicate_mode', 'normal') or 'normal').lower()
-        thresholds = self.get_import_rule('duplicate_similarity_thresholds', {}) or {}
+        mode = str(
+            self.get_import_rule('duplicate_mode', self.get_import_rule('duplicate_rules.mode', 'normal')) or 'normal'
+        ).lower()
+        thresholds = self.get_import_rule('duplicate_similarity_thresholds', None)
+        if not isinstance(thresholds, dict) or not thresholds:
+            thresholds = self.get_import_rule('duplicate_rules.similarity_thresholds', {}) or {}
 
         if mode in thresholds:
             try:
@@ -135,7 +225,11 @@ class WordProcessor:
 
         # Fallback: direkter Schwellwert
         try:
-            return float(self.get_import_rule('duplicate_similarity_threshold', 0.70) or 0.70)
+            fallback_threshold = self.get_import_rule(
+                'duplicate_similarity_threshold',
+                self.get_import_rule('duplicate_rules.fallback_similarity_threshold', 0.70)
+            )
+            return float(fallback_threshold or 0.70)
         except (TypeError, ValueError):
             return 0.70
 
@@ -152,6 +246,59 @@ class WordProcessor:
     def _is_missing_required_value(self, value):
         """Prüft, ob ein Pflichtfeldwert als fehlend gilt."""
         return str(value or '').strip() == ''
+
+    def _field_labels(self):
+        """Liefert lesbare Feldlabels für strukturierte Aufgabenfelder."""
+        return self.get_import_rule('field_alias_rules.labels', {}) or {}
+
+    def _field_alias_map(self):
+        """Liefert Alias-Definitionen je kanonischem Feldschlüssel."""
+        return self.get_import_rule('field_alias_rules.structured_task_fields', {}) or {}
+
+    def _field_aliases(self, canonical_key, fallback_aliases=None):
+        """Liefert normalisierte Aliasliste für ein Feld inkl. kanonischem Schlüssel."""
+        aliases_map = self._field_alias_map()
+        configured = aliases_map.get(canonical_key, []) if isinstance(aliases_map, dict) else []
+        raw_aliases = list(configured or [])
+        if fallback_aliases:
+            raw_aliases.extend(list(fallback_aliases))
+        raw_aliases.append(canonical_key)
+
+        normalized = []
+        seen = set()
+        for alias in raw_aliases:
+            key = self._normalize_table_key(alias)
+            if key and key not in seen:
+                seen.add(key)
+                normalized.append(key)
+        return normalized
+
+    def _value_by_alias(self, values_by_key, canonical_key, fallback_aliases=None):
+        """Liefert den ersten nicht-leeren Feldwert über Aliasauflösung."""
+        for alias in self._field_aliases(canonical_key, fallback_aliases=fallback_aliases):
+            value = values_by_key.get(alias)
+            if str(value or '').strip():
+                return str(value).strip()
+        return ''
+
+    def _task_flow_sections(self):
+        """Liefert die konfigurierten Bereichsdefinitionen für Vorschau/Export."""
+        configured = self.get_import_rule('preview_rules.task_flow_sections', []) or []
+        sections = []
+        for section in configured:
+            if not isinstance(section, dict):
+                continue
+            label = str(section.get('label') or '').strip()
+            fields = [str(field).strip() for field in (section.get('fields') or []) if str(field).strip()]
+            if not label or not fields:
+                continue
+            sections.append({
+                'name': str(section.get('name') or '').strip().lower(),
+                'label': label,
+                'fields': fields,
+                'optional': bool(section.get('optional', False)),
+            })
+        return sections
 
     def persist_import_rules(self, runtime_base=None):
         """Speichert die aktuell aktiven Importregeln dauerhaft nach data/config/import_rules.json.
@@ -199,103 +346,144 @@ class WordProcessor:
         """
         try:
             doc = Document(file_path)
-            tasks = []
-            
-            all_elements = self._get_all_body_elements(doc)
-
-            current_category = "Ohne Kategorie"
-            current_task = None
-
-            def _finalize_current_task():
-                if current_task is None:
-                    return
-
-                content = []
-                for task_element in current_task['all_elements']:
-                    if task_element['type'] == 'paragraph' and task_element['content'].text.strip():
-                        content.append(task_element['content'].text.strip())
-                    elif task_element['type'] == 'table':
-                        table_text = self._extract_table_text_for_keywords(task_element['content'])
-                        if table_text:
-                            content.append(table_text)
-
-                current_task['content'] = content
-                current_task['original_paragraphs'] = [
-                    elem['content'] for elem in current_task['all_elements'] if elem['type'] == 'paragraph'
-                ]
-                tasks.append(current_task)
-
-            for element in all_elements:
-                if element['type'] != 'paragraph':
-                    if current_task is not None:
-                        current_task['all_elements'].append(element)
-                    continue
-
-                paragraph = element['content']
-                paragraph_text = paragraph.text.strip()
-
-                if self._is_heading1(paragraph):
-                    _finalize_current_task()
-                    current_task = None
-                    category_text = paragraph_text
-                    current_category = category_text if category_text else "Ohne Kategorie"
-                    continue
-
-                if self._is_heading2(paragraph):
-                    _finalize_current_task()
-                    task_title = paragraph_text or f"Aufgabe {len(tasks) + 1}"
-                    _main_no, _sub_no, number_label = self._extract_main_sub_number(task_title)
-                    current_task = {
-                        'number': len(tasks) + 1,
-                        'number_display': number_label or str(len(tasks) + 1),
-                        'category': current_category,
-                        'title': self._extract_task_title(task_title),
-                        'content': [],
-                        'all_elements': [element],
-                        'original_paragraphs': [],
-                        'difficulty': 'Mittel',
-                        'keywords': []
-                    }
-                    continue
-
-                if current_task is not None:
-                    current_task['all_elements'].append(element)
-
-            _finalize_current_task()
-
-            # Fallback: strukturierte Tabellenaufgaben (z. B. AUFGABEN_GERUEST_WORD)
-            if not tasks:
-                tasks = self._extract_tasks_from_structured_tables(doc)
-
-            # Metadaten für alle Aufgaben extrahieren
-            for task in tasks:
-                full_content = ' '.join(task.get('content', []))
-                if full_content:
-                    explicit_difficulty = self._extract_explicit_difficulty(full_content)
-                    if explicit_difficulty:
-                        task['difficulty'] = explicit_difficulty
-                    else:
-                        task['difficulty'] = self._extract_difficulty(full_content)
-                    
-                    explicit_keywords = self._extract_explicit_keywords(full_content)
-                    if explicit_keywords:
-                        task['keywords'] = explicit_keywords
-                    else:
-                        task['keywords'] = self._extract_keywords(full_content)
-
-                number_display_raw = task.get('number_display') or task.get('number')
-                is_intro_context = self._is_intro_context(
-                    task.get('content', []),
-                    task.get('title', ''),
-                )
-                normalized_number = self._normalize_intro_number_display(number_display_raw, is_intro_context)
-                if normalized_number:
-                    task['number_display'] = normalized_number
+            tasks = self._extract_tasks_with_parser_mode(doc)
+            self._normalize_task_collection(tasks)
             
             return tasks
             
         except Exception as e:
             raise Exception(f"Fehler beim Lesen der Word-Datei: {str(e)}")
+
+    def _extract_tasks_with_parser_mode(self, doc):
+        """Extrahiert Aufgaben gemäß parser_rules (auto/headings/tables/mixed)."""
+        mode = str(self.get_import_rule('parser_rules.mode', 'auto') or 'auto').strip().lower()
+        prefer_mode = str(self.get_import_rule('parser_rules.prefer_mode_on_mixed', 'headings') or 'headings').strip().lower()
+        fallback_on_empty = bool(self.get_import_rule('parser_rules.fallback_to_secondary_on_empty', True))
+        include_secondary_in_mixed = bool(self.get_import_rule('parser_rules.include_secondary_in_mixed', False))
+
+        heading_tasks = self._extract_tasks_from_headings(doc)
+        table_tasks = self._extract_tasks_from_structured_tables(doc)
+
+        if mode == 'headings':
+            return heading_tasks
+
+        if mode == 'tables':
+            return table_tasks
+
+        if mode == 'mixed':
+            primary = heading_tasks if prefer_mode != 'tables' else table_tasks
+            secondary = table_tasks if prefer_mode != 'tables' else heading_tasks
+
+            if primary and secondary and include_secondary_in_mixed:
+                combined = list(primary) + list(secondary)
+                self._reindex_task_numbers(combined)
+                return combined
+
+            if primary:
+                return primary
+            return secondary if fallback_on_empty else primary
+
+        # auto (Default): H1/H2 bevorzugen, auf Tabellen zurückfallen
+        if heading_tasks:
+            return heading_tasks
+        return table_tasks if fallback_on_empty else []
+
+    def _extract_tasks_from_headings(self, doc):
+        """Extrahiert Aufgaben aus H1/H2-Struktur (Kategorie/Aufgabe)."""
+        tasks = []
+        all_elements = self._get_all_body_elements(doc)
+
+        current_category = "Ohne Kategorie"
+        current_task = None
+
+        def _finalize_current_task():
+            if current_task is None:
+                return
+
+            content = []
+            for task_element in current_task['all_elements']:
+                if task_element['type'] == 'paragraph' and task_element['content'].text.strip():
+                    content.append(task_element['content'].text.strip())
+                elif task_element['type'] == 'table':
+                    table_text = self._extract_table_text_for_keywords(task_element['content'])
+                    if table_text:
+                        content.append(table_text)
+
+            current_task['content'] = content
+            current_task['original_paragraphs'] = [
+                elem['content'] for elem in current_task['all_elements'] if elem['type'] == 'paragraph'
+            ]
+            tasks.append(current_task)
+
+        for element in all_elements:
+            if element['type'] != 'paragraph':
+                if current_task is not None:
+                    current_task['all_elements'].append(element)
+                continue
+
+            paragraph = element['content']
+            paragraph_text = paragraph.text.strip()
+
+            if self._is_heading1(paragraph):
+                _finalize_current_task()
+                current_task = None
+                category_text = paragraph_text
+                current_category = category_text if category_text else "Ohne Kategorie"
+                continue
+
+            if self._is_heading2(paragraph):
+                _finalize_current_task()
+                task_title = paragraph_text or f"Aufgabe {len(tasks) + 1}"
+                _main_no, _sub_no, number_label = self._extract_main_sub_number(task_title)
+                current_task = {
+                    'number': len(tasks) + 1,
+                    'number_display': number_label or str(len(tasks) + 1),
+                    'category': current_category,
+                    'title': self._extract_task_title(task_title),
+                    'content': [],
+                    'all_elements': [element],
+                    'original_paragraphs': [],
+                    'difficulty': 'Mittel',
+                    'keywords': []
+                }
+                continue
+
+            if current_task is not None:
+                current_task['all_elements'].append(element)
+
+        _finalize_current_task()
+        return tasks
+
+    def _normalize_task_collection(self, tasks):
+        """Normalisiert Metadaten und Nummern aller erkannten Aufgaben."""
+        for task in tasks:
+            full_content = ' '.join(task.get('content', []))
+            if full_content:
+                explicit_difficulty = self._extract_explicit_difficulty(full_content)
+                if explicit_difficulty:
+                    task['difficulty'] = explicit_difficulty
+                else:
+                    task['difficulty'] = self._extract_difficulty(full_content)
+
+                explicit_keywords = self._extract_explicit_keywords(full_content)
+                if explicit_keywords:
+                    task['keywords'] = explicit_keywords
+                else:
+                    task['keywords'] = self._extract_keywords(full_content)
+
+            number_display_raw = task.get('number_display') or task.get('number')
+            is_intro_context = self._is_intro_context(
+                task.get('content', []),
+                task.get('title', ''),
+            )
+            normalized_number = self._normalize_intro_number_display(number_display_raw, is_intro_context)
+            if normalized_number:
+                task['number_display'] = normalized_number
+
+    def _reindex_task_numbers(self, tasks):
+        """Vergibt laufende interne Nummern (1..n) für kombinierte Parser-Ergebnisse."""
+        for idx, task in enumerate(tasks, 1):
+            task['number'] = idx
 
     def _extract_tasks_from_structured_tables(self, doc):
         """
@@ -710,16 +898,7 @@ class WordProcessor:
 
     def _key_norm_to_label(self, key_norm):
         """Mappt normalisierte Keys auf lesbare Standard-Labels."""
-        mapping = {
-            'id': 'ID',
-            'titel': 'Titel',
-            'kategorie': 'Kategorie',
-            'introeinleitungoptional': 'Intro/Einleitung (optional)',
-            'aufgabenstellungpflicht': 'Aufgabenstellung (Pflicht)',
-            'loesungsmoeglichkeithinweisoptional': 'Lösungsmöglichkeit/Hinweis (optional)',
-            'schlagwortekommagetrennt': 'Schlagworte (kommagetrennt)',
-            'schwierigkeitsgrad': 'Schwierigkeitsgrad',
-        }
+        mapping = self._field_labels()
         return mapping.get(key_norm, key_norm)
 
     def _derive_title_from_source_document(self, source_doc):
@@ -942,7 +1121,7 @@ class WordProcessor:
 
             values_by_key[norm_key] = raw_value
 
-        task_text = values_by_key.get('aufgabenstellungpflicht') or values_by_key.get('aufgabenstellung')
+        task_text = self._value_by_alias(values_by_key, 'aufgabenstellungpflicht', fallback_aliases=['aufgabenstellung'])
         if not task_text:
             return None
 
@@ -954,50 +1133,44 @@ class WordProcessor:
         pre_warnings = []
 
         # Pflichtfelder prüfen (mit Fallback-Werten bleibt Verarbeitung robust, aber Warnung wird erzeugt)
-        raw_id = str(values_by_key.get('id') or '').strip()
-        explicit_title = str(values_by_key.get('titel') or '').strip()
-        raw_task = str(values_by_key.get('aufgabenstellungpflicht') or values_by_key.get('aufgabenstellung') or '').strip()
-        raw_difficulty = str(values_by_key.get('schwierigkeitsgrad') or values_by_key.get('schwierigkeit') or '').strip()
-        raw_keywords = str(values_by_key.get('schlagwortekommagetrennt') or values_by_key.get('schlagworte') or '').strip()
-        raw_category = str(values_by_key.get('kategorie') or '').strip()
+        raw_id = self._value_by_alias(values_by_key, 'id')
+        explicit_title = self._value_by_alias(values_by_key, 'titel')
+        raw_task = self._value_by_alias(values_by_key, 'aufgabenstellungpflicht', fallback_aliases=['aufgabenstellung'])
+        raw_difficulty = self._value_by_alias(values_by_key, 'schwierigkeitsgrad', fallback_aliases=['schwierigkeit'])
+        raw_keywords = self._value_by_alias(
+            values_by_key,
+            'schlagwortekommagetrennt',
+            fallback_aliases=['schlagworte', 'schluesselwoerter', 'schlusselwoerter'],
+        )
+        raw_category = self._value_by_alias(values_by_key, 'kategorie')
 
+        labels = self._field_labels()
         required_mapping = {
-            'id': ('ID', raw_id),
-            'titel': ('Titel', explicit_title),
-            'aufgabenstellungpflicht': ('Aufgabenstellung (Pflicht)', raw_task),
-            'schwierigkeitsgrad': ('Schwierigkeitsgrad', raw_difficulty),
-            'schlagwortekommagetrennt': ('Schlagworte (kommagetrennt)', raw_keywords),
-            'kategorie': ('Kategorie', raw_category),
+            'id': (labels.get('id', 'ID'), raw_id),
+            'titel': (labels.get('titel', 'Titel'), explicit_title),
+            'aufgabenstellungpflicht': (labels.get('aufgabenstellungpflicht', 'Aufgabenstellung (Pflicht)'), raw_task),
+            'schwierigkeitsgrad': (labels.get('schwierigkeitsgrad', 'Schwierigkeitsgrad'), raw_difficulty),
+            'schlagwortekommagetrennt': (labels.get('schlagwortekommagetrennt', 'Schlagworte (kommagetrennt)'), raw_keywords),
+            'kategorie': (labels.get('kategorie', 'Kategorie'), raw_category),
         }
 
         for req_key, (req_label, req_value) in required_mapping.items():
             if req_key in required_fields and self._is_missing_required_value(req_value):
                 pre_warnings.append(f"Pflichtfeld fehlt: {req_label}")
 
-        intro_text = (
-            values_by_key.get('introeinleitungoptional')
-            or values_by_key.get('introeinleitung')
-            or values_by_key.get('einleitung')
-            or values_by_key.get('intro')
-            or values_by_key.get('kontext')
-            or ''
+        intro_text = self._value_by_alias(
+            values_by_key,
+            'introeinleitungoptional',
+            fallback_aliases=['introeinleitung', 'einleitung', 'intro', 'kontext'],
         )
-        hint_text = (
-            values_by_key.get('loesungsmoeglichkeithinweisoptional')
-            or values_by_key.get('loesungsmoeglichkeithinweis')
-            or values_by_key.get('hinweis')
-            or ''
+        hint_text = self._value_by_alias(
+            values_by_key,
+            'loesungsmoeglichkeithinweisoptional',
+            fallback_aliases=['loesungsmoeglichkeithinweis', 'hinweis'],
         )
-        difficulty_raw = values_by_key.get('schwierigkeitsgrad') or values_by_key.get('schwierigkeit') or ''
-        keywords_raw = (
-            values_by_key.get('schlagwortekommagetrennt')
-            or values_by_key.get('schlagworte')
-            or values_by_key.get('schluesselwoerter')
-            or values_by_key.get('schlusselwoerter')
-            or ''
-        )
+        difficulty_raw = raw_difficulty
+        keywords_raw = raw_keywords
 
-        raw_category = values_by_key.get('kategorie') or ''
         category_required = bool(self.get_import_rule('category_rules.required', True))
         if self._is_missing_category(raw_category):
             category = 'Ohne Kategorie'
@@ -1776,18 +1949,22 @@ class WordProcessor:
 
     def _append_structured_task_as_flow_text(self, doc, task, table):
         """Schreibt strukturierte Aufgaben als Fließtext (ohne Tabelle) in fester Reihenfolge."""
-        section_cells = [
-            ('title', self._structured_table_value_cell_by_aliases(table, ['titel']), task.get('title', '')),
-            ('intro', self._structured_table_value_cell_by_aliases(table, ['introeinleitungoptional', 'introeinleitung', 'einleitung', 'intro', 'kontext']), ''),
-            ('task', self._structured_table_value_cell_by_aliases(table, ['aufgabenstellungpflicht', 'aufgabenstellung']), ''),
-            ('hint', self._structured_table_value_cell_by_aliases(table, ['loesungsmoeglichkeithinweisoptional', 'loesungsmoeglichkeithinweis', 'hinweis']), ''),
-            ('points', self._structured_table_value_cell_by_aliases(table, ['punkte', 'punktzahl', 'bewertung', 'bewertungpunkte']), ''),
-        ]
+        section_cells = []
+        for section in self._task_flow_sections():
+            aliases = []
+            for field_key in section.get('fields', []):
+                aliases.extend(self._field_aliases(field_key))
+
+            fallback_text = task.get('title', '') if section.get('name') == 'title' else ''
+            section_cells.append((
+                section.get('name', ''),
+                bool(section.get('optional', False)),
+                self._structured_table_value_cell_by_aliases(table, aliases),
+                fallback_text,
+            ))
 
         blocks_written = 0
-        for _name, cell, fallback in section_cells:
-            # Intro/Hinweis/Punkte sind optional, Titel/Aufgabenstellung sollen bevorzugt geschrieben werden
-            optional_block = _name in {'intro', 'hint', 'points'}
+        for _name, optional_block, cell, fallback in section_cells:
             has_content = self._append_cell_as_flow_text(doc, cell, fallback_text=fallback)
             if not has_content and optional_block:
                 continue
@@ -1862,24 +2039,29 @@ class WordProcessor:
         if len(all_elements) == 1 and all_elements[0].get('type') == 'table':
             table = all_elements[0].get('content')
             if self._is_structured_task_table_for_export(table):
-                section_defs = [
-                    ('Titel', ['titel'], task.get('title', '')),
-                    ('Intro/Einleitung', ['introeinleitungoptional', 'introeinleitung', 'einleitung', 'intro', 'kontext'], ''),
-                    ('Aufgabenstellung', ['aufgabenstellungpflicht', 'aufgabenstellung'], ''),
-                    ('Hinweis', ['loesungsmoeglichkeithinweisoptional', 'loesungsmoeglichkeithinweis', 'hinweis'], ''),
-                    ('Punkte', ['punkte', 'punktzahl', 'bewertung', 'bewertungpunkte'], ''),
-                ]
+                section_defs = []
+                for section in self._task_flow_sections():
+                    aliases = []
+                    for field_key in section.get('fields', []):
+                        aliases.extend(self._field_aliases(field_key))
+
+                    fallback = task.get('title', '') if section.get('name') == 'title' else ''
+                    section_defs.append((
+                        section.get('label', ''),
+                        aliases,
+                        fallback,
+                        bool(section.get('optional', False)),
+                    ))
 
                 lines = []
                 written_sections = 0
-                for label, aliases, fallback in section_defs:
+                for label, aliases, fallback, optional in section_defs:
                     cell = self._structured_table_value_cell_by_aliases(table, aliases)
                     section_lines = self._cell_text_lines(cell)
 
                     if not section_lines and str(fallback or '').strip():
                         section_lines = [str(fallback).strip()]
 
-                    optional = label in {'Intro/Einleitung', 'Hinweis', 'Punkte'}
                     if optional and not section_lines:
                         continue
 
@@ -1931,11 +2113,29 @@ class WordProcessor:
 
         result['is_structured'] = True
 
-        optional_sections = [
-            ('Intro/Einleitung', ['introeinleitungoptional', 'introeinleitung', 'einleitung', 'intro', 'kontext']),
-            ('Hinweis', ['loesungsmoeglichkeithinweisoptional', 'loesungsmoeglichkeithinweis', 'hinweis']),
-            ('Punkte', ['punkte', 'punktzahl', 'bewertung', 'bewertungpunkte']),
-        ]
+        if not bool(self.get_import_rule('preview_rules.show_optional_missing_sections', True)):
+            return result
+
+        optional_label_filter = {
+            str(v).strip()
+            for v in (self.get_import_rule('preview_rules.optional_sections', []) or [])
+            if str(v).strip()
+        }
+
+        optional_sections = []
+        for section in self._task_flow_sections():
+            if not bool(section.get('optional', False)):
+                continue
+
+            label = str(section.get('label', '')).strip()
+            if optional_label_filter and label not in optional_label_filter:
+                continue
+
+            aliases = []
+            for field_key in section.get('fields', []):
+                aliases.extend(self._field_aliases(field_key))
+
+            optional_sections.append((label, aliases))
 
         missing = []
         for label, aliases in optional_sections:

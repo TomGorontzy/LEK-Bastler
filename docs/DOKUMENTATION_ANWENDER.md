@@ -16,7 +16,7 @@ Mit dem LEK-Bastler erstellen Sie aus vorbereiteten Aufgaben-Worddateien schnell
 1. Python-Umgebung vorbereiten
 2. Anwendung starten über `src/main.py`
 
-Hinweis zum aktuellen Stand: Version **3.5.6**.
+Hinweis zum aktuellen Stand: Version **3.6.0**.
 
 ## 3. Typischer Ablauf
 
@@ -31,9 +31,16 @@ Die vorgeschlagenen Dateinamen werden automatisch erzeugt und können bei Bedarf
 ## 4. Wichtige Hinweise
 
 - Der Ordner `data/LEKs/` wird beim Export automatisch erstellt, falls er fehlt.
-- Für beste Ergebnisse sollten Aufgaben sauber mit Überschriften strukturiert sein.
+- Für beste Ergebnisse sollten Aufgaben sauber mit Überschriften oder als strukturierte 2-Spalten-Tabellen aufgebaut sein.
 - Vorlagen liegen im Ordner `data/Vorlagen/`.
 - Falls keine passende Spezialvorlage gefunden wird, wird die Standardvorlage verwendet.
+- Vorschau und Export nutzen dieselbe fachliche Reihenfolge bei strukturierten Aufgaben (Titel → Intro → Aufgabenstellung → Hinweis → Punkte).
+
+## 4a. Regelwerk im Alltag (ab v3.6.0)
+
+- Viele Import-/Validierungsregeln sind zentral in `data/config/import_rules.json` konfigurierbar.
+- Änderungen an Aliasen oder Pflichtfeldern können in der Regel ohne Codeänderung erfolgen.
+- Bei Regelverstößen (z. B. fehlende Kategorie, inkonsistente Schwierigkeit) kann der Export bewusst blockiert werden.
 
 ## 5. Fehlerbehebung
 
@@ -71,3 +78,8 @@ Die vorgeschlagenen Dateinamen werden automatisch erzeugt und können bei Bedarf
 
 - Standardauslieferung: `release/LEK-Bastler-Portable_<Version>.zip`
 - Inhalt: EXE + benötigte Ordner (`data/Aufgaben`, `data/Vorlagen`, `data/LEKs`, `docs`) + `README.md` + `LIZENZ.txt`
+
+## 8. Qualitätssicherung (Kurzüberblick)
+
+- Vor einem Release wird eine Regressionstest-Suite ausgeführt (`tests/test_regression_core.py`).
+- Zusätzlich wird die Release-Checkliste aus `docs/RELEASE_QA_CHECKLISTE.md` durchlaufen.

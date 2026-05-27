@@ -1003,16 +1003,7 @@ class LEKBastlerGUI:
             return val
 
         aliases = self._rule_value('difficulty_rules.aliases', {}) or {}
-        default_aliases = {
-            'easy': 'leicht',
-            'einfach': 'leicht',
-            'medium': 'mittel',
-            'normal': 'mittel',
-            'hard': 'schwer',
-            'difficult': 'schwer',
-            'komplex': 'schwer',
-        }
-        merged_aliases = dict(default_aliases)
+        merged_aliases = {}
         for key, mapped in aliases.items():
             k = str(key).strip().lower()
             v = str(mapped).strip().lower()

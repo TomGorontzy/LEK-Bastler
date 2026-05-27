@@ -1,4 +1,4 @@
-# LEK-Bastler-Portable v3.5.6
+# LEK-Bastler-Portable v3.6.0
 
 Ein professionelles Tool zum Auswählen und Exportieren von Aufgaben aus Word-Dokumenten mit robuster Strukturübertragung und vollständiger Formatierung.
 
@@ -100,6 +100,14 @@ LEK-Bastler-Portable/
 
 - Primäre Skripte: `src/build.ps1`, `src/setup.ps1`
 - Root-Skripte `build.ps1` und `setup.ps1` sind Kompatibilitäts-Entrypoints.
+
+## ✅ Qualitätssicherung
+
+- Automatisierte Regressionstests: `tests/test_regression_core.py`
+- Testfallmatrix: `memos/MEMO_REGRESSIONSTEST_MATRIX.md`
+- Release-Checkliste: `docs/RELEASE_QA_CHECKLISTE.md`
+
+Diese drei Artefakte bilden den Mindest-Qualitätsrahmen vor jedem Release.
 
 ## 📄 Lizenz
 

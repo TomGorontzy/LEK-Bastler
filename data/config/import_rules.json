@@ -1,4 +1,13 @@
 {
+  "duplicate_rules": {
+    "mode": "normal",
+    "similarity_thresholds": {
+      "strict": 0.82,
+      "normal": 0.7,
+      "relaxed": 0.58
+    },
+    "fallback_similarity_threshold": 0.7
+  },
   "duplicate_mode": "normal",
   "duplicate_similarity_thresholds": {
     "strict": 0.82,
@@ -8,6 +17,112 @@
   "duplicate_similarity_threshold": 0.70,
   "max_preview_blocks": 10,
   "bulk_max_errors": 5,
+  "preview_rules": {
+    "show_optional_missing_sections": true,
+    "optional_sections": [
+      "Intro/Einleitung",
+      "Hinweis",
+      "Punkte"
+    ],
+    "task_flow_sections": [
+      {
+        "name": "title",
+        "label": "Titel",
+        "fields": [
+          "titel"
+        ],
+        "optional": false
+      },
+      {
+        "name": "intro",
+        "label": "Intro/Einleitung",
+        "fields": [
+          "introeinleitungoptional"
+        ],
+        "optional": true
+      },
+      {
+        "name": "task",
+        "label": "Aufgabenstellung",
+        "fields": [
+          "aufgabenstellungpflicht"
+        ],
+        "optional": false
+      },
+      {
+        "name": "hint",
+        "label": "Hinweis",
+        "fields": [
+          "loesungsmoeglichkeithinweisoptional"
+        ],
+        "optional": true
+      },
+      {
+        "name": "points",
+        "label": "Punkte",
+        "fields": [
+          "punkte"
+        ],
+        "optional": true
+      }
+    ]
+  },
+  "field_alias_rules": {
+    "labels": {
+      "id": "ID",
+      "titel": "Titel",
+      "kategorie": "Kategorie",
+      "introeinleitungoptional": "Intro/Einleitung (optional)",
+      "aufgabenstellungpflicht": "Aufgabenstellung (Pflicht)",
+      "loesungsmoeglichkeithinweisoptional": "Lösungsmöglichkeit/Hinweis (optional)",
+      "schlagwortekommagetrennt": "Schlagworte (kommagetrennt)",
+      "schwierigkeitsgrad": "Schwierigkeitsgrad",
+      "punkte": "Punkte"
+    },
+    "structured_task_fields": {
+      "id": [
+        "id"
+      ],
+      "titel": [
+        "titel"
+      ],
+      "kategorie": [
+        "kategorie"
+      ],
+      "introeinleitungoptional": [
+        "introeinleitungoptional",
+        "introeinleitung",
+        "einleitung",
+        "intro",
+        "kontext"
+      ],
+      "aufgabenstellungpflicht": [
+        "aufgabenstellungpflicht",
+        "aufgabenstellung"
+      ],
+      "loesungsmoeglichkeithinweisoptional": [
+        "loesungsmoeglichkeithinweisoptional",
+        "loesungsmoeglichkeithinweis",
+        "hinweis"
+      ],
+      "schlagwortekommagetrennt": [
+        "schlagwortekommagetrennt",
+        "schlagworte",
+        "schluesselwoerter",
+        "schlusselwoerter"
+      ],
+      "schwierigkeitsgrad": [
+        "schwierigkeitsgrad",
+        "schwierigkeit"
+      ],
+      "punkte": [
+        "punkte",
+        "punktzahl",
+        "bewertung",
+        "bewertungpunkte"
+      ]
+    }
+  },
   "difficulty_rules": {
     "allowed_values": [
       "leicht",
@@ -49,5 +164,22 @@
     "difficulty": "mittel",
     "keywords": "",
     "title": ""
+  },
+  "collection_governance": {
+    "recommended_heading_structure": {
+      "level1": "Kategorie",
+      "level2": "Aufgabe"
+    },
+    "notes": [
+      "Neue Sammlungen bevorzugt als strukturierte 2-Spalten-Tabellen pflegen.",
+      "Pflichtfelder über template_rules.required_fields steuern.",
+      "Alias-Erweiterungen ausschließlich in field_alias_rules pflegen."
+    ]
+  },
+  "parser_rules": {
+    "mode": "auto",
+    "prefer_mode_on_mixed": "headings",
+    "fallback_to_secondary_on_empty": true,
+    "include_secondary_in_mixed": false
   }
 }
