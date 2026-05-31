@@ -1,13 +1,8 @@
 {
-  "ignores": [
-    "build/**",
-    "dist/**",
-    "release/**",
-    ".venv/**",
-    "venv/**"
-  ],
   "default": true,
+  "MD012": true,
   "MD013": false,
+  "MD047": true,
   "MD024": { "siblings_only": true },
   "MD060": { "style": "any" }
 }

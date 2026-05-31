@@ -8,3 +8,4 @@ Enthalten ist aktuell:
 
 Die Suite kann lokal z. B. mit `python tools/test_regression_core.py` ausgeführt werden.
 
+Weitere Tools können bei Bedarf in diesem Verzeichnis ergänzt werden.
