@@ -91,3 +91,8 @@ Das Diagramm zeigt den typischen Pfad von der Aufgabensammlung bis zum Export in
 - Zusätzlich wird die Release-Checkliste aus `docs/RELEASE_QA_CHECKLISTE.md` durchlaufen.
 - Für nicht-technische Prüfer steht zusätzlich `docs/ANWENDERPRUEFUNG_CHECKLISTE.md` zur Verfügung.
 - Für kurze 5–10-Minuten-Tests steht ergänzend `docs/ANWENDERPRUEFUNG_KURZCHECKLISTE.md` zur Verfügung.
+
+### Welche Checkliste ist die richtige?
+
+- **Kurzcheckliste**: für einen schnellen Alltagstest mit kompaktem Gesamteindruck
+- **Vollcheckliste**: für strukturierte Rückmeldungen zu Funktionalität, Verständlichkeit und Bedienbarkeit

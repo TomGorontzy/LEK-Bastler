@@ -116,6 +116,11 @@ Sie dient als Basistext für den GitHub-Release-Eintrag.
 - Release-Checkliste: `docs/RELEASE_QA_CHECKLISTE.md`
 - Release-Prozess: `docs/DOKUMENTATION_RELEASES.md`
 
+### Anwenderprüfungen auf einen Blick
+
+- **Kurztest (5–10 Minuten)**: `docs/ANWENDERPRUEFUNG_KURZCHECKLISTE.md`
+- **Vollständige Anwenderprüfung**: `docs/ANWENDERPRUEFUNG_CHECKLISTE.md`
+
 ## 📚 Dokumentation
 
 - Projekt: `docs/DOKUMENTATION_PROJEKT.md`
