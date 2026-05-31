@@ -1,4 +1,4 @@
-# RELEASE QA Checkliste (Sprint 4)
+# Release-QA-Checkliste (Sprint 4)
 
 ## Ziel
 
@@ -18,7 +18,7 @@ Kurzer, reproduzierbarer Pflichtdurchlauf vor jedem Release.
 5. Export durchführen
 6. Ergebnisdokument fachlich gegenprüfen
 
-## 2a) Post-Release-Verifikation (skriptbar)
+## 2a. Post-Release-Verifikation (skriptbar)
 
 - Release-ZIP-Artefakt vorhanden, Größe + SHA256 protokolliert
 - Release-ZIP in isoliertes Temp-Verzeichnis entpackt

@@ -56,24 +56,24 @@ LEK-Bastler/
 - Inhalte werden in der Exportphase inklusive komplexer Elemente übertragen.
 - Metadaten wie Schwierigkeit/Keywords werden für Auswahl- und Exportzwecke verwendet.
 
-### 3.5 Regelwerk und Parser (Sprints 2–3)
+### 3.2 Regelwerk und Parser (Sprints 2–3)
 
 - Fachregeln sind zentral in `data/config/import_rules.json` gebündelt.
 - Feldaliase, Pflichtfelder und Blockierregeln werden konsistent in GUI und Verarbeitung genutzt.
 - Parser-Pipeline trennt Strukturerkennung, Moduswahl/Fallback und Normalisierung.
 
-### 3.2 Vorlagen-System
+### 3.3 Vorlagen-System
 
 - Vorlagen liegen im Ordner `data/Vorlagen/`.
 - LEK-Themen können für die Vorlagenauswahl und Benennung genutzt werden.
 - Platzhalter in Vorlagen werden beim Export ersetzt.
 
-### 3.3 Export in `data/LEKs/`
+### 3.4 Export in `data/LEKs/`
 
 - Der LEK-Export nutzt standardmäßig das Verzeichnis `data/LEKs/`.
 - Das Verzeichnis wird bei Bedarf zur Laufzeit automatisch erzeugt.
 
-### 3.4 Icon-Integration
+### 3.5 Icon-Integration
 
 - EXE-Icon wird über Spec eingebettet (`src/app_icon.ico`).
 - GUI-Fenstericon wird zur Laufzeit gesetzt.
@@ -92,8 +92,8 @@ Build-Skript: `src/build.ps1`
 
 Beispiel für aktuelle Version:
 
-- `dist/LEK-Bastler_3.5.6/LEK-Bastler_3.5.6.exe`
-- `release/LEK-Bastler_3.5.6.zip`
+- `dist/LEK-Bastler_3.6.1/LEK-Bastler_3.6.1.exe`
+- `release/LEK-Bastler_3.6.1.zip`
 
 ### 4.2 Deploy-Inhalt
 

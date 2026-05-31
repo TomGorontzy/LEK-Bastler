@@ -144,7 +144,7 @@ Empfohlener lokaler Testlauf vor Release:
 
 Aus den historischen Dokumenten übernommen und auf aktuellen Stand angepasst:
 
-- Release-ZIP des Windows-Releases (primärer Weg)
+- Windows-Release als Release-ZIP (primärer Weg)
 - Lokales Build für interne Tests
 - Netzwerkbereitstellung des entpackten Release-Ordners
 
