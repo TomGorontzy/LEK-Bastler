@@ -99,7 +99,7 @@ Der konsolidierte Änderungsverlauf wird zentral in `docs/CHANGELOG.md` gepflegt
 ## 🚀 GitHub Release-Automation
 
 - Workflow: `.github/workflows/release.yml`
-- Trigger: Push eines Tags im Format `v*` (z. B. `v3.6.1`)
+- Trigger: Push eines Tags im Format `v*` (z. B. `v3.6.2`)
 - Guard: Tag-Version muss exakt zur `FileVersion` aus `src/build_version_info.txt` passen
 - Ergebnis: Build via `src/setup.ps1` + `src/build.ps1`, Upload von Windows-EXE, Release-ZIP und Release Notes als Assets, Release-Titel-Schema `LEK-Bastler v...`
 

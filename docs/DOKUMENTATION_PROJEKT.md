@@ -12,7 +12,7 @@ Kernfunktionen:
 - Erhaltung von Struktur und Formatierungen (inkl. Tabellen und Inhaltssteuerelemente)
 - Automatische Ablage im Verzeichnis `data/LEKs/`
 
-Aktueller Versionsstand: **3.6.1** (aus `src/build_version_info.txt`).
+Aktueller Versionsstand: **3.6.2** (aus `src/build_version_info.txt`).
 
 ## 2. Projektstruktur (aktuell)
 
@@ -92,8 +92,8 @@ Build-Skript: `src/build.ps1`
 
 Beispiel für aktuelle Version:
 
-- `dist/LEK-Bastler_3.6.1/LEK-Bastler_3.6.1.exe`
-- `release/LEK-Bastler_3.6.1.zip`
+- `dist/LEK-Bastler_3.6.2/LEK-Bastler_3.6.2.exe`
+- `release/LEK-Bastler_3.6.2.zip`
 
 ### 4.2 Deploy-Inhalt
 

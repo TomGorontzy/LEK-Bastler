@@ -1,8 +1,8 @@
 # UTF-8
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(3, 6, 1, 0),
-    prodvers=(3, 6, 1, 0),
+    filevers=(3, 6, 2, 0),
+    prodvers=(3, 6, 2, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -17,12 +17,12 @@ VSVersionInfo(
         '040904B0',
         [StringStruct('CompanyName', 'INN-tegrativ gGmbH'),
         StringStruct('FileDescription', 'LEK-Bastler'),
-        StringStruct('FileVersion', '3.6.1'),
+        StringStruct('FileVersion', '3.6.2'),
         StringStruct('InternalName', 'LEK-Bastler'),
         StringStruct('LegalCopyright', 'INN-tegrativ gGmbH'),
         StringStruct('OriginalFilename', 'LEK-Bastler.exe'),
         StringStruct('ProductName', 'LEK-Bastler'),
-        StringStruct('ProductVersion', '3.6.1')])
+        StringStruct('ProductVersion', '3.6.2')])
       ]),
     VarFileInfo([VarStruct('Translation', [1033, 1200])])
   ]

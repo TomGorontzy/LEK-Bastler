@@ -4,12 +4,18 @@ Alle relevanten Änderungen an diesem Projekt werden hier dokumentiert.
 
 ## [Unreleased]
 
-- Release-Automation via GitHub Actions ergänzt
-- Automatische Release Notes im Build-Prozess ergänzt
-- Release-Dokumentation und `tools/README.md` hinzugefügt
-- Mermaid-Diagramme und SVG-Grafiken für Anwender-, Technik- und Release-Abläufe ergänzt
-- Produktbezeichnungen, Dateinamen und Build-Artefakte auf `LEK-Bastler` vereinheitlicht
-- Regressionstest-Suite von `tests/` nach `tools/` verschoben
+## [3.6.2] - 2026-05-31
+
+### Changed
+
+- Dokumentation und Release-Begriffe redaktionell vereinheitlicht.
+- GitHub-Issue-Status auf abgeschlossene Sprints und anstehende Anwenderprüfung ausgerichtet.
+
+### Added
+
+- Vollständige Anwenderprüfungs-Checkliste unter `docs/ANWENDERPRUEFUNG_CHECKLISTE.md` ergänzt.
+- Kompakte 5–10-Minuten-Kurzcheckliste unter `docs/ANWENDERPRUEFUNG_KURZCHECKLISTE.md` ergänzt.
+- Sichtbare Einstiege für beide Prüfformen in `README.md` und `docs/DOKUMENTATION_ANWENDER.md` ergänzt.
 
 ## [3.6.1] - 2026-05-27
 
