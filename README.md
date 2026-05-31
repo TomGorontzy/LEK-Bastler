@@ -121,6 +121,16 @@ Sie dient als Basistext für den GitHub-Release-Eintrag.
 - Release-Checkliste: `docs/RELEASE_QA_CHECKLISTE.md`
 - Release-Prozess: `docs/DOKUMENTATION_RELEASES.md`
 
+## 📚 Dokumentation
+
+- Projekt: `docs/DOKUMENTATION_PROJEKT.md`
+- Anwender: `docs/DOKUMENTATION_ANWENDER.md`
+- Technik: `docs/DOKUMENTATION_TECHNIK.md`
+- Releases: `docs/DOKUMENTATION_RELEASES.md`
+- Änderungen: `docs/CHANGELOG.md`
+- Release-QA: `docs/RELEASE_QA_CHECKLISTE.md`
+- Smoke-Test-Protokoll: `docs/RELEASE_SMOKETEST_PROTOKOLL.md`
+
 Diese drei Artefakte bilden den Mindest-Qualitätsrahmen vor jedem Release.
 
 ## 📄 Lizenz

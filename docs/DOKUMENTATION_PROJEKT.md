@@ -36,7 +36,11 @@ LEK-Bastler-Portable/
 ├── docs/                          # Aktuelle konsolidierte Dokumentation
 │   ├── DOKUMENTATION_PROJEKT.md
 │   ├── DOKUMENTATION_ANWENDER.md
-│   └── DOKUMENTATION_TECHNIK.md
+│   ├── DOKUMENTATION_TECHNIK.md
+│   ├── DOKUMENTATION_RELEASES.md
+│   ├── CHANGELOG.md
+│   ├── RELEASE_QA_CHECKLISTE.md
+│   └── RELEASE_SMOKETEST_PROTOKOLL.md
 ├── README.md
 └── release/
 ```
@@ -122,6 +126,8 @@ Automatisierte Regression:
 - `tests/test_regression_core.py` deckt zentrale Kernpfade (R1–R6) ab.
 - Testfallmatrix: `memos/MEMO_REGRESSIONSTEST_MATRIX.md`.
 - Release-QA-Checkliste: `docs/RELEASE_QA_CHECKLISTE.md`.
+- Release-Dokumentation: `docs/DOKUMENTATION_RELEASES.md`.
+- Änderungsverlauf: `docs/CHANGELOG.md`.
 
 ## 7. Historischer Kontext
 
