@@ -26,6 +26,12 @@ Kurzer, reproduzierbarer Pflichtdurchlauf vor jedem Release.
 - EXE startet bis GUI-Idle (kurzer Starttest), danach kontrolliert beendet
 - Ergebnisse im Release-Smoketest-Protokoll dokumentiert
 
+## 2b. Anwenderprüfung (nicht-technisch)
+
+- Für praxisnahe Bedienbarkeits- und Funktionsprüfungen die Checkliste `docs/ANWENDERPRUEFUNG_CHECKLISTE.md` verwenden.
+- Zielgruppe: Fachanwender ohne Entwicklerwissen.
+- Rückmeldungen zu Verständlichkeit, Navigation, Fehlermeldungen und Exportergebnis dokumentieren.
+
 ## 3) Sollkriterien
 
 - Vorschau == Export-Reihenfolge für strukturierte Aufgaben

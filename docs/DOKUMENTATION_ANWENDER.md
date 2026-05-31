@@ -89,3 +89,4 @@ Das Diagramm zeigt den typischen Pfad von der Aufgabensammlung bis zum Export in
 
 - Vor einem Release wird eine Regressionstest-Suite ausgeführt (`tools/test_regression_core.py`).
 - Zusätzlich wird die Release-Checkliste aus `docs/RELEASE_QA_CHECKLISTE.md` durchlaufen.
+- Für nicht-technische Prüfer steht zusätzlich `docs/ANWENDERPRUEFUNG_CHECKLISTE.md` zur Verfügung.
