@@ -1,4 +1,4 @@
-# LEK-Bastler-Portable
+# LEK-Bastler
 
 Ein Desktop-Werkzeug zum Auswählen und Exportieren von Aufgaben aus Word-Dokumenten mit robuster Strukturübertragung, Vorlagenlogik und portabler Windows-Auslieferung.
 
@@ -21,9 +21,9 @@ Der aktuelle Versionsstand wird über `src/build_version_info.txt` und die GitHu
 
 ### Option 1: Portable Version (Empfohlen)
 
-1. Laden Sie `LEK-Bastler-Portable_<Version>.zip` herunter
+1. Laden Sie `LEK-Bastler_<Version>.zip` herunter
 2. Entpacken Sie das Archiv
-3. Führen Sie `LEK-Bastler-Portable_<Version>.exe` aus
+3. Führen Sie `LEK-Bastler_<Version>.exe` aus
 
 ### Option 2: Python-Version
 
@@ -48,7 +48,7 @@ Der aktuelle Versionsstand wird über `src/build_version_info.txt` und die GitHu
 4. Optional ein LEK-Thema vergeben
 5. Export in `data/LEKs/` starten
 
-![Anwenderablauf LEK-Bastler-Portable](docs/diagramme/anwender_ablauf.svg)
+![Anwenderablauf LEK-Bastler](docs/diagramme/anwender_ablauf.svg)
 
 ## 📋 Verwendung
 
@@ -60,7 +60,7 @@ Der aktuelle Versionsstand wird über `src/build_version_info.txt` und die GitHu
 ## 🗂️ Projektstruktur
 
 ```text
-LEK-Bastler-Portable/
+LEK-Bastler/
 ├── src/
 │   ├── main.py             # Hauptprogramm mit GUI
 │   ├── word_processor.py   # Word-Dokumentverarbeitung mit XML-Zugriff
@@ -68,7 +68,7 @@ LEK-Bastler-Portable/
 │   └── task_selector.py    # Filterlogik
 │   ├── build.ps1
 │   ├── setup.ps1
-│   ├── LEK-Bastler-Portable.spec
+│   ├── LEK-Bastler.spec
 │   ├── build_version_info.txt
 │   ├── REQUIREMENTS.txt
 │   └── LIZENZ.txt
@@ -101,7 +101,7 @@ Der konsolidierte Änderungsverlauf wird zentral in `docs/CHANGELOG.md` gepflegt
 - Workflow: `.github/workflows/release.yml`
 - Trigger: Push eines Tags im Format `v*` (z. B. `v3.6.1`)
 - Guard: Tag-Version muss exakt zur `FileVersion` aus `src/build_version_info.txt` passen
-- Ergebnis: Build via `src/setup.ps1` + `src/build.ps1`, Upload von EXE/ZIP/Release Notes als Assets, Release-Titel-Schema `LEK-Bastler-Portable v...`
+- Ergebnis: Build via `src/setup.ps1` + `src/build.ps1`, Upload von EXE/ZIP/Release Notes als Assets, Release-Titel-Schema `LEK-Bastler v...`
 
 Für jeden Build/Release wird zusätzlich eine Notes-Datei erzeugt:
 
@@ -111,7 +111,7 @@ Sie dient als Basistext für den GitHub-Release-Eintrag.
 
 ## ✅ Qualitätssicherung
 
-- Automatisierte Regressionstests: `tests/test_regression_core.py`
+- Automatisierte Regressionstests: `tools/test_regression_core.py`
 - Testfallmatrix: `memos/MEMO_REGRESSIONSTEST_MATRIX.md`
 - Release-Checkliste: `docs/RELEASE_QA_CHECKLISTE.md`
 - Release-Prozess: `docs/DOKUMENTATION_RELEASES.md`

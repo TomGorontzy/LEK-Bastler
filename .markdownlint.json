@@ -1,4 +1,11 @@
 {
+  "ignores": [
+    "build/**",
+    "dist/**",
+    "release/**",
+    ".venv/**",
+    "venv/**"
+  ],
   "default": true,
   "MD013": false,
   "MD024": { "siblings_only": true },

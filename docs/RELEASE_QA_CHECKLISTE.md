@@ -6,7 +6,7 @@ Kurzer, reproduzierbarer Pflichtdurchlauf vor jedem Release.
 
 ## 1) Automatisierte Kernprüfung
 
-- Regressionstests ausführen (`tests/test_regression_core.py`)
+- Regressionstests ausführen (`tools/test_regression_core.py`)
 - Erwartung: alle Tests grün
 
 ## 2) Smoke-Test (fachlicher Ablauf)

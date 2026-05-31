@@ -1,4 +1,4 @@
-# Build-Skript fuer LEK-Bastler-Portable
+# Build-Skript fuer LEK-Bastler
 # Erstellt die EXE via PyInstaller und stellt ein fertiges Deploy-Paket zusammen
 
 param(
@@ -12,7 +12,7 @@ if ($PSVersionTable.PSVersion.Major -ge 6) {
 }
 
 if ($Help) {
-    Write-Host "LEK-Bastler-Portable Build-Skript - Optionen:" -ForegroundColor DarkCyan
+    Write-Host "LEK-Bastler Build-Skript - Optionen:" -ForegroundColor DarkCyan
     Write-Host "  -Help       : Nur diese Hilfe anzeigen" -ForegroundColor DarkGray
     Write-Host "  -SkipBuild  : PyInstaller-Build ueberspringen (nur Deploy-Paket neu erstellen)" -ForegroundColor DarkGray
     exit 0
@@ -22,9 +22,9 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Set-Location $projectRoot
 
-$BaseExeName = "LEK-Bastler-Portable"
-$SpecFile    = Join-Path $PSScriptRoot "LEK-Bastler-Portable.spec"
-$PyExePath   = "dist\LEK-Bastler-Portable.exe"
+$BaseExeName = "LEK-Bastler"
+$SpecFile    = Join-Path $PSScriptRoot "LEK-Bastler.spec"
+$PyExePath   = "dist\LEK-Bastler.exe"
 $VenvPython = Join-Path $projectRoot ".venv\Scripts\python.exe"
 
 function Get-BuildVersion {
@@ -73,7 +73,7 @@ $ReleaseDir = 'release'
 $ReleaseZipName = "$DeployFolderName.zip"
 $ReleaseZipPath = Join-Path $ReleaseDir $ReleaseZipName
 
-Write-Host "`nLEK-Bastler-Portable Build-Prozess" -ForegroundColor Green
+Write-Host "`nLEK-Bastler Build-Prozess" -ForegroundColor Green
 Write-Host "=========================`n" -ForegroundColor Green
 
 # ─── Schritt 1: PyInstaller-Build ───────────────────────────────────────────
@@ -184,22 +184,26 @@ Write-Host "   $ReleaseZipName" -ForegroundColor DarkGray
 Write-Host "`n5. Release Notes werden erstellt..." -ForegroundColor Yellow
 $ReleaseNotesName = "RELEASE_NOTES_v$Version.md"
 $ReleaseNotesPath = Join-Path $ReleaseDir $ReleaseNotesName
-@(
-    "# Release Notes v$Version"
-    ""
-    "## Enthalten"
-    ""
-    "- LEK-Bastler-Portable im Versionsstand $Version."
-    "- Versioniertes Deploy-Verzeichnis und Release-ZIP wurden erzeugt."
-    "- Technische Dokumentation und Anwenderdokumentation sind enthalten."
-    ""
-    "## Artefakte"
-    ""
-    "- dist/$DeployFolderName/$VersionedExeName"
-    "- release/$ReleaseZipName"
-    "- release/$ReleaseNotesName"
-) | Set-Content -Path $ReleaseNotesPath -Encoding UTF8
-Write-Host "   $ReleaseNotesName" -ForegroundColor DarkGray
+if (-not (Test-Path $ReleaseNotesPath)) {
+    @(
+        "# Release Notes v$Version"
+        ""
+        "## Enthalten"
+        ""
+        "- LEK-Bastler im Versionsstand $Version."
+        "- Versioniertes Deploy-Verzeichnis und Release-ZIP wurden erzeugt."
+        "- Technische Dokumentation und Anwenderdokumentation sind enthalten."
+        ""
+        "## Artefakte"
+        ""
+        "- dist/$DeployFolderName/$VersionedExeName"
+        "- release/$ReleaseZipName"
+        "- release/$ReleaseNotesName"
+    ) | Set-Content -Path $ReleaseNotesPath -Encoding UTF8
+    Write-Host "   $ReleaseNotesName" -ForegroundColor DarkGray
+} else {
+    Write-Host "   $ReleaseNotesName (bereits vorhanden, bleibt erhalten)" -ForegroundColor DarkGray
+}
 
 # ─── Ergebnis ─────────────────────────────────────────────────────────────────
 Write-Host "`nBuild erfolgreich abgeschlossen!" -ForegroundColor Green

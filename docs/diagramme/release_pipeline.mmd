@@ -1,11 +1,11 @@
 flowchart LR
     A[src/build_version_info.txt] --> B[src/build.ps1]
-    B --> C[dist/LEK-Bastler-Portable.exe]
-    B --> D[dist/LEK-Bastler-Portable_VERSION/LEK-Bastler-Portable_VERSION.exe]
-    B --> E[release/LEK-Bastler-Portable_VERSION.zip]
+    B --> C[dist/LEK-Bastler.exe]
+    B --> D[dist/LEK-Bastler_VERSION/LEK-Bastler_VERSION.exe]
+    B --> E[release/LEK-Bastler_VERSION.zip]
     B --> F[release/RELEASE_NOTES_vVERSION.md]
     G[Tag Push vX.Y.Z] --> H[.github/workflows/release.yml]
     D --> H
     E --> H
     F --> H
-    H --> I[GitHub Release LEK-Bastler-Portable vX.Y.Z]
+    H --> I[GitHub Release LEK-Bastler vX.Y.Z]

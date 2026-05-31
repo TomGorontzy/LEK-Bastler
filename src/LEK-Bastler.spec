@@ -6,7 +6,7 @@ try:
     SPEC_DIR = Path(__file__).resolve().parent
 except NameError:
     cwd = Path.cwd()
-    spec_in_src = cwd / 'src' / 'LEK-Bastler-Portable.spec'
+    spec_in_src = cwd / 'src' / 'LEK-Bastler.spec'
     SPEC_DIR = spec_in_src.parent if spec_in_src.exists() else cwd
 
 PROJECT_ROOT = SPEC_DIR.parent
@@ -36,7 +36,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='LEK-Bastler-Portable',
+    name='LEK-Bastler',
     icon=str(SRC_DIR / 'app_icon.ico'),
     debug=False,
     bootloader_ignore_signals=False,

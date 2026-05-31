@@ -8,7 +8,8 @@ Alle relevanten Änderungen an diesem Projekt werden hier dokumentiert.
 - Automatische Release Notes im Build-Prozess ergänzt
 - Release-Dokumentation und `tools/README.md` hinzugefügt
 - Mermaid-Diagramme und SVG-Grafiken für Anwender-, Technik- und Release-Abläufe ergänzt
-- Produktbezeichnungen in Doku, GUI und Build-Ausgaben auf `LEK-Bastler-Portable` vereinheitlicht
+- Produktbezeichnungen, Dateinamen und Build-Artefakte auf `LEK-Bastler` vereinheitlicht
+- Regressionstest-Suite von `tests/` nach `tools/` verschoben
 
 ## [3.6.1] - 2026-05-27
 
@@ -21,7 +22,7 @@ Alle relevanten Änderungen an diesem Projekt werden hier dokumentiert.
 ### Quality
 
 - Problems-Check ohne offene Diagnosen im Workspace.
-- Regressionstest-Suite: 6/6 grün (`tests/test_regression_core.py`).
+- Regressionstest-Suite: 6/6 grün (`tools/test_regression_core.py`).
 
 ## [3.6.0] - 2026-05-27
 

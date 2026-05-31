@@ -1,6 +1,6 @@
 MIT-Lizenz
 
-Copyright (c) 2025 LEK-Bastler-Portable Projekt
+Copyright (c) 2025 LEK-Bastler Projekt
 
 Hiermit wird unentgeltlich jeder Person, die eine Kopie der Software und der zugehörigen Dokumentation (die "Software") erhält, die Erlaubnis erteilt, sie uneingeschränkt zu nutzen, einschließlich und ohne Beschränkung der Rechte zur Nutzung, zum Kopieren, Ändern, Zusammenfügen, Veröffentlichen, Verteilen, Unterlizenzieren und/oder Verkaufen von Kopien der Software, und Personen, denen die Software zur Verfügung gestellt wird, zu gestatten, dies unter den folgenden Bedingungen zu tun:
 

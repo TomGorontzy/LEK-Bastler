@@ -1,4 +1,4 @@
-# Idee: Intuitive und fehlerarme Aufgabenübernahme in LEK-Bastler-Portable
+# Idee: Intuitive und fehlerarme Aufgabenübernahme in LEK-Bastler
 
 ## Ausgangslage
 

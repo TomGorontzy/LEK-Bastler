@@ -6,9 +6,6 @@ build/
 release/*
 !release/RELEASE_NOTES*.md
 
-# Portable-Version (kompilierte Distribution)
-LEK-Bastler-Portable/
-
 # Generierte Exportdateien
 LEKs/*.docx
 

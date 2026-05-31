@@ -91,7 +91,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
           $notesPath = Join-Path $releaseDir "RELEASE_NOTES_v${env:VERSION}.md"
           if (-not (Test-Path $notesPath)) {
-            Set-Content -Path $notesPath -Encoding utf8 -NoNewline -Value "# Release Notes v${env:VERSION}`r`n`r`n## Enthalten`r`n`r`n- LEK-Bastler-Portable im Versionsstand ${env:VERSION}.`r`n- Build/Release-Artefakte aus dist und release wurden erzeugt.`r`n`r`n## Artefakte`r`n`r`n- dist/LEK-Bastler-Portable_${env:VERSION}/LEK-Bastler-Portable_${env:VERSION}.exe`r`n- release/LEK-Bastler-Portable_${env:VERSION}.zip`r`n- release/RELEASE_NOTES_v${env:VERSION}.md`r`n"
+            Set-Content -Path $notesPath -Encoding utf8 -NoNewline -Value "# Release Notes v${env:VERSION}`r`n`r`n## Enthalten`r`n`r`n- LEK-Bastler im Versionsstand ${env:VERSION}.`r`n- Build/Release-Artefakte aus dist und release wurden erzeugt.`r`n`r`n## Artefakte`r`n`r`n- dist/LEK-Bastler_${env:VERSION}/LEK-Bastler_${env:VERSION}.exe`r`n- release/LEK-Bastler_${env:VERSION}.zip`r`n- release/RELEASE_NOTES_v${env:VERSION}.md`r`n"
           }
 
       - name: Upload workflow artifacts
@@ -99,8 +99,8 @@ jobs:
         with:
           name: release-assets-v${{ steps.set_version.outputs.version }}
           path: |
-            dist/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}.exe
-            release/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}.zip
+            dist/LEK-Bastler_${{ steps.set_version.outputs.version }}/LEK-Bastler_${{ steps.set_version.outputs.version }}.exe
+            release/LEK-Bastler_${{ steps.set_version.outputs.version }}.zip
             release/RELEASE_NOTES_v${{ steps.set_version.outputs.version }}.md
 
       - name: Publish GitHub release
@@ -108,12 +108,12 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: LEK-Bastler-Portable ${{ github.ref_name }}
+          name: LEK-Bastler ${{ github.ref_name }}
           body_path: release/RELEASE_NOTES_v${{ steps.set_version.outputs.version }}.md
           generate_release_notes: false
           files: |
-            dist/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}.exe
-            release/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}.zip
+            dist/LEK-Bastler_${{ steps.set_version.outputs.version }}/LEK-Bastler_${{ steps.set_version.outputs.version }}.exe
+            release/LEK-Bastler_${{ steps.set_version.outputs.version }}.zip
             release/RELEASE_NOTES_v${{ steps.set_version.outputs.version }}.md
 
       - name: Guardrail - normalize release titles
@@ -125,7 +125,7 @@ jobs:
           $releases = gh release list --limit 100 --json tagName,name | ConvertFrom-Json
           foreach ($r in $releases) {
             if ($null -ne $r.name -and $r.name -match '^Release\s+') {
-              $newTitle = "LEK-Bastler-Portable $($r.tagName)"
+              $newTitle = "LEK-Bastler $($r.tagName)"
               Write-Host "Guardrail: '$($r.name)' -> '$newTitle'"
               gh release edit $r.tagName --title $newTitle | Out-Null
             }

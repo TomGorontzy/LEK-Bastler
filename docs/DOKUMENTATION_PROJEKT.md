@@ -1,8 +1,8 @@
-# LEK-Bastler-Portable – Projektdokumentation
+# LEK-Bastler – Projektdokumentation
 
 ## 1. Ziel und Funktionsumfang
 
-Der **LEK-Bastler-Portable** unterstützt die Erstellung von Lernerfolgskontrollen (LEKs) aus Word-Aufgabensammlungen.
+Der **LEK-Bastler** unterstützt die Erstellung von Lernerfolgskontrollen (LEKs) aus Word-Aufgabensammlungen.
 
 Kernfunktionen:
 
@@ -17,7 +17,7 @@ Aktueller Versionsstand: **3.6.1** (aus `src/build_version_info.txt`).
 ## 2. Projektstruktur (aktuell)
 
 ```text
-LEK-Bastler-Portable/
+LEK-Bastler/
 ├── src/
 │   ├── main.py
 │   ├── word_processor.py
@@ -25,7 +25,7 @@ LEK-Bastler-Portable/
 │   ├── task_selector.py
 │   └── app_icon.ico
 │   ├── build.ps1
-│   ├── LEK-Bastler-Portable.spec
+│   ├── LEK-Bastler.spec
 │   ├── build_version_info.txt
 │   ├── REQUIREMENTS.txt
 │   └── LIZENZ.txt
@@ -85,15 +85,15 @@ Build-Skript: `src/build.ps1`
 
 ### 4.1 Artefakte
 
-- PyInstaller-EXE (Zwischenartefakt): `dist/LEK-Bastler-Portable.exe`
-- Deploy-Ordner: `dist/LEK-Bastler-Portable_<Version>/`
-- Deploy-EXE: `LEK-Bastler-Portable_<Version>.exe`
-- Release-ZIP: `release/LEK-Bastler-Portable_<Version>.zip`
+- PyInstaller-EXE (Zwischenartefakt): `dist/LEK-Bastler.exe`
+- Deploy-Ordner: `dist/LEK-Bastler_<Version>/`
+- Deploy-EXE: `LEK-Bastler_<Version>.exe`
+- Release-ZIP: `release/LEK-Bastler_<Version>.zip`
 
 Beispiel für aktuelle Version:
 
-- `dist/LEK-Bastler-Portable_3.5.6/LEK-Bastler-Portable_3.5.6.exe`
-- `release/LEK-Bastler-Portable_3.5.6.zip`
+- `dist/LEK-Bastler_3.5.6/LEK-Bastler_3.5.6.exe`
+- `release/LEK-Bastler_3.5.6.zip`
 
 ### 4.2 Deploy-Inhalt
 
@@ -125,7 +125,7 @@ Empfohlene Mindestprüfungen:
 
 Automatisierte Regression:
 
-- `tests/test_regression_core.py` deckt zentrale Kernpfade (R1–R6) ab.
+- `tools/test_regression_core.py` deckt zentrale Kernpfade (R1–R6) ab.
 - Testfallmatrix: `memos/MEMO_REGRESSIONSTEST_MATRIX.md`.
 - Release-QA-Checkliste: `docs/RELEASE_QA_CHECKLISTE.md`.
 - Release-Dokumentation: `docs/DOKUMENTATION_RELEASES.md`.

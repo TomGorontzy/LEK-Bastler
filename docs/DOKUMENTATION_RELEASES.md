@@ -2,7 +2,7 @@
 
 ## Ziel
 
-Diese Dokumentation beschreibt den standardisierten Build- und Release-Ablauf für den LEK-Bastler-Portable.
+Diese Dokumentation beschreibt den standardisierten Build- und Release-Ablauf für den LEK-Bastler.
 
 ## Versionierungsquelle
 
@@ -14,17 +14,17 @@ Diese Dokumentation beschreibt den standardisierten Build- und Release-Ablauf f�
 
 Nach `src/build.ps1` entstehen:
 
-- EXE (Zwischenartefakt): `dist/LEK-Bastler-Portable.exe`
-- Deploy-Ordner: `dist/LEK-Bastler-Portable_<Version>/`
-- Deploy-EXE: `dist/LEK-Bastler-Portable_<Version>/LEK-Bastler-Portable_<Version>.exe`
-- Release-ZIP: `release/LEK-Bastler-Portable_<Version>.zip`
+- EXE (Zwischenartefakt): `dist/LEK-Bastler.exe`
+- Deploy-Ordner: `dist/LEK-Bastler_<Version>/`
+- Deploy-EXE: `dist/LEK-Bastler_<Version>/LEK-Bastler_<Version>.exe`
+- Release-ZIP: `release/LEK-Bastler_<Version>.zip`
 - Release Notes: `release/RELEASE_NOTES_v<Version>.md`
 
 ## GitHub Release-Workflow
 
 Workflow-Datei: `.github/workflows/release.yml`
 
-![Release-Pipeline LEK-Bastler-Portable](diagramme/release_pipeline.svg)
+![Release-Pipeline LEK-Bastler](diagramme/release_pipeline.svg)
 
 Der Workflow:
 
@@ -36,12 +36,12 @@ Der Workflow:
 
 Release-Titel-Schema:
 
-- `LEK-Bastler-Portable v...`
+- `LEK-Bastler v...`
 
 ## Checkliste vor Release
 
 1. `docs/CHANGELOG` bzw. Projektdokumentation aktualisieren
-2. Regressionstest-Suite ausführen (`tests/test_regression_core.py`)
+2. Regressionstest-Suite ausführen (`tools/test_regression_core.py`)
 3. Smoke-Test gemäß `docs/RELEASE_QA_CHECKLISTE.md`
 4. Commit/Push auf `main`
 5. Tag setzen und pushen (`vX.Y.Z`)

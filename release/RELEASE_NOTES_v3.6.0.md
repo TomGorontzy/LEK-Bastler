@@ -12,7 +12,7 @@ Datum: 2026-05-27
   - klare Trennung von Strukturerkennung, Moduswahl/Fallback und Normalisierung
   - konfigurierbare Parser-Modi via `parser_rules`
 - Sprint 4: Regressionstest- und QA-Rahmen
-  - neue Test-Suite `tests/test_regression_core.py`
+  - neue Test-Suite `tools/test_regression_core.py`
   - Test-Matrix `memos/MEMO_REGRESSIONSTEST_MATRIX.md`
   - Release-Checkliste `docs/RELEASE_QA_CHECKLISTE.md`
 
@@ -24,6 +24,6 @@ Datum: 2026-05-27
 
 ## Artefakte
 
-- EXE: `dist/LEK-Bastler-Portable_3.6.0/LEK-Bastler-Portable_3.6.0.exe`
-- Geplantes Release-Paket: `release/LEK-Bastler-Portable_3.6.0.zip`
+- EXE: `dist/LEK-Bastler_3.6.0/LEK-Bastler_3.6.0.exe`
+- Geplantes Release-Paket: `release/LEK-Bastler_3.6.0.zip`
 - Release Notes: `release/RELEASE_NOTES_v3.6.0.md`

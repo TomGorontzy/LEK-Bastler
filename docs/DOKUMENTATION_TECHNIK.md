@@ -12,19 +12,19 @@ Aktueller Versionsstand: **3.6.1**.
 
 ## 2. Build-Konfiguration
 
-- Spec: `src/LEK-Bastler-Portable.spec`
+- Spec: `src/LEK-Bastler.spec`
   - Entry: `src/main.py`
   - Pathex: `src`
   - Icon: `src/app_icon.ico`
   - Datas: `data`, `src/app_icon.ico`
-  - EXE-Basisname: `LEK-Bastler-Portable`
+  - EXE-Basisname: `LEK-Bastler`
 
 - Build-Skript: `src/build.ps1`
   - Setup-Skript: `src/setup.ps1` (venv + Abhängigkeiten aus `src/REQUIREMENTS.txt`)
   - Führt PyInstaller aus
-  - Erzeugt versionierten Deploy-Ordner `dist/LEK-Bastler-Portable_<Version>`
-  - Erzeugt versionierte EXE `LEK-Bastler-Portable_<Version>.exe`
-  - Erzeugt versioniertes ZIP in `release/LEK-Bastler-Portable_<Version>.zip`
+  - Erzeugt versionierten Deploy-Ordner `dist/LEK-Bastler_<Version>`
+  - Erzeugt versionierte EXE `LEK-Bastler_<Version>.exe`
+  - Erzeugt versioniertes ZIP in `release/LEK-Bastler_<Version>.zip`
   - Nutzt .NET-ZIP-Erstellung (`ZipFile.CreateFromDirectory`) für zuverlässige Inhalte
 
 ## 3. Pfadkonzept
@@ -36,9 +36,9 @@ Aktueller Versionsstand: **3.6.1**.
 
 ## 3a. Systemübersicht
 
-![Systemübersicht LEK-Bastler-Portable](diagramme/technik_systemuebersicht.svg)
+![Systemübersicht LEK-Bastler](diagramme/technik_systemuebersicht.svg)
 
-Die Grafik zeigt die zentralen Quellmodule, die Konfigurationsdaten und den Exportpfad des LEK-Bastler-Portable.
+Die Grafik zeigt die zentralen Quellmodule, die Konfigurationsdaten und den Exportpfad des LEK-Bastler.
 
 ## 4. Inhaltserhaltung beim Export
 
@@ -121,7 +121,7 @@ Standardverhalten (`auto`) bleibt kompatibel:
 
 ## 4d. Regressionstests und Release-QA (Sprint 4)
 
-- Regressionstest-Suite: `tests/test_regression_core.py`
+- Regressionstest-Suite: `tools/test_regression_core.py`
   - Kernfälle R1–R6 (Vorschau/Export-Reihenfolge, Delta-Check, Kategoriepflicht,
     Titel-Fallback, Difficulty-Blockade, Teilfreigabe).
 - Testfallmatrix: `memos/MEMO_REGRESSIONSTEST_MATRIX.md`
@@ -151,8 +151,8 @@ Aus den historischen Dokumenten übernommen und auf aktuellen Stand angepasst:
 ## 7. Regression-Checkliste
 
 1. `src/build.ps1` erfolgreich
-2. `dist/LEK-Bastler-Portable_<Version>/` vollständig
-3. `release/LEK-Bastler-Portable_<Version>.zip` vollständig
+2. `dist/LEK-Bastler_<Version>/` vollständig
+3. `release/LEK-Bastler_<Version>.zip` vollständig
 4. EXE-Icon korrekt
 5. GUI-Fenstericon korrekt
 6. Exportfunktion erstellt Word-Datei unter `data/LEKs/`

@@ -16,16 +16,16 @@ Nachvollziehbare, wiederholbare Dokumentation der Release-Smoketests je Version.
 
 ### Eingangsdaten
 
-- Artefakt: `release/LEK-Bastler-Portable_3.6.1.zip`
+- Artefakt: `release/LEK-Bastler_3.6.1.zip`
 - Größe: `15.73 MB`
 - SHA256: `2A3BC0F88FBA2AFBE8190EABADDA39F297113767D882E63F1AB0E1C598026E8E`
 
 ### Entpack- und Inhaltsprüfung
 
-- Entpackziel: `%TEMP%/LEK-Bastler-Portable-smoke-3.6.1`
+- Entpackziel: `%TEMP%/LEK-Bastler-smoke-3.6.1`
 - Paketstruktur: Dateien/Ordner direkt im ZIP-Root (kein zusätzlicher Top-Level-Unterordner)
 - Pflichtinhalte geprüft: OK
-  - `LEK-Bastler-Portable_3.6.1.exe`
+  - `LEK-Bastler_3.6.1.exe`
   - `README.md`
   - `LIZENZ.txt`
   - `data/`

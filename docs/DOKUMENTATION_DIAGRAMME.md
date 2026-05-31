@@ -1,6 +1,6 @@
 # DOKUMENTATION_DIAGRAMME
 
-Dieses Verzeichnis bündelt die ausgelagerten Mermaid-Quellen und die daraus erzeugten SVG-Grafiken für den LEK-Bastler-Portable.
+Dieses Verzeichnis bündelt die ausgelagerten Mermaid-Quellen und die daraus erzeugten SVG-Grafiken für den LEK-Bastler.
 
 ## Speicherort
 

@@ -2,14 +2,14 @@
 
 ## 1. Zweck
 
-Mit dem LEK-Bastler-Portable erstellen Sie aus vorbereiteten Aufgaben-Worddateien schnell eine Lernerfolgskontrolle (LEK).
+Mit dem LEK-Bastler erstellen Sie aus vorbereiteten Aufgaben-Worddateien schnell eine Lernerfolgskontrolle (LEK).
 
 ## 2. Start
 
 ### Portable EXE
 
-1. Öffnen Sie den ausgelieferten Ordner `LEK-Bastler-Portable_<Version>`.
-2. Starten Sie `LEK-Bastler-Portable_<Version>.exe`.
+1. Öffnen Sie den ausgelieferten Ordner `LEK-Bastler_<Version>`.
+2. Starten Sie `LEK-Bastler_<Version>.exe`.
 
 ### Python-Ausführung (Entwicklung)
 
@@ -30,7 +30,7 @@ Die vorgeschlagenen Dateinamen werden automatisch erzeugt und können bei Bedarf
 
 ## 3a. Visualisierter Ablauf
 
-![Anwenderablauf LEK-Bastler-Portable](diagramme/anwender_ablauf.svg)
+![Anwenderablauf LEK-Bastler](diagramme/anwender_ablauf.svg)
 
 Das Diagramm zeigt den typischen Pfad von der Aufgabensammlung bis zum Export in `data/LEKs/`.
 
@@ -82,10 +82,10 @@ Das Diagramm zeigt den typischen Pfad von der Aufgabensammlung bis zum Export in
 
 ## 7. Verteilungsüberblick
 
-- Standardauslieferung: `release/LEK-Bastler-Portable_<Version>.zip`
+- Standardauslieferung: `release/LEK-Bastler_<Version>.zip`
 - Inhalt: EXE + benötigte Ordner (`data/Aufgaben`, `data/Vorlagen`, `data/LEKs`, `docs`) + `README.md` + `LIZENZ.txt`
 
 ## 8. Qualitätssicherung (Kurzüberblick)
 
-- Vor einem Release wird eine Regressionstest-Suite ausgeführt (`tests/test_regression_core.py`).
+- Vor einem Release wird eine Regressionstest-Suite ausgeführt (`tools/test_regression_core.py`).
 - Zusätzlich wird die Release-Checkliste aus `docs/RELEASE_QA_CHECKLISTE.md` durchlaufen.
