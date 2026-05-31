@@ -29,6 +29,7 @@ Kurzer, reproduzierbarer Pflichtdurchlauf vor jedem Release.
 ## 2b. Anwenderprüfung (nicht-technisch)
 
 - Für praxisnahe Bedienbarkeits- und Funktionsprüfungen die Checkliste `docs/ANWENDERPRUEFUNG_CHECKLISTE.md` verwenden.
+- Für schnelle Kurztests kann alternativ `docs/ANWENDERPRUEFUNG_KURZCHECKLISTE.md` verwendet werden.
 - Zielgruppe: Fachanwender ohne Entwicklerwissen.
 - Rückmeldungen zu Verständlichkeit, Navigation, Fehlermeldungen und Exportergebnis dokumentieren.
 

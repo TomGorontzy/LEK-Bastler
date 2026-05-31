@@ -4,6 +4,8 @@
 
 Diese Checkliste unterstützt nicht-technische Prüferinnen und Prüfer dabei, die bereitgestellte Windows-EXE des LEK-Bastler strukturiert auf Funktionalität, Verständlichkeit und Bedienbarkeit zu testen.
 
+Für einen kompakten 5–10-Minuten-Schnelltest siehe zusätzlich `docs/ANWENDERPRUEFUNG_KURZCHECKLISTE.md`.
+
 ## Für wen diese Checkliste gedacht ist
 
 - Anwenderinnen und Anwender ohne Entwicklerwissen
