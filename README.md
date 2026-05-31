@@ -1,6 +1,10 @@
-# LEK-Bastler-Portable v3.6.1
+# LEK-Bastler
 
-Ein professionelles Tool zum Auswählen und Exportieren von Aufgaben aus Word-Dokumenten mit robuster Strukturübertragung und vollständiger Formatierung.
+Ein Desktop-Werkzeug zum Auswählen und Exportieren von Aufgaben aus Word-Dokumenten mit robuster Strukturübertragung, Vorlagenlogik und portabler Windows-Auslieferung.
+
+Der fachliche Schwerpunkt liegt auf der schnellen Erstellung von Lernerfolgskontrollen (LEKs) aus vorhandenen Aufgabensammlungen.
+
+Der aktuelle Versionsstand wird über `src/build_version_info.txt` und die GitHub-Releases gepflegt.
 
 ## ✨ Hauptfunktionen
 
@@ -13,7 +17,7 @@ Ein professionelles Tool zum Auswählen und Exportieren von Aufgaben aus Word-Do
 - **Seitennummerierung**: Automatische "Seite/Gesamtseiten" Nummerierung ab Seite 2
 - **Benutzerfreundliche GUI**: Intuitive Bedienung mit korrekter Aufgabenvorschau und Metadaten
 
-## 🚀 Installation
+## 🚀 Schnellstart
 
 ### Option 1: Portable Version (Empfohlen)
 
@@ -32,9 +36,17 @@ Ein professionelles Tool zum Auswählen und Exportieren von Aufgaben aus Word-Do
 
 3. Programm starten:
 
-   ```bash
+   ```powershell
    python src/main.py
    ```
+
+## 🎯 Typischer Ablauf
+
+1. Aufgabensammlung laden
+2. Aufgaben sichten und filtern
+3. Geeignete Aufgaben auswählen
+4. Optional ein LEK-Thema vergeben
+5. Export in `data/LEKs/` starten
 
 ## 📋 Verwendung
 
@@ -65,28 +77,9 @@ LEK-Bastler-Portable/
 └── docs/                  # Aktuelle Projektdokumentation
 ```
 
-## 📝 Changelog
+## 📝 Änderungsverlauf
 
-### v3.5 (2025) - Robuste Strukturübertragung
-
-- ✅ **Verbesserte Kompatibilität**: Verwendet python-docx API statt direkte XML-Manipulation
-- ✅ **Stabile Elementkopierung**: Robuste Übertragung von Paragraphen, Tabellen und Formatierungen
-- ✅ **Fehlerbehandlung**: Graceful Fallbacks bei Kopierfehlern
-- ✅ **Original-Strukturen**: Behält die komplette Aufgaben-Struktur aus dem Word-Dokument bei
-
-### v3.4 (2025) - Komplette Strukturübertragung
-
-- ✅ **Original-Überschriften**: Behält die ursprünglichen Aufgaben-Überschriften aus dem Word-Dokument bei
-- ✅ **Vollständige Struktur**: Überträgt komplette Aufgabenbereiche von Überschrift 1 bis zur nächsten Überschrift 1
-- ✅ **Korrekte Reihenfolge**: Überschriften und zugehörige Inhalte werden in der richtigen Reihenfolge übertragen
-- ✅ **Formatierungserhalt**: Alle ursprünglichen Formatierungen bleiben erhalten
-
-### v3.3 (2025) - Explizite Keyword-Extraktion
-
-- ✅ **Explizite Keyword-Extraktion**: Erkennt "Schlüsselwörter:" Zeilen in Word-Dokumenten
-- ✅ **Automatischer Fallback**: Wenn keine expliziten Schlüsselwörter gefunden werden
-- ✅ **Schwierigkeitsgrad-Erkennung**: Unterstützt "Schwierigkeit:" Markierungen
-- ✅ **Multi-Format Support**: Erkennt verschiedene Keyword-Formate (Deutsch/Englisch)
+Der konsolidierte Änderungsverlauf wird zentral in `docs/CHANGELOG.md` gepflegt.
 
 ## 🛠️ Technische Details
 
@@ -131,7 +124,9 @@ Sie dient als Basistext für den GitHub-Release-Eintrag.
 - Release-QA: `docs/RELEASE_QA_CHECKLISTE.md`
 - Smoke-Test-Protokoll: `docs/RELEASE_SMOKETEST_PROTOKOLL.md`
 
-Diese drei Artefakte bilden den Mindest-Qualitätsrahmen vor jedem Release.
+Der empfohlene Einstieg ist: `README.md` → `docs/DOKUMENTATION_ANWENDER.md` → `docs/DOKUMENTATION_RELEASES.md`.
+
+Die Artefakte zu Qualitätssicherung, Release-Ablauf und Änderungsverlauf bilden zusammen den Mindest-Qualitätsrahmen vor jedem Release.
 
 ## 📄 Lizenz
 
