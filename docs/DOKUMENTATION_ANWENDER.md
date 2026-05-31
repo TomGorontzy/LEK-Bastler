@@ -6,7 +6,7 @@ Mit dem LEK-Bastler erstellen Sie aus vorbereiteten Aufgaben-Worddateien schnell
 
 ## 2. Start
 
-### Portable EXE
+### Eigenständige EXE
 
 1. Öffnen Sie den ausgelieferten Ordner `LEK-Bastler_<Version>`.
 2. Starten Sie `LEK-Bastler_<Version>.exe`.

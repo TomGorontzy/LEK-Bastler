@@ -1,6 +1,6 @@
 # LEK-Bastler
 
-Ein Desktop-Werkzeug zum Auswählen und Exportieren von Aufgaben aus Word-Dokumenten mit robuster Strukturübertragung, Vorlagenlogik und portabler Windows-Auslieferung.
+Ein Desktop-Werkzeug zum Auswählen und Exportieren von Aufgaben aus Word-Dokumenten mit robuster Strukturübertragung, Vorlagenlogik und eigenständiger Windows-Auslieferung.
 
 Der fachliche Schwerpunkt liegt auf der schnellen Erstellung von Lernerfolgskontrollen (LEKs) aus vorhandenen Aufgabensammlungen.
 
@@ -13,13 +13,13 @@ Der aktuelle Versionsstand wird über `src/build_version_info.txt` und die GitHu
 - **Präzise Metadaten-Extraktion**: Schwierigkeit und Keywords aus vollständigem Aufgabeninhalt
 - **Optimierte GUI-Darstellung**: Spaltenbreiten angepasst für bessere Lesbarkeit
 - **Vorlagen-System**: Automatische LEK-Erstellung mit professionellen Deckblättern
-- **Portable Distribution**: Eigenständige .exe-Datei ohne Python-Installation
+- **Eigenständige Windows-EXE**: .exe-Datei ohne Python-Installation
 - **Seitennummerierung**: Automatische "Seite/Gesamtseiten" Nummerierung ab Seite 2
 - **Benutzerfreundliche GUI**: Intuitive Bedienung mit korrekter Aufgabenvorschau und Metadaten
 
 ## 🚀 Schnellstart
 
-### Option 1: Portable Version (Empfohlen)
+### Option 1: Windows-Release (Empfohlen)
 
 1. Laden Sie `LEK-Bastler_<Version>.zip` herunter
 2. Entpacken Sie das Archiv
@@ -88,7 +88,7 @@ Der konsolidierte Änderungsverlauf wird zentral in `docs/CHANGELOG.md` gepflegt
 - **Python**: 3.13+
 - **GUI**: tkinter
 - **Word-Verarbeitung**: python-docx mit XML-Manipulation
-- **Build**: PyInstaller für portable .exe
+- **Build**: PyInstaller für eigenständige .exe
 - **Kompatibilität**: Windows 10/11
 
 ## 🔧 Build/Setup-Konvention

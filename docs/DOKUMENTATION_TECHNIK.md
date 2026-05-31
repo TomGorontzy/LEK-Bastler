@@ -144,7 +144,7 @@ Empfohlener lokaler Testlauf vor Release:
 
 Aus den historischen Dokumenten übernommen und auf aktuellen Stand angepasst:
 
-- Portable Release als ZIP (primärer Weg)
+- Windows-Release als ZIP (primärer Weg)
 - Lokales Build für interne Tests
 - Netzwerkbereitstellung des entpackten Release-Ordners
 
