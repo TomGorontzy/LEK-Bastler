@@ -7,6 +7,8 @@ Alle relevanten Änderungen an diesem Projekt werden hier dokumentiert.
 - Release-Automation via GitHub Actions ergänzt
 - Automatische Release Notes im Build-Prozess ergänzt
 - Release-Dokumentation und `tools/README.md` hinzugefügt
+- Mermaid-Diagramme und SVG-Grafiken für Anwender-, Technik- und Release-Abläufe ergänzt
+- Produktbezeichnungen in Doku, GUI und Build-Ausgaben auf `LEK-Bastler-Portable` vereinheitlicht
 
 ## [3.6.1] - 2026-05-27
 

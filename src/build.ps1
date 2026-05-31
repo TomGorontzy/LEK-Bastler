@@ -12,7 +12,7 @@ if ($PSVersionTable.PSVersion.Major -ge 6) {
 }
 
 if ($Help) {
-    Write-Host "LEK-Bastler Build-Skript - Optionen:" -ForegroundColor DarkCyan
+    Write-Host "LEK-Bastler-Portable Build-Skript - Optionen:" -ForegroundColor DarkCyan
     Write-Host "  -Help       : Nur diese Hilfe anzeigen" -ForegroundColor DarkGray
     Write-Host "  -SkipBuild  : PyInstaller-Build ueberspringen (nur Deploy-Paket neu erstellen)" -ForegroundColor DarkGray
     exit 0
@@ -73,7 +73,7 @@ $ReleaseDir = 'release'
 $ReleaseZipName = "$DeployFolderName.zip"
 $ReleaseZipPath = Join-Path $ReleaseDir $ReleaseZipName
 
-Write-Host "`nLEK-Bastler Build-Prozess" -ForegroundColor Green
+Write-Host "`nLEK-Bastler-Portable Build-Prozess" -ForegroundColor Green
 Write-Host "=========================`n" -ForegroundColor Green
 
 # ─── Schritt 1: PyInstaller-Build ───────────────────────────────────────────

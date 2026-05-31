@@ -4,7 +4,7 @@
 
 Die Datei `data/Vorlagen/AUFGABEN_MUSTER_STANDARD.docx` ist die Referenz für neue Aufgabensammlungen.
 
-Sie basiert auf der tabellenbasierten Struktur von `AUFGABEN_GERUEST_WORD.docx` und ist so aufgebaut, dass der Import im LEK-Bastler möglichst zuverlässig funktioniert.
+Sie basiert auf der tabellenbasierten Struktur von `AUFGABEN_GERUEST_WORD.docx` und ist so aufgebaut, dass der Import im LEK-Bastler-Portable möglichst zuverlässig funktioniert.
 
 ## Empfohlener Ablauf für neue Aufgabensammlungen
 
@@ -18,7 +18,7 @@ Sie basiert auf der tabellenbasierten Struktur von `AUFGABEN_GERUEST_WORD.docx` 
 
 ## Qualitäts-Check vor Übergabe
 
-- Beim Laden in LEK-Bastler werden Aufgaben erkannt.
+- Beim Laden in LEK-Bastler-Portable werden Aufgaben erkannt.
 - Spalten `Confidence` und `Warnungen` prüfen.
 - Problematische Aufgaben markieren, korrigieren und erneut laden.
 

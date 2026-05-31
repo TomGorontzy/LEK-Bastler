@@ -1,4 +1,4 @@
-# LEK-Bastler
+# LEK-Bastler-Portable
 
 Ein Desktop-Werkzeug zum Auswählen und Exportieren von Aufgaben aus Word-Dokumenten mit robuster Strukturübertragung, Vorlagenlogik und portabler Windows-Auslieferung.
 
@@ -47,6 +47,8 @@ Der aktuelle Versionsstand wird über `src/build_version_info.txt` und die GitHu
 3. Geeignete Aufgaben auswählen
 4. Optional ein LEK-Thema vergeben
 5. Export in `data/LEKs/` starten
+
+![Anwenderablauf LEK-Bastler-Portable](docs/diagramme/anwender_ablauf.svg)
 
 ## 📋 Verwendung
 
@@ -118,6 +120,7 @@ Sie dient als Basistext für den GitHub-Release-Eintrag.
 
 - Projekt: `docs/DOKUMENTATION_PROJEKT.md`
 - Anwender: `docs/DOKUMENTATION_ANWENDER.md`
+- Diagramme: `docs/DOKUMENTATION_DIAGRAMME.md`
 - Technik: `docs/DOKUMENTATION_TECHNIK.md`
 - Releases: `docs/DOKUMENTATION_RELEASES.md`
 - Änderungen: `docs/CHANGELOG.md`

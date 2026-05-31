@@ -22,7 +22,7 @@ Nachvollziehbare, wiederholbare Dokumentation der Release-Smoketests je Version.
 
 ### Entpack- und Inhaltsprüfung
 
-- Entpackziel: `%TEMP%/LEK-Bastler-smoke-3.6.1`
+- Entpackziel: `%TEMP%/LEK-Bastler-Portable-smoke-3.6.1`
 - Paketstruktur: Dateien/Ordner direkt im ZIP-Root (kein zusätzlicher Top-Level-Unterordner)
 - Pflichtinhalte geprüft: OK
   - `LEK-Bastler-Portable_3.6.1.exe`

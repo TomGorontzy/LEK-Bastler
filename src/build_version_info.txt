@@ -16,12 +16,12 @@ VSVersionInfo(
       StringTable(
         '040904B0',
         [StringStruct('CompanyName', 'INN-tegrativ gGmbH'),
-        StringStruct('FileDescription', 'LEK-Bastler Portable'),
+        StringStruct('FileDescription', 'LEK-Bastler-Portable'),
         StringStruct('FileVersion', '3.6.1'),
         StringStruct('InternalName', 'LEK-Bastler-Portable'),
         StringStruct('LegalCopyright', 'INN-tegrativ gGmbH'),
         StringStruct('OriginalFilename', 'LEK-Bastler-Portable.exe'),
-        StringStruct('ProductName', 'LEK-Bastler'),
+        StringStruct('ProductName', 'LEK-Bastler-Portable'),
         StringStruct('ProductVersion', '3.6.1')])
       ]),
     VarFileInfo([VarStruct('Translation', [1033, 1200])])

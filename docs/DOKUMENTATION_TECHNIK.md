@@ -34,6 +34,12 @@ Aktueller Versionsstand: **3.6.1**.
 - Icon-Fallback bei PyInstaller: `sys._MEIPASS`
 - Exportziel: Verzeichnis `data/LEKs/` (wird bei Bedarf automatisch angelegt)
 
+## 3a. Systemübersicht
+
+![Systemübersicht LEK-Bastler-Portable](diagramme/technik_systemuebersicht.svg)
+
+Die Grafik zeigt die zentralen Quellmodule, die Konfigurationsdaten und den Exportpfad des LEK-Bastler-Portable.
+
 ## 4. Inhaltserhaltung beim Export
 
 - Übernahme der Aufgabenstrukturen inklusive Tabellen

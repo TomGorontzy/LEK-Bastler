@@ -2,7 +2,7 @@
 
 ## 1. Zweck
 
-Mit dem LEK-Bastler erstellen Sie aus vorbereiteten Aufgaben-Worddateien schnell eine Lernerfolgskontrolle (LEK).
+Mit dem LEK-Bastler-Portable erstellen Sie aus vorbereiteten Aufgaben-Worddateien schnell eine Lernerfolgskontrolle (LEK).
 
 ## 2. Start
 
@@ -27,6 +27,12 @@ Hinweis zum aktuellen Stand: Version **3.6.1**.
 5. Zieldatei im Ordner `data/LEKs/` speichern
 
 Die vorgeschlagenen Dateinamen werden automatisch erzeugt und können bei Bedarf geändert werden.
+
+## 3a. Visualisierter Ablauf
+
+![Anwenderablauf LEK-Bastler-Portable](diagramme/anwender_ablauf.svg)
+
+Das Diagramm zeigt den typischen Pfad von der Aufgabensammlung bis zum Export in `data/LEKs/`.
 
 ## 4. Wichtige Hinweise
 

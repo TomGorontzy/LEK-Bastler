@@ -1,5 +1,5 @@
 """
-LEK-Bastler - Hauptprogramm v1.0
+LEK-Bastler-Portable - Hauptprogramm v1.0
 Grafische Benutzeroberfläche für die Aufgabenauswahl aus Word-Dokumenten
 
 Features:
@@ -31,7 +31,7 @@ class LEKBastlerGUI:
     def __init__(self, root):
         self.root = root
         self._apply_window_icon()
-        self.root.title("LEK-Bastler - Aufgabenauswahl")
+        self.root.title("LEK-Bastler-Portable - Aufgabenauswahl")
         self.root.geometry("1120x760")
         self.root.minsize(1024, 700)
         self._apply_window_state()

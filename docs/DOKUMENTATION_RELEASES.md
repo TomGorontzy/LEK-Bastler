@@ -24,6 +24,8 @@ Nach `src/build.ps1` entstehen:
 
 Workflow-Datei: `.github/workflows/release.yml`
 
+![Release-Pipeline LEK-Bastler-Portable](diagramme/release_pipeline.svg)
+
 Der Workflow:
 
 1. Liest Version aus `src/build_version_info.txt`
