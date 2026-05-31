@@ -180,6 +180,27 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 )
 Write-Host "   $ReleaseZipName" -ForegroundColor DarkGray
 
+# ─── Schritt 7: Release Notes erzeugen ───────────────────────────────────────
+Write-Host "`n5. Release Notes werden erstellt..." -ForegroundColor Yellow
+$ReleaseNotesName = "RELEASE_NOTES_$Version.md"
+$ReleaseNotesPath = Join-Path $ReleaseDir $ReleaseNotesName
+@(
+    "# Release Notes v$Version"
+    ""
+    "## Enthalten"
+    ""
+    "- LEK-Bastler-Portable im Versionsstand $Version."
+    "- Versioniertes Deploy-Verzeichnis und Release-ZIP wurden erzeugt."
+    "- Technische Dokumentation und Anwenderdokumentation sind enthalten."
+    ""
+    "## Artefakte"
+    ""
+    "- dist/$DeployFolderName/$VersionedExeName"
+    "- release/$ReleaseZipName"
+    "- release/$ReleaseNotesName"
+) | Set-Content -Path $ReleaseNotesPath -Encoding UTF8
+Write-Host "   $ReleaseNotesName" -ForegroundColor DarkGray
+
 # ─── Ergebnis ─────────────────────────────────────────────────────────────────
 Write-Host "`nBuild erfolgreich abgeschlossen!" -ForegroundColor Green
 $exeSize = [math]::Round((Get-Item $VersionedExePath).Length / 1MB, 1)
@@ -188,5 +209,6 @@ Write-Host "Deploy-Verzeichnis : $DeployDir" -ForegroundColor Cyan
 Write-Host "EXE-Datei          : $VersionedExeName ($exeSize MB)" -ForegroundColor Cyan
 $zipSize = [math]::Round((Get-Item $ReleaseZipPath).Length / 1MB, 1)
 Write-Host "Release-ZIP        : $ReleaseZipPath ($zipSize MB)" -ForegroundColor Cyan
+Write-Host "Release Notes      : $ReleaseNotesPath" -ForegroundColor Cyan
 $deployFiles = (Get-ChildItem $DeployDir -Recurse -File).Count
 Write-Host "Dateien gesamt     : $deployFiles" -ForegroundColor Cyan

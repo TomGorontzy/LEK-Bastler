@@ -1,0 +1,132 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Derive version
+        id: set_version
+        shell: pwsh
+        run: |
+          $filePath = "src/build_version_info.txt"
+          $content = Get-Content $filePath -Raw
+
+          if ($content -match "StringStruct\('FileVersion',\s*'([^']+)'\)") {
+            $fileVersion = $matches[1]
+          }
+          else {
+            Write-Error "Konnte FileVersion nicht aus $filePath lesen."
+            exit 1
+          }
+
+          if ("${{ github.ref }}".StartsWith("refs/tags/")) {
+            $version = "${{ github.ref_name }}".TrimStart('v')
+          }
+          else {
+            $version = $fileVersion
+          }
+
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Guard tag matches file version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $tagName = "${{ github.ref_name }}"
+          if ($tagName -notmatch '^v\d+\.\d+\.\d+$') {
+            Write-Error "Ungültiges Tag-Format '$tagName'. Erwartet: vMAJOR.MINOR.PATCH"
+            exit 1
+          }
+
+          $content = Get-Content "src/build_version_info.txt" -Raw
+          if ($content -notmatch "StringStruct\('FileVersion',\s*'([^']+)'\)") {
+            Write-Error "Konnte FileVersion nicht aus src/build_version_info.txt lesen."
+            exit 1
+          }
+
+          $fileVersion = $matches[1]
+          $tagVersion = $tagName.TrimStart('v')
+
+          if ($tagVersion -ne $fileVersion) {
+            Write-Error "Versionskonflikt: Tag '$tagVersion' != FileVersion '$fileVersion'."
+            exit 1
+          }
+
+          Write-Host "Version guard passed: $tagVersion"
+
+      - name: Setup project environment
+        shell: pwsh
+        run: |
+          ./src/setup.ps1
+
+      - name: Build release package
+        shell: pwsh
+        run: |
+          ./src/build.ps1
+
+      - name: Ensure release notes file
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.set_version.outputs.version }}
+        run: |
+          $releaseDir = "release"
+          New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+          $notesPath = Join-Path $releaseDir "RELEASE_NOTES_${env:VERSION}.md"
+          if (-not (Test-Path $notesPath)) {
+            Set-Content -Path $notesPath -Encoding utf8 -NoNewline -Value "# Release Notes v${env:VERSION}`r`n`r`n## Enthalten`r`n`r`n- LEK-Bastler-Portable im Versionsstand ${env:VERSION}.`r`n- Build/Release-Artefakte aus dist und release wurden erzeugt.`r`n`r`n## Artefakte`r`n`r`n- dist/LEK-Bastler-Portable_${env:VERSION}/LEK-Bastler-Portable_${env:VERSION}.exe`r`n- release/LEK-Bastler-Portable_${env:VERSION}.zip`r`n- release/RELEASE_NOTES_${env:VERSION}.md`r`n"
+          }
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets-v${{ steps.set_version.outputs.version }}
+          path: |
+            dist/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}.exe
+            release/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}.zip
+            release/RELEASE_NOTES_${{ steps.set_version.outputs.version }}.md
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: LEK-Bastler-Portable ${{ github.ref_name }}
+          body_path: release/RELEASE_NOTES_${{ steps.set_version.outputs.version }}.md
+          generate_release_notes: false
+          files: |
+            dist/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}.exe
+            release/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}.zip
+            release/RELEASE_NOTES_${{ steps.set_version.outputs.version }}.md
+
+      - name: Guardrail - normalize release titles
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $releases = gh release list --limit 100 --json tagName,name | ConvertFrom-Json
+          foreach ($r in $releases) {
+            if ($null -ne $r.name -and $r.name -match '^Release\s+') {
+              $newTitle = "LEK-Bastler-Portable $($r.tagName)"
+              Write-Host "Guardrail: '$($r.name)' -> '$newTitle'"
+              gh release edit $r.tagName --title $newTitle | Out-Null
+            }
+          }

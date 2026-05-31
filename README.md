@@ -101,11 +101,25 @@ LEK-Bastler-Portable/
 - Primäre Skripte: `src/build.ps1`, `src/setup.ps1`
 - Root-Skripte `build.ps1` und `setup.ps1` sind Kompatibilitäts-Entrypoints.
 
+## 🚀 GitHub Release-Automation
+
+- Workflow: `.github/workflows/release.yml`
+- Trigger: Push eines Tags im Format `v*` (z. B. `v3.6.1`)
+- Guard: Tag-Version muss exakt zur `FileVersion` aus `src/build_version_info.txt` passen
+- Ergebnis: Build via `src/setup.ps1` + `src/build.ps1`, Upload von EXE/ZIP/Release Notes als Assets, Release-Titel-Schema `LEK-Bastler-Portable v...`
+
+Für jeden Build/Release wird zusätzlich eine Notes-Datei erzeugt:
+
+- `release/RELEASE_NOTES_<version>.md`
+
+Sie dient als Basistext für den GitHub-Release-Eintrag.
+
 ## ✅ Qualitätssicherung
 
 - Automatisierte Regressionstests: `tests/test_regression_core.py`
 - Testfallmatrix: `memos/MEMO_REGRESSIONSTEST_MATRIX.md`
 - Release-Checkliste: `docs/RELEASE_QA_CHECKLISTE.md`
+- Release-Prozess: `docs/DOKUMENTATION_RELEASES.md`
 
 Diese drei Artefakte bilden den Mindest-Qualitätsrahmen vor jedem Release.
 
