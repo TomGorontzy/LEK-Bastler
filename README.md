@@ -110,7 +110,7 @@ LEK-Bastler-Portable/
 
 Für jeden Build/Release wird zusätzlich eine Notes-Datei erzeugt:
 
-- `release/RELEASE_NOTES_<version>.md`
+- `release/RELEASE_NOTES_v<version>.md`
 
 Sie dient als Basistext für den GitHub-Release-Eintrag.
 

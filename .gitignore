@@ -3,7 +3,8 @@ dist/
 build/
 *.exe
 *.spec.bak
-release/
+release/*
+!release/RELEASE_NOTES*.md
 
 # Portable-Version (kompilierte Distribution)
 LEK-Bastler-Portable/

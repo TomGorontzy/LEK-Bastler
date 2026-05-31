@@ -182,7 +182,7 @@ Write-Host "   $ReleaseZipName" -ForegroundColor DarkGray
 
 # ─── Schritt 7: Release Notes erzeugen ───────────────────────────────────────
 Write-Host "`n5. Release Notes werden erstellt..." -ForegroundColor Yellow
-$ReleaseNotesName = "RELEASE_NOTES_$Version.md"
+$ReleaseNotesName = "RELEASE_NOTES_v$Version.md"
 $ReleaseNotesPath = Join-Path $ReleaseDir $ReleaseNotesName
 @(
     "# Release Notes v$Version"

@@ -18,7 +18,7 @@ Nach `src/build.ps1` entstehen:
 - Deploy-Ordner: `dist/LEK-Bastler-Portable_<Version>/`
 - Deploy-EXE: `dist/LEK-Bastler-Portable_<Version>/LEK-Bastler-Portable_<Version>.exe`
 - Release-ZIP: `release/LEK-Bastler-Portable_<Version>.zip`
-- Release Notes: `release/RELEASE_NOTES_<Version>.md`
+- Release Notes: `release/RELEASE_NOTES_v<Version>.md`
 
 ## GitHub Release-Workflow
 

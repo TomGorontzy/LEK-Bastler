@@ -89,9 +89,9 @@ jobs:
         run: |
           $releaseDir = "release"
           New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
-          $notesPath = Join-Path $releaseDir "RELEASE_NOTES_${env:VERSION}.md"
+          $notesPath = Join-Path $releaseDir "RELEASE_NOTES_v${env:VERSION}.md"
           if (-not (Test-Path $notesPath)) {
-            Set-Content -Path $notesPath -Encoding utf8 -NoNewline -Value "# Release Notes v${env:VERSION}`r`n`r`n## Enthalten`r`n`r`n- LEK-Bastler-Portable im Versionsstand ${env:VERSION}.`r`n- Build/Release-Artefakte aus dist und release wurden erzeugt.`r`n`r`n## Artefakte`r`n`r`n- dist/LEK-Bastler-Portable_${env:VERSION}/LEK-Bastler-Portable_${env:VERSION}.exe`r`n- release/LEK-Bastler-Portable_${env:VERSION}.zip`r`n- release/RELEASE_NOTES_${env:VERSION}.md`r`n"
+            Set-Content -Path $notesPath -Encoding utf8 -NoNewline -Value "# Release Notes v${env:VERSION}`r`n`r`n## Enthalten`r`n`r`n- LEK-Bastler-Portable im Versionsstand ${env:VERSION}.`r`n- Build/Release-Artefakte aus dist und release wurden erzeugt.`r`n`r`n## Artefakte`r`n`r`n- dist/LEK-Bastler-Portable_${env:VERSION}/LEK-Bastler-Portable_${env:VERSION}.exe`r`n- release/LEK-Bastler-Portable_${env:VERSION}.zip`r`n- release/RELEASE_NOTES_v${env:VERSION}.md`r`n"
           }
 
       - name: Upload workflow artifacts
@@ -101,7 +101,7 @@ jobs:
           path: |
             dist/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}.exe
             release/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}.zip
-            release/RELEASE_NOTES_${{ steps.set_version.outputs.version }}.md
+            release/RELEASE_NOTES_v${{ steps.set_version.outputs.version }}.md
 
       - name: Publish GitHub release
         if: startsWith(github.ref, 'refs/tags/')
@@ -109,12 +109,12 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: LEK-Bastler-Portable ${{ github.ref_name }}
-          body_path: release/RELEASE_NOTES_${{ steps.set_version.outputs.version }}.md
+          body_path: release/RELEASE_NOTES_v${{ steps.set_version.outputs.version }}.md
           generate_release_notes: false
           files: |
             dist/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}.exe
             release/LEK-Bastler-Portable_${{ steps.set_version.outputs.version }}.zip
-            release/RELEASE_NOTES_${{ steps.set_version.outputs.version }}.md
+            release/RELEASE_NOTES_v${{ steps.set_version.outputs.version }}.md
 
       - name: Guardrail - normalize release titles
         if: startsWith(github.ref, 'refs/tags/')
