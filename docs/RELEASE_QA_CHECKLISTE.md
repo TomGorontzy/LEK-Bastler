@@ -20,8 +20,8 @@ Kurzer, reproduzierbarer Pflichtdurchlauf vor jedem Release.
 
 ## 2a) Post-Release-Verifikation (skriptbar)
 
-- ZIP-Artefakt vorhanden, Größe + SHA256 protokolliert
-- ZIP in isoliertes Temp-Verzeichnis entpackt
+- Release-ZIP-Artefakt vorhanden, Größe + SHA256 protokolliert
+- Release-ZIP in isoliertes Temp-Verzeichnis entpackt
 - Pflichtinhalte vorhanden (`*.exe`, `README.md`, `LIZENZ.txt`, `data/`, `docs/`, `data/LEKs/README.md`)
 - EXE startet bis GUI-Idle (kurzer Starttest), danach kontrolliert beendet
 - Ergebnisse im Release-Smoketest-Protokoll dokumentiert

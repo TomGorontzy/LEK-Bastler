@@ -22,5 +22,5 @@ Datum: 2026-05-27
 ## Artefakte
 
 - EXE: `dist/LEK-Bastler_3.6.1/LEK-Bastler_3.6.1.exe`
-- Release-Paket: `release/LEK-Bastler_3.6.1.zip`
+- Release-ZIP: `release/LEK-Bastler_3.6.1.zip`
 - Release Notes: `release/RELEASE_NOTES_v3.6.1.md`

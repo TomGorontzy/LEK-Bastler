@@ -13,7 +13,7 @@ Der aktuelle Versionsstand wird über `src/build_version_info.txt` und die GitHu
 - **Präzise Metadaten-Extraktion**: Schwierigkeit und Keywords aus vollständigem Aufgabeninhalt
 - **Optimierte GUI-Darstellung**: Spaltenbreiten angepasst für bessere Lesbarkeit
 - **Vorlagen-System**: Automatische LEK-Erstellung mit professionellen Deckblättern
-- **Eigenständige Windows-EXE**: .exe-Datei ohne Python-Installation
+- **Eigenständige Windows-EXE**: Ausführbare Datei ohne Python-Installation
 - **Seitennummerierung**: Automatische "Seite/Gesamtseiten" Nummerierung ab Seite 2
 - **Benutzerfreundliche GUI**: Intuitive Bedienung mit korrekter Aufgabenvorschau und Metadaten
 
@@ -101,7 +101,7 @@ Der konsolidierte Änderungsverlauf wird zentral in `docs/CHANGELOG.md` gepflegt
 - Workflow: `.github/workflows/release.yml`
 - Trigger: Push eines Tags im Format `v*` (z. B. `v3.6.1`)
 - Guard: Tag-Version muss exakt zur `FileVersion` aus `src/build_version_info.txt` passen
-- Ergebnis: Build via `src/setup.ps1` + `src/build.ps1`, Upload von EXE/ZIP/Release Notes als Assets, Release-Titel-Schema `LEK-Bastler v...`
+- Ergebnis: Build via `src/setup.ps1` + `src/build.ps1`, Upload von Windows-EXE, Release-ZIP und Release Notes als Assets, Release-Titel-Schema `LEK-Bastler v...`
 
 Für jeden Build/Release wird zusätzlich eine Notes-Datei erzeugt:
 

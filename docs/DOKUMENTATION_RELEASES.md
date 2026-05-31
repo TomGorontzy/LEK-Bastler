@@ -31,7 +31,7 @@ Der Workflow:
 1. Liest Version aus `src/build_version_info.txt`
 2. Prüft Tag-Format und Versionsgleichheit
 3. Führt `src/setup.ps1` und `src/build.ps1` aus
-4. Veröffentlicht EXE, ZIP und Release-Notes als Assets
+4. Veröffentlicht Windows-EXE, Release-ZIP und Release Notes als Assets
 5. Erstellt/aktualisiert Release-Titel im Produktschema
 
 Release-Titel-Schema:

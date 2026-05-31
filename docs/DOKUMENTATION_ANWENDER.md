@@ -6,7 +6,7 @@ Mit dem LEK-Bastler erstellen Sie aus vorbereiteten Aufgaben-Worddateien schnell
 
 ## 2. Start
 
-### Eigenständige EXE
+### Eigenständige Windows-EXE
 
 1. Öffnen Sie den ausgelieferten Ordner `LEK-Bastler_<Version>`.
 2. Starten Sie `LEK-Bastler_<Version>.exe`.
@@ -52,7 +52,7 @@ Das Diagramm zeigt den typischen Pfad von der Aufgabensammlung bis zum Export in
 
 ### App startet nicht
 
-- Prüfen, ob alle Dateien des Release-Pakets vorhanden sind.
+- Prüfen, ob alle Dateien des Windows-Releases vorhanden sind.
 - EXE einmal lokal auf Laufwerk statt direkt aus Cloud-Sync-Cache starten.
 - Prüfen, ob Virenschutz/SmartScreen das Starten blockiert.
 
@@ -68,7 +68,7 @@ Das Diagramm zeigt den typischen Pfad von der Aufgabensammlung bis zum Export in
 - Neue EXE nach Build verwenden.
 - Bei Bedarf Windows Explorer neu starten (Iconcache-Aktualisierung).
 
-### data/LEKs-Ordner fehlt im ZIP
+### data/LEKs-Ordner fehlt im Windows-Release
 
 - In aktuellen Releases ist `data/LEKs/` enthalten.
 - Beim Export wird `data/LEKs/` zusätzlich zur Laufzeit angelegt, falls nötig.

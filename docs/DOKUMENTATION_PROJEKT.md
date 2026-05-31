@@ -119,7 +119,7 @@ Empfohlene Mindestprüfungen:
 1. Start aus Python (`src/main.py`)
 2. Build via `src/build.ps1` erfolgreich
 3. Deploy-Struktur vollständig
-4. ZIP-Inhalt vollständig
+4. Release-ZIP-Inhalt vollständig
 5. Testexport mit einer Datei aus `data/Aufgaben/`
 6. Icon-Prüfung (EXE + Fenstertitel)
 

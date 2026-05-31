@@ -6,7 +6,7 @@ Nachvollziehbare, wiederholbare Dokumentation der Release-Smoketests je Version.
 
 ## Prüfschema (pro Release)
 
-1. Integrität des ZIP-Artefakts (Existenz, Größe, SHA256)
+1. Integrität des Release-ZIP-Artefakts (Existenz, Größe, SHA256)
 2. Entpacktest in isoliertes Temp-Verzeichnis
 3. Pflichtinhalte vorhanden
 4. EXE-Startprobe bis GUI-Idle
@@ -23,7 +23,7 @@ Nachvollziehbare, wiederholbare Dokumentation der Release-Smoketests je Version.
 ### Entpack- und Inhaltsprüfung
 
 - Entpackziel: `%TEMP%/LEK-Bastler-smoke-3.6.1`
-- Paketstruktur: Dateien/Ordner direkt im ZIP-Root (kein zusätzlicher Top-Level-Unterordner)
+- Archivstruktur: Dateien/Ordner direkt im ZIP-Root (kein zusätzlicher Top-Level-Unterordner)
 - Pflichtinhalte geprüft: OK
   - `LEK-Bastler_3.6.1.exe`
   - `README.md`
