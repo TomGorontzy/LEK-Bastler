@@ -79,8 +79,8 @@ Nachvollziehbare, wiederholbare Dokumentation der Release-Smoketests je Version.
 ### Eingangsdaten
 
 - Artefakt: `release/LEK-Bastler_3.7.0.zip`
-- Größe: `15.72 MB`
-- SHA256: `28CE61D6E9DAC02597760D00F0F71FD878CA3B751514CF798A16269715BEF8A3`
+- Größe: `15.71 MB` (`16,473,649` Bytes)
+- SHA256: `6440A31F10F9B5043F78A5EA135278745FA62D37B413F50452A4C0C365C08E98`
 
 ### Entpack- und Inhaltsprüfung
 
@@ -104,3 +104,8 @@ Nachvollziehbare, wiederholbare Dokumentation der Release-Smoketests je Version.
 
 - **Smoketest bestanden**
 - Keine technischen Auffälligkeiten im Post-Release-Check
+
+### Post-Release (GitHub)
+
+- Release veröffentlicht/aktualisiert unter: <https://github.com/TomGorontzy/LEK-Bastler/releases/tag/v3.7.0>
+- Enthaltenes Asset: `LEK-Bastler_3.7.0.zip`
