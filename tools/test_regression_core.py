@@ -581,6 +581,70 @@ class RegressionCoreTests(unittest.TestCase):
             next_text = ''.join((n.text or '') for n in next_elem.xpath('.//w:t')).strip()
             self.assertEqual(next_text, '')
 
+    def test_structured_export_preserves_blank_paragraphs_in_task_cell(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src_path = os.path.join(tmp, 'structured_blank_lines.docx')
+
+            doc = Document()
+            table = doc.add_table(rows=0, cols=2)
+            for key, value in [
+                ('ID', 'A-401'),
+                ('Titel', 'Leerzeilen erhalten'),
+                ('Kategorie', 'Demo'),
+                ('Schwierigkeitsgrad', 'mittel'),
+                ('Aufgabenstellung (Pflicht)', ''),
+            ]:
+                row = table.add_row()
+                row.cells[0].text = key
+                row.cells[1].text = value
+
+            task_cell = table.rows[-1].cells[1]
+            task_cell.text = ''
+            task_cell.paragraphs[0].add_run('Erste Zeile')
+            task_cell.add_paragraph('')
+            task_cell.add_paragraph('Dritte Zeile')
+            doc.save(src_path)
+
+            task = self._extract_first_task(src_path)
+            out_doc = Document()
+            self.wp._prepare_target_document_context(out_doc, [task])
+            self.wp.append_task_to_lek_document(out_doc, task)
+
+            texts = [str(p.text or '') for p in out_doc.paragraphs]
+            self.assertIn('Erste Zeile', texts)
+            self.assertIn('Dritte Zeile', texts)
+
+            first_idx = texts.index('Erste Zeile')
+            third_idx = texts.index('Dritte Zeile')
+            self.assertGreater(third_idx, first_idx)
+            self.assertTrue(any(t == '' for t in texts[first_idx + 1:third_idx]))
+
+    def test_export_sets_keep_rules_on_task_heading_and_content(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src_path = os.path.join(tmp, 'keep_rules.docx')
+
+            doc = Document()
+            doc.add_heading('Kategorie', level=1)
+            doc.add_heading('Aufgabe 1 Zusammenhalt', level=2)
+            doc.add_paragraph('Erster Inhaltsabsatz.')
+            doc.add_paragraph('Zweiter Inhaltsabsatz.')
+            doc.save(src_path)
+
+            task = self._extract_first_task(src_path)
+            out_doc = Document()
+            self.wp._prepare_target_document_context(out_doc, [task])
+            self.wp.append_task_to_lek_document(out_doc, task)
+
+            self.assertTrue(out_doc.paragraphs, 'Keine Absätze im Exportdokument gefunden.')
+
+            heading = out_doc.paragraphs[0]
+            self.assertTrue(bool(heading.paragraph_format.keep_with_next))
+            self.assertTrue(bool(heading.paragraph_format.keep_together))
+
+            nonempty = [p for p in out_doc.paragraphs if str(p.text or '').strip()]
+            self.assertGreaterEqual(len(nonempty), 2)
+            self.assertTrue(any(bool(p.paragraph_format.keep_together) for p in nonempty[1:]))
+
     def test_external_table_reference_resolves_in_collection_subfolder(self):
         with tempfile.TemporaryDirectory() as tmp:
             aufgaben_dir = os.path.join(tmp, 'data', 'Aufgaben')

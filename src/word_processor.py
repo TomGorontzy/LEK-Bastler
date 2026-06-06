@@ -2262,7 +2262,8 @@ class WordProcessor:
             written = self._append_cell_block_elements_for_lek(doc, cell, source_part=source_part, task=task)
 
         if not written and str(fallback_text or '').strip():
-            doc.add_paragraph(str(fallback_text).strip())
+            fallback_paragraph = doc.add_paragraph(str(fallback_text).strip())
+            self._set_paragraph_keep_rules(fallback_paragraph, keep_with_next=True, keep_together=True)
             written = True
 
         return written
@@ -2285,8 +2286,6 @@ class WordProcessor:
 
             if tag_local == 'p':
                 paragraph_text = ''.join((node.text or '') for node in child.xpath('.//w:t')).strip()
-                if not paragraph_text:
-                    continue
                 marker = self._parse_external_table_reference_line(paragraph_text)
                 if marker and marker.get('type') == 'table':
                     appended_any = self._insert_external_table_reference(doc, task) or appended_any
@@ -2307,6 +2306,14 @@ class WordProcessor:
                 )
 
             self._remap_num_ids_in_element(cloned, self._num_id_map)
+
+            if tag_local == 'p':
+                self._set_keep_rules_on_paragraph_xml(cloned, keep_next=True, keep_lines=True)
+            elif tag_local == 'sdt':
+                for node in cloned.iter():
+                    node_tag = node.tag.split('}')[-1] if '}' in node.tag else node.tag
+                    if node_tag == 'p':
+                        self._set_keep_rules_on_paragraph_xml(node, keep_next=True, keep_lines=True)
 
             if tag_local == 'tbl':
                 # Vor Tabellen immer eine Leerzeile
@@ -2449,6 +2456,14 @@ class WordProcessor:
 
                 self._remap_num_ids_in_element(cloned, self._num_id_map)
 
+                if etype == 'paragraph':
+                    self._set_keep_rules_on_paragraph_xml(cloned, keep_next=True, keep_lines=True)
+                elif etype == 'sdt':
+                    for node in cloned.iter():
+                        node_tag = node.tag.split('}')[-1] if '}' in node.tag else node.tag
+                        if node_tag == 'p':
+                            self._set_keep_rules_on_paragraph_xml(node, keep_next=True, keep_lines=True)
+
                 if etype == 'table':
                     doc.add_paragraph()
                     self._set_table_full_width_xml(cloned)
@@ -2546,11 +2561,50 @@ class WordProcessor:
         except Exception:
             pass
 
+    def _set_paragraph_keep_rules(self, paragraph, keep_with_next=False, keep_together=True):
+        """Setzt Absatzregeln, um Seitenumbrüche innerhalb einer Aufgabe zu reduzieren."""
+        try:
+            paragraph.paragraph_format.keep_with_next = bool(keep_with_next)
+            if keep_together:
+                paragraph.paragraph_format.keep_together = True
+        except Exception:
+            pass
+
+    def _set_keep_rules_on_paragraph_xml(self, paragraph_xml, keep_next=False, keep_lines=True):
+        """Setzt Keep-Regeln direkt auf ein w:p-Element."""
+        if paragraph_xml is None:
+            return
+
+        try:
+            p_pr = paragraph_xml.find(qn('w:pPr'))
+            if p_pr is None:
+                p_pr = OxmlElement('w:pPr')
+                paragraph_xml.insert(0, p_pr)
+
+            keep_next_node = p_pr.find(qn('w:keepNext'))
+            if keep_next:
+                if keep_next_node is None:
+                    keep_next_node = OxmlElement('w:keepNext')
+                    p_pr.append(keep_next_node)
+            elif keep_next_node is not None:
+                p_pr.remove(keep_next_node)
+
+            keep_lines_node = p_pr.find(qn('w:keepLines'))
+            if keep_lines:
+                if keep_lines_node is None:
+                    keep_lines_node = OxmlElement('w:keepLines')
+                    p_pr.append(keep_lines_node)
+            elif keep_lines_node is not None:
+                p_pr.remove(keep_lines_node)
+        except Exception:
+            pass
+
     def _append_task_heading_with_points(self, doc, task, table=None):
         """Schreibt den Aufgabentitel als Heading 1 und Punkte rechtsbündig mit Rahmen."""
         title_text = str(task.get('title') or '').strip() or 'Ohne Titel'
         paragraph = doc.add_heading(level=1)
         paragraph.add_run(title_text)
+        self._set_paragraph_keep_rules(paragraph, keep_with_next=True, keep_together=True)
 
         points_text = self._extract_points_text(task, table=table)
         if not points_text:
@@ -2573,6 +2627,8 @@ class WordProcessor:
         points_run.bold = True
         self._apply_run_border(points_run)
 
+        return paragraph
+
     def append_task_to_lek_document(self, doc, task):
         """Fügt eine Aufgabe als Heading1 (+ Punkte) und Inhalt in ein LEK-Dokument ein."""
         all_elements = task.get('all_elements') or []
@@ -2582,7 +2638,8 @@ class WordProcessor:
 
         self._append_task_heading_with_points(doc, task, table=table)
         # Nach Überschrift 1 immer eine Leerzeile einfügen.
-        doc.add_paragraph()
+        spacer = doc.add_paragraph()
+        self._set_paragraph_keep_rules(spacer, keep_with_next=True, keep_together=True)
         self.append_task_content_for_lek(doc, task, include_title=False)
 
     def _set_table_full_width_xml(self, table_xml_element):
