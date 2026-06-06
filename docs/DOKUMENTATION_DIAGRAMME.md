@@ -49,6 +49,37 @@ Die Mermaid-Quellen nutzen ein gemeinsames Farbschema und Klassenmodell:
 - `data` = Dateien, Ordner, Konfigurationen
 - `release` = Build-/Release-Artefakte
 
+## Starter-Snippet für neue Diagramme
+
+Für neue Mermaid-Diagramme kann dieses kompakte Grundgerüst direkt übernommen werden:
+
+```mermaid
+flowchart LR
+	A[Beispiel UI] --> B[Beispiel Prozess]
+	B --> C{Entscheidung}
+	C -->|Ja| D[Qualität/Prüfung]
+	C -->|Nein| E[Datenziel]
+	D --> F[Release-Artefakt]
+
+	classDef ui fill:#DCEEFF,stroke:#1565C0,color:#0B3D91,stroke-width:1.4px;
+	classDef process fill:#FFF2CC,stroke:#EF6C00,color:#8A3D00,stroke-width:1.4px;
+	classDef data fill:#DFF3E3,stroke:#2E7D32,color:#1B5E20,stroke-width:1.4px;
+	classDef quality fill:#F1E4FF,stroke:#7B1FA2,color:#4A148C,stroke-width:1.4px;
+	classDef decision fill:#FFE3E3,stroke:#C62828,color:#8E0000,stroke-width:1.4px;
+	classDef release fill:#E8E3FF,stroke:#512DA8,color:#311B92,stroke-width:1.4px;
+
+	class A ui;
+	class B process;
+	class C decision;
+	class D quality;
+	class E data;
+	class F release;
+
+	linkStyle default stroke:#546E7A,stroke-width:1.9px;
+```
+
+Hinweis: `linkStyle` mit `stroke` und `stroke-width` ist bewusst mermaid-cli-kompatibel gehalten.
+
 ## Hinweis
 
 Die Mermaid-Dateien sind die pflegbaren Quellen. Die SVG-Dateien dienen als direkt einbindbare Grafiken für GitHub, VS Code und Release-Dokumentation.
