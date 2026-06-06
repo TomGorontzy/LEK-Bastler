@@ -1,10 +1,20 @@
 flowchart TB
-    A[main.py GUI] --> B[import_wizard.py]
+    A[main.py GUI] --> B[import_wizard.py / ImportSession]
     A --> C[task_selector.py]
     A --> D[word_processor.py]
     D --> E[template_manager.py]
+
     F[data/Aufgaben] --> D
     G[data/config/import_rules.json] --> D
     H[data/Vorlagen] --> E
+
+    B --> A
+    C --> A
+    D --> A
+    E --> D
+
     D --> I[data/LEKs]
     E --> I
+
+    J[tools/test_regression_core.py] --> A
+    J --> D

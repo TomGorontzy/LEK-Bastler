@@ -26,6 +26,8 @@ Workflow-Datei: `.github/workflows/release.yml`
 
 ![Release-Pipeline LEK-Bastler](diagramme/release_pipeline.svg)
 
+Die Pipeline-Grafik zeigt neben Build und Publishing auch die vorgelagerten Qualitätsbausteine (Regression + Release-QA).
+
 Der Workflow:
 
 1. Liest Version aus `src/build_version_info.txt`

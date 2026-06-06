@@ -1,6 +1,11 @@
 flowchart LR
-    A[Aufgabensammlung aus Word laden] --> B[Struktur und Metadaten erkennen]
-    B --> C[Aufgaben filtern und prüfen]
-    C --> D[Geeignete Aufgaben freigeben]
-    D --> E[LEK-Gesamtvorschau prüfen]
-    E --> F[Export nach data/LEKs starten]
+    A[Datei wählen & laden] --> B[Erkennung und Diagnostik]
+    B --> C[Aufgaben filtern]
+    C --> D[Auswahl prüfen]
+    D --> E[Auswahl freigeben]
+    E --> F{Freigaben vorhanden?}
+    F -->|Nein| G[Weiter gesperrt]
+    G --> C
+    F -->|Ja| H[Gesamtausgabe prüfen]
+    H --> I[Freigaben exportieren]
+    I --> J[data/LEKs/*.docx]

@@ -34,6 +34,7 @@ Die vorgeschlagenen Dateinamen werden automatisch erzeugt und können bei Bedarf
 ![Anwenderablauf LEK-Bastler](diagramme/anwender_ablauf.svg)
 
 Das Diagramm zeigt den typischen Pfad von der Aufgabensammlung bis zum Export in `data/LEKs/`.
+Es bildet zusätzlich die Freigabe-Gating-Logik ab ("Weiter gesperrt", solange keine Freigaben vorliegen).
 
 ## 4. Wichtige Hinweise
 

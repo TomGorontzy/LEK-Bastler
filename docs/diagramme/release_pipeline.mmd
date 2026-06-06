@@ -4,8 +4,15 @@ flowchart LR
     B --> D[dist/LEK-Bastler_VERSION/LEK-Bastler_VERSION.exe]
     B --> E[release/LEK-Bastler_VERSION.zip]
     B --> F[release/RELEASE_NOTES_vVERSION.md]
+
+    Q[tools/test_regression_core.py] --> B
+    R[docs/RELEASE_QA_CHECKLISTE.md] --> B
+
     G[Tag Push vX.Y.Z] --> H[.github/workflows/release.yml]
+    A --> H
     D --> H
     E --> H
     F --> H
+
     H --> I[GitHub Release LEK-Bastler vX.Y.Z]
+    I --> J[Assets: EXE / ZIP / Notes]

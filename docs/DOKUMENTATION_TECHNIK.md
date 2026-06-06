@@ -39,6 +39,7 @@ Aktueller Versionsstand: **3.7.0**.
 ![Systemübersicht LEK-Bastler](diagramme/technik_systemuebersicht.svg)
 
 Die Grafik zeigt die zentralen Quellmodule, die Konfigurationsdaten und den Exportpfad des LEK-Bastler.
+Zusätzlich werden die ImportSession-/Wizard-Kopplung sowie der Regressionseinstieg auf Modulebene sichtbar gemacht.
 
 ## 4. Inhaltserhaltung beim Export
 
