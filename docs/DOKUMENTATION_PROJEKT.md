@@ -107,6 +107,10 @@ Beispiel für aktuelle Version:
 - `README.md`
 - `LIZENZ.txt` (aus `src/LIZENZ.txt`)
 
+### 4.3 Team-Konvention (Stand: 2026-06-06)
+
+- Aufgaben-Dateien unter `data/Aufgaben/*.docx` dürfen bis auf Weiteres grundsätzlich mitcommitted werden.
+
 ## 5. Architekturüberblick
 
 - `src/main.py`: GUI, Dateiauswahl, Filter, Exportfluss
