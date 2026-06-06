@@ -746,7 +746,8 @@ class LEKBastlerGUI:
     def _update_wizard_step_ui(self):
         """Aktualisiert Schrittanzeige, Navigations- und Aktionsbuttons."""
         label = self.step_labels.get(self.current_step, "Unbekannt")
-        self.wizard_step_var.set(f"Schritt {self.current_step}/4: {label}")
+        step_progress_pct = int(round((self.current_step / 4) * 100))
+        self.wizard_step_var.set(f"Schritt {self.current_step}/4 • {step_progress_pct}%: {label}")
         advanced_mode = self._is_advanced_mode()
 
         max_step = self._max_reachable_step()
