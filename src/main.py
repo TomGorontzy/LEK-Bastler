@@ -723,6 +723,26 @@ class LEKBastlerGUI:
             return
         self._set_step(self.current_step + 1, show_message=True)
 
+    def _next_step_block_reason(self):
+        """Liefert einen kurzen, verständlichen Sperrgrund für den nächsten Schritt."""
+        if not self.import_session:
+            return "Bitte zuerst eine Aufgabensammlung laden."
+
+        stats = self.import_session.get_stats()
+        total = int(stats.get('total', 0) or 0)
+        approved = int(stats.get('approved', 0) or 0)
+
+        if self.current_step <= 1 and total <= 0:
+            return "Bitte zuerst eine Datei laden und Aufgaben erkennen lassen."
+
+        if self.current_step == 2 and total <= 0:
+            return "Es wurden noch keine verwertbaren Aufgaben erkannt."
+
+        if self.current_step == 3 and approved <= 0:
+            return "Bitte mindestens eine Aufgabe freigeben."
+
+        return ""
+
     def _update_wizard_step_ui(self):
         """Aktualisiert Schrittanzeige, Navigations- und Aktionsbuttons."""
         label = self.step_labels.get(self.current_step, "Unbekannt")
@@ -765,13 +785,24 @@ class LEKBastlerGUI:
             self.wizard_hint_var.set("Nächster Schritt: Aufgabensammlung auswählen und laden.")
             self._mark_primary_action(self.btn_browse)
         elif self.current_step == 2:
-            self.wizard_hint_var.set("Nächster Schritt: Aufgaben prüfen/filtern und gewünschte Aufgaben markieren.")
+            reason = self._next_step_block_reason()
+            if reason:
+                self.wizard_hint_var.set(
+                    "Nächster Schritt: Aufgaben prüfen/filtern und gewünschte Aufgaben markieren. "
+                    f"(Weiter gesperrt: {reason})"
+                )
+            else:
+                self.wizard_hint_var.set("Nächster Schritt: Aufgaben prüfen/filtern und gewünschte Aufgaben markieren.")
             self._mark_primary_action(self.btn_filter)
         elif self.current_step == 3:
             if approved_count > 0:
                 self.wizard_hint_var.set("Nächster Schritt: Freigaben prüfen und mit 'Weiter' zum Export wechseln.")
             else:
-                self.wizard_hint_var.set("Nächster Schritt: Markierte Aufgaben über 'Auswahl freigeben' bestätigen.")
+                reason = self._next_step_block_reason() or "Bitte mindestens eine Aufgabe freigeben."
+                self.wizard_hint_var.set(
+                    "Nächster Schritt: Markierte Aufgaben über 'Auswahl freigeben' bestätigen. "
+                    f"(Weiter gesperrt: {reason})"
+                )
             self._mark_primary_action(self.btn_approve)
         else:
             self.wizard_hint_var.set("Nächster Schritt: Export mit 'Alle exportieren' oder 'Markierte exportieren' starten.")
