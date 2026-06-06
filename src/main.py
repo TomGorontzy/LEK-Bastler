@@ -747,6 +747,7 @@ class LEKBastlerGUI:
         """Aktualisiert Schrittanzeige, Navigations- und Aktionsbuttons."""
         label = self.step_labels.get(self.current_step, "Unbekannt")
         self.wizard_step_var.set(f"Schritt {self.current_step}/4: {label}")
+        advanced_mode = self._is_advanced_mode()
 
         max_step = self._max_reachable_step()
 
@@ -785,18 +786,28 @@ class LEKBastlerGUI:
             self.wizard_hint_var.set("Nächster Schritt: Aufgabensammlung auswählen und laden.")
             self._mark_primary_action(self.btn_browse)
         elif self.current_step == 2:
+            step2_hint = (
+                "Nächster Schritt: Aufgaben prüfen/filtern, optional Blocker fokussieren und gewünschte Aufgaben markieren."
+                if advanced_mode
+                else "Nächster Schritt: Aufgaben prüfen/filtern und gewünschte Aufgaben markieren."
+            )
             reason = self._next_step_block_reason()
             if reason:
                 self.wizard_hint_var.set(
-                    "Nächster Schritt: Aufgaben prüfen/filtern und gewünschte Aufgaben markieren. "
+                    f"{step2_hint} "
                     f"(Weiter gesperrt: {reason})"
                 )
             else:
-                self.wizard_hint_var.set("Nächster Schritt: Aufgaben prüfen/filtern und gewünschte Aufgaben markieren.")
+                self.wizard_hint_var.set(step2_hint)
             self._mark_primary_action(self.btn_filter)
         elif self.current_step == 3:
             if approved_count > 0:
-                self.wizard_hint_var.set("Nächster Schritt: Freigaben prüfen und mit 'Weiter' zum Export wechseln.")
+                if advanced_mode:
+                    self.wizard_hint_var.set(
+                        "Nächster Schritt: Freigaben prüfen, optional LEK-Gesamtvorschau öffnen und mit 'Weiter' zum Export wechseln."
+                    )
+                else:
+                    self.wizard_hint_var.set("Nächster Schritt: Freigaben prüfen und mit 'Weiter' zum Export wechseln.")
             else:
                 reason = self._next_step_block_reason() or "Bitte mindestens eine Aufgabe freigeben."
                 self.wizard_hint_var.set(
@@ -805,7 +816,12 @@ class LEKBastlerGUI:
                 )
             self._mark_primary_action(self.btn_approve)
         else:
-            self.wizard_hint_var.set("Nächster Schritt: Export mit 'Alle exportieren' oder 'Markierte exportieren' starten.")
+            if advanced_mode:
+                self.wizard_hint_var.set(
+                    "Nächster Schritt: Export mit 'Alle exportieren' oder 'Markierte exportieren' starten (optional vorher Gesamtvorschau prüfen)."
+                )
+            else:
+                self.wizard_hint_var.set("Nächster Schritt: Export mit 'Alle exportieren' oder 'Markierte exportieren' starten.")
             self._mark_primary_action(self.btn_export_all)
 
     def _mark_primary_action(self, primary_button):
