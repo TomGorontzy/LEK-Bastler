@@ -428,31 +428,40 @@ class LEKBastlerGUI:
         v_scrollbar.grid(row=1, column=1, sticky="ns")
         h_scrollbar.grid(row=2, column=0, sticky="we")
         
-        # Buttons
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=4, column=0, columnspan=2, pady=(10, 0))
-        
-        self.btn_filter = ttk.Button(button_frame, text="Aufgaben filtern", command=self.filter_tasks)
-        self.btn_filter.pack(side=tk.LEFT, padx=(0, 10))
-        self.btn_select_all = ttk.Button(button_frame, text="Alle auswählen", command=self.select_all_tasks)
-        self.btn_select_all.pack(side=tk.LEFT, padx=(0, 10))
-        self.btn_select_blockers = ttk.Button(button_frame, text="Nur Blocker auswählen", command=self.select_blocker_tasks)
-        self.btn_select_blockers.pack(side=tk.LEFT, padx=(0, 10))
-        self.btn_bulk_edit = ttk.Button(button_frame, text="Mehrfach bearbeiten", command=self.bulk_edit_selected_tasks)
-        self.btn_bulk_edit.pack(side=tk.LEFT, padx=(0, 10))
-        self.btn_deselect_all = ttk.Button(button_frame, text="Auswahl aufheben", command=self.deselect_all_tasks)
-        self.btn_deselect_all.pack(side=tk.LEFT, padx=(0, 10))
-        self.btn_approve = ttk.Button(button_frame, text="Auswahl freigeben", command=self.approve_selected_tasks)
-        self.btn_approve.pack(side=tk.LEFT, padx=(0, 10))
-        self.btn_clear_approvals = ttk.Button(button_frame, text="Freigaben löschen", command=self.clear_task_approvals)
-        self.btn_clear_approvals.pack(side=tk.LEFT, padx=(0, 10))
-        self.btn_preview_selected = ttk.Button(button_frame, text="Vorschau Auswahl", command=self.preview_selected_task)
-        self.btn_preview_selected.pack(side=tk.LEFT, padx=(0, 10))
-        self.btn_preview_lek = ttk.Button(button_frame, text="LEK-Gesamtvorschau", command=self.preview_lek_output)
-        self.btn_preview_lek.pack(side=tk.LEFT, padx=(0, 10))
-        self.btn_export_selected = ttk.Button(button_frame, text="Markierte exportieren", command=self.export_selected)
-        self.btn_export_selected.pack(side=tk.LEFT, padx=(0, 10))
-        self.btn_export_all = ttk.Button(button_frame, text="Alle exportieren", command=self.export_all)
+        # Aktionen (visuell gruppiert)
+        action_frame = ttk.Frame(main_frame)
+        action_frame.grid(row=4, column=0, columnspan=2, sticky="we", pady=(10, 0))
+
+        select_group = ttk.LabelFrame(action_frame, text="Auswahl", padding="8")
+        select_group.grid(row=0, column=0, sticky="w", padx=(0, 10))
+        review_group = ttk.LabelFrame(action_frame, text="Prüfung", padding="8")
+        review_group.grid(row=0, column=1, sticky="w", padx=(0, 10))
+        export_group = ttk.LabelFrame(action_frame, text="Export", padding="8")
+        export_group.grid(row=0, column=2, sticky="w")
+
+        self.btn_filter = ttk.Button(select_group, text="Aufgaben filtern", command=self.filter_tasks)
+        self.btn_filter.pack(side=tk.LEFT, padx=(0, 8))
+        self.btn_select_all = ttk.Button(select_group, text="Alle auswählen", command=self.select_all_tasks)
+        self.btn_select_all.pack(side=tk.LEFT, padx=(0, 8))
+        self.btn_select_blockers = ttk.Button(select_group, text="Nur Blocker auswählen", command=self.select_blocker_tasks)
+        self.btn_select_blockers.pack(side=tk.LEFT, padx=(0, 8))
+        self.btn_deselect_all = ttk.Button(select_group, text="Auswahl aufheben", command=self.deselect_all_tasks)
+        self.btn_deselect_all.pack(side=tk.LEFT)
+
+        self.btn_bulk_edit = ttk.Button(review_group, text="Mehrfach bearbeiten", command=self.bulk_edit_selected_tasks)
+        self.btn_bulk_edit.pack(side=tk.LEFT, padx=(0, 8))
+        self.btn_preview_selected = ttk.Button(review_group, text="Vorschau Auswahl", command=self.preview_selected_task)
+        self.btn_preview_selected.pack(side=tk.LEFT, padx=(0, 8))
+        self.btn_approve = ttk.Button(review_group, text="Auswahl freigeben", command=self.approve_selected_tasks)
+        self.btn_approve.pack(side=tk.LEFT, padx=(0, 8))
+        self.btn_clear_approvals = ttk.Button(review_group, text="Freigaben löschen", command=self.clear_task_approvals)
+        self.btn_clear_approvals.pack(side=tk.LEFT)
+
+        self.btn_preview_lek = ttk.Button(export_group, text="LEK-Gesamtvorschau", command=self.preview_lek_output)
+        self.btn_preview_lek.pack(side=tk.LEFT, padx=(0, 8))
+        self.btn_export_selected = ttk.Button(export_group, text="Markierte exportieren", command=self.export_selected)
+        self.btn_export_selected.pack(side=tk.LEFT, padx=(0, 8))
+        self.btn_export_all = ttk.Button(export_group, text="Alle exportieren", command=self.export_all)
         self.btn_export_all.pack(side=tk.LEFT)
 
         self._default_button_labels = {
@@ -556,7 +565,7 @@ class LEKBastlerGUI:
             self.btn_save_duplicate_mode.configure(state=tk.NORMAL)
 
             if not self.btn_select_blockers.winfo_ismapped():
-                self.btn_select_blockers.pack(side=tk.LEFT, padx=(0, 10), before=self.btn_bulk_edit)
+                self.btn_select_blockers.pack(side=tk.LEFT, padx=(0, 8))
         else:
             for widget in advanced_grid_widgets:
                 try:
