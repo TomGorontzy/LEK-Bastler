@@ -16,7 +16,7 @@ Mit dem LEK-Bastler erstellen Sie aus vorbereiteten Aufgaben-Worddateien schnell
 1. Python-Umgebung vorbereiten
 2. Anwendung starten über `src/main.py`
 
-Hinweis zum aktuellen Stand: Version **3.7.0**.
+Hinweis zum aktuellen Stand: Version **3.7.2**.
 
 ## 3. Typischer Ablauf
 
@@ -112,3 +112,4 @@ Es bildet zusätzlich die Freigabe-Gating-Logik ab ("Weiter gesperrt", solange k
 
 - **Kurzcheckliste**: für einen schnellen Alltagstest mit kompaktem Gesamteindruck
 - **Vollcheckliste**: für strukturierte Rückmeldungen zu Funktionalität, Verständlichkeit und Bedienbarkeit
+
