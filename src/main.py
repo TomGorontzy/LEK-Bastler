@@ -839,10 +839,49 @@ class LEKBastlerGUI:
             except Exception:
                 pass
 
+    def _build_wizard_status_line(self, approved, total, warnings_total, blocking_total, todo_hint):
+        """Erzeugt eine kompakte, visuell priorisierte Wizard-Statuszeile."""
+        try:
+            approved_num = int(approved or 0)
+        except Exception:
+            approved_num = 0
+
+        try:
+            total_num = int(total or 0)
+        except Exception:
+            total_num = 0
+
+        try:
+            warnings_num = int(warnings_total or 0)
+        except Exception:
+            warnings_num = 0
+
+        try:
+            blocking_num = int(blocking_total or 0)
+        except Exception:
+            blocking_num = 0
+
+        if total_num > 0:
+            progress_pct = int(round((approved_num / total_num) * 100))
+        else:
+            progress_pct = 0
+
+        if blocking_num > 0:
+            state_icon = "⛔"
+        elif warnings_num > 0:
+            state_icon = "⚠"
+        else:
+            state_icon = "✅"
+
+        return (
+            f"{state_icon} Wizard-Status: Fortschritt {approved_num}/{total_num} ({progress_pct}%)"
+            f" | ⚠ Warnungen {warnings_num} | ⛔ Blocker {blocking_num}{todo_hint}"
+        )
+
     def _refresh_wizard_status(self):
         """Aktualisiert die kompakte Statuszeile für den Wizard-Zustand."""
         if not self.import_session:
-            self.wizard_status_var.set("Wizard-Status: Keine Datei geladen")
+            self.wizard_status_var.set("ℹ Wizard-Status: Keine Datei geladen")
             self._update_wizard_step_ui()
             return
 
@@ -854,7 +893,7 @@ class LEKBastlerGUI:
         todo_hint = self._format_blocking_todo_hint()
 
         self.wizard_status_var.set(
-            f"Wizard-Status: Freigegeben {approved}/{total} | Warnungen {warnings_total} | Blocker {blocking_total}{todo_hint}"
+            self._build_wizard_status_line(approved, total, warnings_total, blocking_total, todo_hint)
         )
         self._update_wizard_step_ui()
 
