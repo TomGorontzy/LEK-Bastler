@@ -160,6 +160,56 @@ class RegressionCoreTests(unittest.TestCase):
         approved_numbers = [int(t.get('number', 0)) for t in approved]
         self.assertEqual(approved_numbers, [1, 3])
 
+    def test_grouped_subtasks_are_approved_together(self):
+        raw_tasks = [
+            {'number': 1, 'number_display': '1.0', 'category': 'A', 'title': 'Intro', 'content': ['c1'], 'difficulty': 'Mittel', 'keywords': []},
+            {'number': 2, 'number_display': '1.1', 'category': 'A', 'title': 'Teil 1', 'content': ['c2'], 'difficulty': 'Mittel', 'keywords': []},
+            {'number': 3, 'number_display': '1.2', 'category': 'A', 'title': 'Teil 2', 'content': ['c3'], 'difficulty': 'Mittel', 'keywords': []},
+            {'number': 4, 'number_display': '2.0', 'category': 'B', 'title': 'Andere Gruppe', 'content': ['c4'], 'difficulty': 'Mittel', 'keywords': []},
+        ]
+
+        session = ImportSession.from_raw_tasks(
+            source_file='dummy.docx',
+            source_filename='dummy.docx',
+            lek_theme='Demo',
+            raw_tasks=raw_tasks,
+        )
+
+        session.clear_approvals()
+        effective_ids = session.set_task_approvals([2], True)
+
+        self.assertEqual(effective_ids, [1, 2, 3])
+        self.assertEqual(session.approved_task_ids, {1, 2, 3})
+
+        approved = session.get_approved_raw_tasks()
+        approved_numbers = [int(t.get('number', 0)) for t in approved]
+        self.assertEqual(approved_numbers, [1, 2, 3])
+
+    def test_grouped_subtasks_are_removed_together(self):
+        raw_tasks = [
+            {'number': 1, 'number_display': '1.0', 'category': 'A', 'title': 'Intro', 'content': ['c1'], 'difficulty': 'Mittel', 'keywords': []},
+            {'number': 2, 'number_display': '1.1', 'category': 'A', 'title': 'Teil 1', 'content': ['c2'], 'difficulty': 'Mittel', 'keywords': []},
+            {'number': 3, 'number_display': '1.2', 'category': 'A', 'title': 'Teil 2', 'content': ['c3'], 'difficulty': 'Mittel', 'keywords': []},
+            {'number': 4, 'number_display': '2.0', 'category': 'B', 'title': 'Andere Gruppe', 'content': ['c4'], 'difficulty': 'Mittel', 'keywords': []},
+        ]
+
+        session = ImportSession.from_raw_tasks(
+            source_file='dummy.docx',
+            source_filename='dummy.docx',
+            lek_theme='Demo',
+            raw_tasks=raw_tasks,
+        )
+
+        session.approve_all()
+        effective_ids = session.set_task_approvals([2], False)
+
+        self.assertEqual(effective_ids, [1, 2, 3])
+        self.assertEqual(session.approved_task_ids, {4})
+
+        approved = session.get_approved_raw_tasks()
+        approved_numbers = [int(t.get('number', 0)) for t in approved]
+        self.assertEqual(approved_numbers, [4])
+
     def test_import_task_normalizes_scalar_list_fields(self):
         raw_task = {
             'number': 1,

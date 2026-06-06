@@ -11,6 +11,7 @@ Alle relevanten Änderungen an diesem Projekt werden hier dokumentiert.
 ### Changed
 
 - GUI-Titelleiste/EXE-Versionserkennung stabilisiert: Wenn `build_version_info.txt` im Deploy fehlt, wird die Versionsnummer robust aus EXE-/Ordnernamen (z. B. `LEK-Bastler_3.7.0.exe`) ermittelt und wieder im Fenstertitel angezeigt.
+- Auswahl-, Freigabe- und Exportlogik für Aufgabenfamilien erweitert: Hauptaufgaben und zugehörige Unteraufgaben (z. B. `1.0`, `1.1`, `1.2`) werden jetzt automatisch gemeinsam behandelt und nur als vollständige Gruppe in die LEK übernommen.
 
 ## [3.7.0] - 2026-06-06
 

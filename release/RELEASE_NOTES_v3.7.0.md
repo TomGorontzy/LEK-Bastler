@@ -18,6 +18,7 @@ Datum: 2026-06-06
   - Übernahme von Tabellen und Inhaltssteuerelementen (z. B. Kontrollkästchen)
   - Aufgabentitel als `Überschrift 1`
   - Punkte am Titelende rechtsbündig mit Rahmen (konfigurierbar)
+  - Hauptaufgaben und Unteraufgaben (z. B. `1.0`, `1.1`, `1.2`) werden bei Auswahl/Freigabe/Export automatisch als zusammengehörige Gruppe behandelt
 - Konfiguration und Hilfe erweitert:
   - `data/config/import_rules.json` um `export_rules.title_points_box.*`
   - GUI-Hilfe verweist explizit auf Export-Layout-Keys
@@ -29,7 +30,7 @@ Datum: 2026-06-06
 ## Qualitätsstatus
 
 - Problems-Check ohne offene Diagnosen in den geänderten Dateien.
-- Regressionstest-Suite: 19/19 grün (`tools/test_regression_core.py`).
+- Regressionstest-Suite: 21/21 grün (`tools/test_regression_core.py`).
 - Release-Build für `3.7.0` aktualisiert (Artefakte siehe unten).
 
 ## Artefakte
@@ -39,6 +40,7 @@ Datum: 2026-06-06
 - Release Notes: `release/RELEASE_NOTES_v3.7.0.md`
 <!-- EOF -->
 <!-- END -->
+
 
 
 

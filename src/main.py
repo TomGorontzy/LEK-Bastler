@@ -2241,6 +2241,61 @@ class LEKBastlerGUI:
                 continue
         return selected_ids
 
+    def _task_group_key(self, task):
+        """Ermittelt den Gruppenschlüssel für Haupt-/Unteraufgaben (z. B. 1.0/1.1 -> 1)."""
+        label = self._task_number_label(task)
+        text = str(label or '').strip()
+        if text:
+            match = re.match(r'^(\d+)(?:\s*[\.,]\s*\d+)?', text)
+            if match:
+                return str(match.group(1)).strip()
+
+            leading_number = re.match(r'^(\d+)', text)
+            if leading_number:
+                return str(leading_number.group(1)).strip()
+
+        internal_number = task.get('number')
+        if internal_number is None:
+            return ''
+        return str(internal_number).strip()
+
+    def _expand_related_task_ids(self, task_ids):
+        """Erweitert eine Auswahl auf alle zugehörigen Haupt-/Unteraufgaben."""
+        normalized_ids = []
+        for task_id in task_ids or []:
+            try:
+                normalized_ids.append(int(task_id))
+            except (TypeError, ValueError):
+                continue
+
+        if not normalized_ids:
+            return []
+
+        if self.import_session:
+            related_ids = self.import_session.get_related_task_ids(normalized_ids)
+            return [int(task_id) for task_id in related_ids]
+
+        all_tasks = list(getattr(self, 'loaded_tasks', []) or [])
+        if not all_tasks:
+            return normalized_ids
+
+        selected_group_keys = set()
+        for task in all_tasks:
+            task_number = task.get('number')
+            if task_number in normalized_ids:
+                group_key = self._task_group_key(task)
+                if group_key:
+                    selected_group_keys.add(group_key)
+
+        if not selected_group_keys:
+            return normalized_ids
+
+        return [
+            int(task.get('number'))
+            for task in all_tasks
+            if task.get('number') is not None and self._task_group_key(task) in selected_group_keys
+        ]
+
     def _find_task_by_internal_number(self, internal_number):
         """Sucht eine Aufgabe über die interne Nummer in der aktuell angezeigten Liste."""
         current_displayed_tasks = getattr(self, 'current_displayed_tasks', self.loaded_tasks)
@@ -2413,16 +2468,24 @@ class LEKBastlerGUI:
             messagebox.showwarning("Warnung", "Bitte mindestens eine Aufgabe auswählen.")
             return
 
-        for task_id in selected_ids:
-            self.import_session.set_task_approval(task_id, True)
+        effective_ids = self.import_session.set_task_approvals(selected_ids, True)
 
         stats = self.import_session.get_stats()
         self._set_step(3, show_message=False)
         self._refresh_wizard_status()
+
+        effective_count = len(effective_ids)
+        expanded_hint = ""
+        if effective_count > len(selected_ids):
+            expanded_hint = (
+                f"\nDurch Haupt-/Unteraufgaben-Gruppierung wurden insgesamt {effective_count} Aufgabe(n) freigegeben."
+            )
+
         messagebox.showinfo(
             "Freigabe aktualisiert",
             f"{len(selected_ids)} Aufgabe(n) freigegeben.\n"
-            f"Aktuell freigegeben: {stats['approved']} von {stats['total']}.",
+            f"Aktuell freigegeben: {stats['approved']} von {stats['total']}."
+            f"{expanded_hint}",
         )
 
     def clear_task_approvals(self):
@@ -2676,21 +2739,17 @@ class LEKBastlerGUI:
         
         selected_ids = self._selected_task_ids_from_tree()
         selected_tasks = []
+        effective_ids = self._expand_related_task_ids(selected_ids)
 
         # Bei vorhandener Session: Auswahl = Freigabe + Export aus bestätigten Tasks
         if self.import_session:
-            for task_id in selected_ids:
-                self.import_session.set_task_approval(task_id, True)
-            selected_set = set(selected_ids)
-            selected_tasks = [
-                task for task in self.import_session.get_approved_raw_tasks()
-                if task.get('number', 0) in selected_set
-            ]
+            self.import_session.set_task_approvals(selected_ids, True)
+            selected_tasks = self.import_session.get_related_raw_tasks(selected_ids)
         else:
             # Fallback ohne Session
-            current_displayed_tasks = getattr(self, 'current_displayed_tasks', self.loaded_tasks)
-            for task_id in selected_ids:
-                for task in current_displayed_tasks:
+            all_tasks = list(getattr(self, 'loaded_tasks', []) or [])
+            for task_id in effective_ids:
+                for task in all_tasks:
                     if task.get('number', 0) == task_id:
                         selected_tasks.append(task)
                         break

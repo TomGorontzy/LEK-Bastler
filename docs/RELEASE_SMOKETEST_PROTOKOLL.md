@@ -79,12 +79,12 @@ Nachvollziehbare, wiederholbare Dokumentation der Release-Smoketests je Version.
 ### Eingangsdaten
 
 - Artefakt: `release/LEK-Bastler_3.7.0.zip`
-- Größe: `15.71 MB` (`16,473,649` Bytes)
-- SHA256: `6440A31F10F9B5043F78A5EA135278745FA62D37B413F50452A4C0C365C08E98`
+- Größe: `15.71 MB` (`16,475,911` Bytes)
+- SHA256: `A8BAB86D1320F3F9DE255CB8B19DCC06842CE03635D64D2912CD9EB532D83CAD`
 
 ### Entpack- und Inhaltsprüfung
 
-- Entpackziel: `%TEMP%/LEK-Bastler-smoke-3.7.0-20260606_121300`
+- Entpackziel: `%TEMP%/LEK-Bastler-smoke-3.7.0-20260606_163101`
 - Archivstruktur: Dateien/Ordner direkt im ZIP-Root (kein zusätzlicher Top-Level-Unterordner)
 - Pflichtinhalte geprüft: OK
   - `LEK-Bastler_3.7.0.exe`
@@ -97,7 +97,7 @@ Nachvollziehbare, wiederholbare Dokumentation der Release-Smoketests je Version.
 ### Startprobe EXE
 
 - Prozessstart: OK (`INPUT_IDLE=True`)
-- Test-PID: `17220`
+- Test-PID: `16576`
 - Prozess danach kontrolliert beendet: OK
 
 ### Ergebnis

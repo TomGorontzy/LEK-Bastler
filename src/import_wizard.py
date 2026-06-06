@@ -78,6 +78,7 @@ class ImportTask:
 
     id: int
     number_display: str
+    group_key: str
     category: str
     title: str
     intro: list[str] = field(default_factory=list)
@@ -107,6 +108,8 @@ class ImportTask:
         if not number_display:
             number_display = str(task_id)
 
+        group_key = cls._derive_group_key(number_display, fallback_id=task_id)
+
         category = task.get("category", "Ohne Kategorie")
         title = task.get("title", "Ohne Titel")
         difficulty = task.get("difficulty", "Mittel")
@@ -119,6 +122,7 @@ class ImportTask:
         return cls(
             id=task_id,
             number_display=number_display,
+            group_key=group_key,
             category=category,
             title=title,
             intro=intro,
@@ -151,6 +155,24 @@ class ImportTask:
             return int(fallback_id)
         except (TypeError, ValueError):
             return 0
+
+    @staticmethod
+    def _derive_group_key(value: Any, fallback_id: int = 0) -> str:
+        """Liefert einen stabilen Gruppenschlüssel für Haupt-/Unteraufgaben (z. B. 1.0/1.1 -> 1)."""
+        text = str(value or "").strip()
+        if text:
+            match = re.match(r"^(\d+)(?:\s*[\.,]\s*\d+)?", text)
+            if match:
+                return str(match.group(1)).strip()
+
+            leading_number = re.match(r"^(\d+)", text)
+            if leading_number:
+                return str(leading_number.group(1)).strip()
+
+        try:
+            return str(int(fallback_id))
+        except (TypeError, ValueError):
+            return text or "0"
 
 
 @dataclass
@@ -221,25 +243,64 @@ class ImportSession:
         for task in self.tasks:
             task.accepted = False
 
-    def set_task_approval(self, task_id: int, accepted: bool) -> None:
-        found = False
-        for task in self.tasks:
-            if task.id == task_id:
-                task.accepted = accepted
-                found = True
-                break
+    def get_related_task_ids(self, task_ids: list[int] | set[int] | tuple[int, ...]) -> list[int]:
+        """Erweitert eine Auswahl auf alle Aufgaben derselben Hauptgruppe."""
+        normalized_ids = set()
+        for task_id in task_ids or []:
+            try:
+                normalized_ids.add(int(task_id))
+            except (TypeError, ValueError):
+                continue
 
-        if not found:
-            return
+        if not normalized_ids:
+            return []
+
+        related_group_keys = {
+            str(task.group_key or '').strip()
+            for task in self.tasks
+            if task.id in normalized_ids and str(task.group_key or '').strip()
+        }
+
+        if not related_group_keys:
+            return [task.id for task in self.tasks if task.id in normalized_ids]
+
+        return [
+            task.id
+            for task in self.tasks
+            if str(task.group_key or '').strip() in related_group_keys
+        ]
+
+    def set_task_approvals(self, task_ids: list[int] | set[int] | tuple[int, ...], accepted: bool) -> list[int]:
+        """Setzt Freigaben gruppenweise für alle betroffenen Haupt-/Unteraufgaben."""
+        effective_ids = self.get_related_task_ids(task_ids)
+        if not effective_ids:
+            return []
+
+        effective_id_set = set(effective_ids)
+        for task in self.tasks:
+            if task.id in effective_id_set:
+                task.accepted = accepted
 
         if accepted:
-            self.approved_task_ids.add(task_id)
+            self.approved_task_ids.update(effective_id_set)
         else:
-            self.approved_task_ids.discard(task_id)
+            self.approved_task_ids.difference_update(effective_id_set)
+
+        return effective_ids
+
+    def set_task_approval(self, task_id: int, accepted: bool) -> None:
+        self.set_task_approvals([task_id], accepted)
 
     def get_approved_raw_tasks(self) -> list[dict[str, Any]]:
         approved_ids = self.approved_task_ids
         return [t.raw_task for t in self.tasks if t.id in approved_ids]
+
+    def get_related_raw_tasks(self, task_ids: list[int] | set[int] | tuple[int, ...]) -> list[dict[str, Any]]:
+        """Liefert alle Rohaufgaben der betroffenen Hauptgruppe(n) in Ursprungsreihenfolge."""
+        related_ids = set(self.get_related_task_ids(task_ids))
+        if not related_ids:
+            return []
+        return [t.raw_task for t in self.tasks if t.id in related_ids]
 
     def get_blocking_summary(self) -> dict[str, int]:
         """Liefert eine kategoriale Zusammenfassung blockierender Warnungen."""
