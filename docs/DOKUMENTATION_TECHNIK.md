@@ -67,6 +67,16 @@ Technische Umsetzung der Gruppenlogik:
 - `ImportSession.set_task_approvals(...)` setzt Freigaben gruppenweise und hält `approved_task_ids` konsistent.
 - `src/main.py` erweitert markierte Aufgaben vor Freigabe und `export_selected()` automatisch auf die vollständige Aufgabenfamilie.
 
+## 4a.1 Externe Tabellenreferenzen und Orientierungswahl
+
+- `src/word_processor.py` erkennt Marker wie `<<tabelle=Dateiname>>` und optional `<<tabelle_format=auto|portrait|landscape>>` direkt im Aufgabeninhalt.
+- Die referenzierte Datei wird relativ zur geladenen Aufgabensammlung aufgelöst:
+  - Basisordner: `data/Aufgaben/`
+  - Unterordner: aus dem Sammlungsnamen ohne Präfix `Aufgaben_`, `Aufgaben-` oder dem Präfixwort `Aufgaben` abgeleitet
+- Die Marker werden aus `task['content']` entfernt und als Metadaten (`external_table_reference`, `external_table_path`, `external_table_orientation`) an der Aufgabe gespeichert.
+- Beim Export wird das externe Dokument geladen, seine Orientierung heuristisch ermittelt (oder per Override erzwungen) und über neue Word-Sektionen in Hoch- bzw. Querformat eingebettet.
+- Fehlende Referenzen erzeugen eine Diagnosewarnung und blockieren – sofern konfiguriert – den Export in `src/main.py`.
+
 ## 4b. Regelwerk und Konfiguration (Sprint 2)
 
 Zentrale Regelquelle ist `data/config/import_rules.json`.
@@ -134,6 +144,7 @@ Standardverhalten (`auto`) bleibt kompatibel:
   - Kernfälle R1–R6 (Vorschau/Export-Reihenfolge, Delta-Check, Kategoriepflicht,
     Titel-Fallback, Difficulty-Blockade, Teilfreigabe).
   - Zusätzlich abgesichert: gruppierte Freigabe und gruppiertes Entfernen für Haupt-/Unteraufgaben.
+  - Zusätzlich abgesichert: lernbereichsspezifische Auflösung externer Tabellenreferenzen und Querformat-Übernahme beim Export.
 - Testfallmatrix: `memos/MEMO_REGRESSIONSTEST_MATRIX.md`
 - Release-QA-Checkliste: `docs/RELEASE_QA_CHECKLISTE.md`
 

@@ -53,6 +53,14 @@ Das Diagramm zeigt den typischen Pfad von der Aufgabensammlung bis zum Export in
 - Änderungen an Aliasen oder Pflichtfeldern können in der Regel ohne Codeänderung erfolgen.
 - Bei Regelverstößen (z. B. fehlende Kategorie, inkonsistente Schwierigkeit) kann der Export bewusst blockiert werden.
 
+## 4b. Externe Großtabellen referenzieren
+
+- Für sehr große Tabellen oder tabellarische Anhänge kann in einer Aufgabe ein Marker wie `<<tabelle=Kalkulationsschema>>` oder `<<tabelle=Kalkulationsschema.docx>>` verwendet werden.
+- Die referenzierte Datei wird automatisch im lernbereichsspezifischen Unterordner der geladenen Aufgabensammlung gesucht, z. B. bei `Aufgaben_Auftragssteuerung und -koordination.docx` unter `data/Aufgaben/Auftragssteuerung und -koordination/`.
+- Der Marker selbst wird nicht in die LEK übernommen; stattdessen wird das referenzierte Dokument eingebettet.
+- Die Anwendung wählt automatisch Hoch- oder Querformat. Optional kann zusätzlich `<<tabelle_format=landscape>>`, `<<tabelle_format=portrait>>` oder `<<tabelle_format=auto>>` gesetzt werden.
+- Wenn die referenzierte Datei fehlt, wird der Export mit einer klaren Meldung blockiert.
+
 ## 5. Fehlerbehebung
 
 ### App startet nicht

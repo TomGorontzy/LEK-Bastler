@@ -19,6 +19,9 @@ Datum: 2026-06-06
   - Aufgabentitel als `Überschrift 1`
   - Punkte am Titelende rechtsbündig mit Rahmen (konfigurierbar)
   - Hauptaufgaben und Unteraufgaben (z. B. `1.0`, `1.1`, `1.2`) werden bei Auswahl/Freigabe/Export automatisch als zusammengehörige Gruppe behandelt
+  - Externe Großtabellen über Referenzmarker `<<tabelle=...>>` einbindbar (optional `<<tabelle_format=hoch|quer>>`)
+  - Referenzauflösung lernbereichsspezifisch über Unterordner aus dem Sammlungsnamen (z. B. `Aufgaben_LB2_*.docx` → `data/Aufgaben/LB2/`)
+  - Automatische Abschnittsausrichtung Hoch-/Querformat für referenzierte Tabellen; Export blockiert bei fehlender Referenz
 - Konfiguration und Hilfe erweitert:
   - `data/config/import_rules.json` um `export_rules.title_points_box.*`
   - GUI-Hilfe verweist explizit auf Export-Layout-Keys
@@ -30,7 +33,7 @@ Datum: 2026-06-06
 ## Qualitätsstatus
 
 - Problems-Check ohne offene Diagnosen in den geänderten Dateien.
-- Regressionstest-Suite: 21/21 grün (`tools/test_regression_core.py`).
+- Regressionstest-Suite: 23/23 grün (`tools/test_regression_core.py`).
 - Release-Build für `3.7.0` aktualisiert (Artefakte siehe unten).
 
 ## Artefakte

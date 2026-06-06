@@ -6,6 +6,7 @@ from copy import deepcopy
 
 from docx import Document
 from docx.oxml import OxmlElement
+from docx.enum.section import WD_ORIENT
 
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -579,6 +580,74 @@ class RegressionCoreTests(unittest.TestCase):
             self.assertTrue(next_elem.tag.endswith('}p'))
             next_text = ''.join((n.text or '') for n in next_elem.xpath('.//w:t')).strip()
             self.assertEqual(next_text, '')
+
+    def test_external_table_reference_resolves_in_collection_subfolder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            aufgaben_dir = os.path.join(tmp, 'data', 'Aufgaben')
+            os.makedirs(aufgaben_dir, exist_ok=True)
+
+            collection_path = os.path.join(aufgaben_dir, 'Aufgaben_Auftragssteuerung und -koordination.docx')
+            subfolder = os.path.join(aufgaben_dir, 'Auftragssteuerung und -koordination')
+            os.makedirs(subfolder, exist_ok=True)
+            external_path = os.path.join(subfolder, 'Kalkulationsschema.docx')
+
+            doc = Document()
+            doc.add_heading('Auftragssteuerung und -koordination', level=1)
+            doc.add_heading('Aufgabe 1 Verkaufsgespräch', level=2)
+            doc.add_paragraph('Beschreiben Sie das Vorgehen.')
+            doc.add_paragraph('<<tabelle=Kalkulationsschema>>')
+            doc.save(collection_path)
+
+            ext_doc = Document()
+            ext_table = ext_doc.add_table(rows=1, cols=2)
+            ext_table.cell(0, 0).text = 'Spalte A'
+            ext_table.cell(0, 1).text = 'Spalte B'
+            ext_doc.save(external_path)
+
+            tasks = self.wp.extract_tasks(collection_path)
+            self.assertEqual(len(tasks), 1)
+            task = tasks[0]
+
+            self.assertEqual(task.get('external_table_reference'), 'Kalkulationsschema')
+            self.assertEqual(os.path.normpath(task.get('external_table_path', '')), os.path.normpath(external_path))
+            self.assertFalse(task.get('external_table_missing'))
+            self.assertFalse(any('tabelle=' in line.lower() for line in (task.get('content') or [])))
+
+    def test_external_table_reference_inserts_landscape_document(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            aufgaben_dir = os.path.join(tmp, 'data', 'Aufgaben')
+            os.makedirs(aufgaben_dir, exist_ok=True)
+
+            collection_path = os.path.join(aufgaben_dir, 'Aufgaben_Auftragssteuerung und -koordination.docx')
+            subfolder = os.path.join(aufgaben_dir, 'Auftragssteuerung und -koordination')
+            os.makedirs(subfolder, exist_ok=True)
+            external_path = os.path.join(subfolder, 'BreiteTabelle.docx')
+
+            doc = Document()
+            doc.add_heading('Auftragssteuerung und -koordination', level=1)
+            doc.add_heading('Aufgabe 1 Kalkulation', level=2)
+            doc.add_paragraph('Nutzen Sie die Tabelle für die Berechnung.')
+            doc.add_paragraph('<<tabelle=BreiteTabelle>>')
+            doc.save(collection_path)
+
+            ext_doc = Document()
+            ext_section = ext_doc.sections[0]
+            ext_section.orientation = WD_ORIENT.LANDSCAPE
+            ext_section.page_width, ext_section.page_height = ext_section.page_height, ext_section.page_width
+            ext_table = ext_doc.add_table(rows=1, cols=6)
+            for idx in range(6):
+                ext_table.cell(0, idx).text = f'Spalte {idx + 1}'
+            ext_doc.save(external_path)
+
+            tasks = self.wp.extract_tasks(collection_path)
+            task = tasks[0]
+
+            out_doc = Document()
+            self.wp.append_task_to_lek_document(out_doc, task)
+
+            all_table_text = '\n'.join(cell.text for table in out_doc.tables for row in table.rows for cell in row.cells)
+            self.assertIn('Spalte 1', all_table_text)
+            self.assertTrue(any(section.orientation == WD_ORIENT.LANDSCAPE for section in out_doc.sections))
 
 
 if __name__ == '__main__':

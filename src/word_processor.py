@@ -5,7 +5,7 @@ WordProcessor - Klasse für die Verarbeitung von Word-Dokumenten
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_LINE_SPACING, WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
-from docx.enum.section import WD_SECTION
+from docx.enum.section import WD_SECTION, WD_ORIENT
 from docx.oxml.shared import qn
 from docx.oxml import OxmlElement
 from template_manager import TemplateManager
@@ -137,6 +137,13 @@ class WordProcessor:
                     'min_inner_width': 12,
                     'padding_spaces': 1,
                 },
+            },
+            'external_table_rules': {
+                'marker_name': 'tabelle',
+                'orientation_marker_name': 'tabelle_format',
+                'default_extension': '.docx',
+                'search_subfolder_from_collection_name': True,
+                'block_export_on_missing_reference': True,
             },
             'difficulty_rules': {
                 'allowed_values': ['leicht', 'mittel', 'schwer'],
@@ -354,6 +361,7 @@ class WordProcessor:
             doc = Document(file_path)
             tasks = self._extract_tasks_with_parser_mode(doc)
             self._normalize_task_collection(tasks)
+            self._annotate_external_table_references(tasks, file_path)
             
             return tasks
             
@@ -490,6 +498,146 @@ class WordProcessor:
         """Vergibt laufende interne Nummern (1..n) für kombinierte Parser-Ergebnisse."""
         for idx, task in enumerate(tasks, 1):
             task['number'] = idx
+
+    def _external_table_marker_name(self):
+        """Liefert den Marker-Namen für externe Tabellenreferenzen."""
+        return str(self.get_import_rule('external_table_rules.marker_name', 'tabelle') or 'tabelle').strip().lower()
+
+    def _external_table_orientation_marker_name(self):
+        """Liefert den Marker-Namen für optionale Orientierungs-Overrides."""
+        return str(self.get_import_rule('external_table_rules.orientation_marker_name', 'tabelle_format') or 'tabelle_format').strip().lower()
+
+    def _parse_external_table_reference_line(self, text):
+        """Parst Marker wie <<tabelle=datei>> oder <<tabelle_format=landscape>>."""
+        raw = str(text or '').strip()
+        if not raw:
+            return None
+
+        table_marker = re.escape(self._external_table_marker_name())
+        orientation_marker = re.escape(self._external_table_orientation_marker_name())
+
+        table_match = re.match(
+            rf'^\s*(?:<<\s*)?{table_marker}\s*=\s*(.+?)(?:\s*>>)?\s*$',
+            raw,
+            flags=re.IGNORECASE,
+        )
+        if table_match:
+            return {
+                'type': 'table',
+                'value': str(table_match.group(1) or '').strip().strip('>'),
+            }
+
+        orientation_match = re.match(
+            rf'^\s*(?:<<\s*)?{orientation_marker}\s*=\s*(.+?)(?:\s*>>)?\s*$',
+            raw,
+            flags=re.IGNORECASE,
+        )
+        if orientation_match:
+            return {
+                'type': 'orientation',
+                'value': str(orientation_match.group(1) or '').strip().strip('>').lower(),
+            }
+
+        return None
+
+    def _strip_external_table_reference_from_lines(self, lines):
+        """Entfernt Referenzmarker aus Inhaltszeilen und extrahiert deren Metadaten."""
+        filtered_lines = []
+        table_reference = ''
+        orientation = 'auto'
+
+        for line in (lines or []):
+            text = str(line or '').strip()
+            marker = self._parse_external_table_reference_line(text)
+            if not marker:
+                if text:
+                    filtered_lines.append(text)
+                continue
+
+            if marker.get('type') == 'table' and not table_reference:
+                table_reference = str(marker.get('value') or '').strip()
+            elif marker.get('type') == 'orientation':
+                candidate = str(marker.get('value') or '').strip().lower()
+                if candidate in {'auto', 'landscape', 'portrait'}:
+                    orientation = candidate
+
+        return {
+            'lines': filtered_lines,
+            'reference': table_reference,
+            'orientation': orientation,
+        }
+
+    def _collection_subfolder_name_from_path(self, collection_path):
+        """Leitet den lernbereichsspezifischen Unterordner aus dem Sammlungsnamen ab."""
+        stem = str(Path(collection_path).stem or '').strip()
+        if not stem:
+            return ''
+
+        normalized = re.sub(r'^Aufgaben[_\-\s]*', '', stem, flags=re.IGNORECASE).strip()
+        return normalized or stem
+
+    def _resolve_external_table_reference(self, reference, collection_path):
+        """Löst einen Tabellenverweis relativ zum Sammlungsordner/Lernbereich auf."""
+        ref = str(reference or '').strip()
+        if not ref or not collection_path:
+            return ''
+
+        ref_name = Path(ref).name
+        ref_path = Path(ref_name)
+        default_ext = str(self.get_import_rule('external_table_rules.default_extension', '.docx') or '.docx').strip() or '.docx'
+        if not ref_path.suffix:
+            ref_path = ref_path.with_suffix(default_ext)
+
+        collection_file = Path(collection_path)
+        base_dir = collection_file.parent
+        candidates = []
+
+        if bool(self.get_import_rule('external_table_rules.search_subfolder_from_collection_name', True)):
+            subfolder_name = self._collection_subfolder_name_from_path(collection_path)
+            if subfolder_name:
+                candidates.append(base_dir / subfolder_name / ref_path.name)
+
+        candidates.append(base_dir / ref_path.name)
+
+        for candidate in candidates:
+            if candidate.exists() and candidate.is_file():
+                return str(candidate)
+
+        return ''
+
+    def _annotate_external_table_references(self, tasks, collection_path):
+        """Erkennt Tabellenmarker in Aufgaben und ergänzt Pfad-/Orientierungsmetadaten."""
+        for task in tasks or []:
+            parsed = self._strip_external_table_reference_from_lines(task.get('content', []) or [])
+            task['content'] = list(parsed.get('lines') or [])
+            task['source_collection_path'] = str(collection_path)
+
+            reference = str(parsed.get('reference') or '').strip()
+            orientation = str(parsed.get('orientation') or 'auto').strip().lower() or 'auto'
+            resolved_path = self._resolve_external_table_reference(reference, collection_path) if reference else ''
+
+            task['external_table_reference'] = reference
+            task['external_table_orientation'] = orientation
+            task['external_table_path'] = resolved_path
+            task['external_table_missing'] = bool(reference) and not bool(resolved_path)
+
+    def _task_external_table_label(self, task):
+        """Liefert eine kompakte Label-Darstellung für Preview/Diagnostik."""
+        reference = str((task or {}).get('external_table_reference') or '').strip()
+        if not reference:
+            return ''
+
+        path = str((task or {}).get('external_table_path') or '').strip()
+        filename = Path(path).name if path else reference
+        orientation = str((task or {}).get('external_table_orientation') or 'auto').strip().lower() or 'auto'
+        if orientation == 'landscape':
+            orientation_label = 'Querformat'
+        elif orientation == 'portrait':
+            orientation_label = 'Hochformat'
+        else:
+            orientation_label = 'Auto'
+
+        return f"Externe Tabelle: {filename} ({orientation_label})"
 
     def _extract_tasks_from_structured_tables(self, doc):
         """
@@ -1329,6 +1477,9 @@ class WordProcessor:
         if category_required and self._is_missing_category(task.get('category')):
             warnings.append('Kategorie fehlt (Pflichtfeld).')
 
+        if str(task.get('external_table_reference') or '').strip() and bool(task.get('external_table_missing')):
+            warnings.append('Externe Tabelle konnte nicht gefunden werden.')
+
         intro_lines = self._extract_intro_lines(content_lines)
         if intro_lines:
             hints.append('Einleitung für Aufgabe und Folgeaufgaben erforderlich.')
@@ -1677,6 +1828,138 @@ class WordProcessor:
                 # Fallback: Fehlermeldung als Absatz einfügen
                 doc.add_paragraph(f"[Element konnte nicht kopiert werden: {str(e)[:80]}]")
 
+    def _is_landscape_section(self, section):
+        """Prüft, ob eine Sektion im Querformat ist."""
+        try:
+            if getattr(section, 'orientation', None) == WD_ORIENT.LANDSCAPE:
+                return True
+            return int(section.page_width) > int(section.page_height)
+        except Exception:
+            return False
+
+    def _detect_external_document_orientation(self, source_doc, override='auto'):
+        """Ermittelt die geeignetste Orientierung für ein extern referenziertes Dokument."""
+        choice = str(override or 'auto').strip().lower()
+        if choice in {'landscape', 'portrait'}:
+            return choice
+
+        try:
+            if any(self._is_landscape_section(section) for section in source_doc.sections):
+                return 'landscape'
+        except Exception:
+            pass
+
+        max_columns = 0
+        max_row_text = 0
+        for table in source_doc.tables:
+            try:
+                max_columns = max(max_columns, len(table.columns) if table.columns else 0)
+                for row in table.rows:
+                    max_row_text = max(
+                        max_row_text,
+                        sum(len(str(cell.text or '').strip()) for cell in row.cells),
+                    )
+            except Exception:
+                continue
+
+        if max_columns >= 6 or max_row_text >= 150:
+            return 'landscape'
+
+        return 'portrait'
+
+    def _apply_section_orientation(self, section, orientation):
+        """Setzt Hoch-/Querformat robust auf eine Sektion."""
+        desired = str(orientation or 'portrait').strip().lower()
+        try:
+            current_width = section.page_width
+            current_height = section.page_height
+            if desired == 'landscape':
+                section.orientation = WD_ORIENT.LANDSCAPE
+                section.page_width = max(current_width, current_height)
+                section.page_height = min(current_width, current_height)
+            else:
+                section.orientation = WD_ORIENT.PORTRAIT
+                section.page_width = min(current_width, current_height)
+                section.page_height = max(current_width, current_height)
+        except Exception:
+            pass
+
+    def _collect_used_style_and_num_ids_from_xml_elements(self, xml_elements):
+        """Sammelt verwendete Style- und NumIDs direkt aus XML-Elementen."""
+        style_ids = set()
+        num_ids = set()
+
+        for xml_elem in xml_elements or []:
+            if xml_elem is None:
+                continue
+            for n in xml_elem.xpath('.//w:pStyle|.//w:rStyle|.//w:tblStyle'):
+                val = n.get(qn('w:val'))
+                if val:
+                    style_ids.add(val)
+            for n in xml_elem.xpath('.//w:numPr/w:numId'):
+                val = n.get(qn('w:val'))
+                if val:
+                    num_ids.add(val)
+
+        return style_ids, num_ids
+
+    def _append_external_document_content(self, target_doc, external_doc):
+        """Übernimmt die relevanten Body-Elemente eines externen Dokuments ins Ziel."""
+        xml_elements = []
+        for child in list(external_doc._element.body):
+            tag_local = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+            if tag_local in ('p', 'tbl', 'sdt'):
+                xml_elements.append(child)
+
+        used_style_ids, used_num_ids = self._collect_used_style_and_num_ids_from_xml_elements(xml_elements)
+        self._merge_required_styles(external_doc.part, target_doc.part, used_style_ids)
+        external_num_map = self._merge_required_numbering(external_doc.part, target_doc.part, used_num_ids)
+
+        body = target_doc._element.body
+        sect_pr = body.find(qn('w:sectPr'))
+        rel_map = {}
+
+        for xml_elem in xml_elements:
+            cloned = deepcopy(xml_elem)
+            self._remap_relationship_ids_in_xml(
+                xml_element=cloned,
+                source_part=external_doc.part,
+                target_part=target_doc.part,
+                rel_map=rel_map,
+            )
+            self._remap_num_ids_in_element(cloned, external_num_map)
+
+            if sect_pr is not None:
+                body.insert(list(body).index(sect_pr), cloned)
+            else:
+                body.append(cloned)
+
+    def _insert_external_table_reference(self, doc, task):
+        """Fügt eine referenzierte externe Tabellen-/Dokumentdatei in die LEK ein."""
+        path = str((task or {}).get('external_table_path') or '').strip()
+        if not path or not Path(path).exists():
+            return False
+
+        source_doc = Document(path)
+        orientation = self._detect_external_document_orientation(
+            source_doc,
+            override=(task or {}).get('external_table_orientation', 'auto'),
+        )
+
+        inserted_landscape = False
+        if orientation == 'landscape':
+            landscape_section = doc.add_section(WD_SECTION.NEW_PAGE)
+            self._apply_section_orientation(landscape_section, 'landscape')
+            inserted_landscape = True
+
+        self._append_external_document_content(doc, source_doc)
+
+        if inserted_landscape:
+            portrait_section = doc.add_section(WD_SECTION.NEW_PAGE)
+            self._apply_section_orientation(portrait_section, 'portrait')
+
+        return True
+
     def _copy_paragraphs_for_lek(self, doc, paragraphs):
         """
         Kopiert Paragraphen für LEK-Erstellung mit angepassten Überschrift-Levels
@@ -1971,12 +2254,12 @@ class WordProcessor:
                 return row.cells[1]
         return None
 
-    def _append_cell_as_flow_text(self, doc, cell, fallback_text=''):
+    def _append_cell_as_flow_text(self, doc, cell, fallback_text='', task=None):
         """Überträgt den Inhalt einer Tabellenzelle als Fließtext-/Blockelemente ins Dokument."""
         written = False
         if cell is not None:
             source_part = getattr(cell, 'part', None)
-            written = self._append_cell_block_elements_for_lek(doc, cell, source_part=source_part)
+            written = self._append_cell_block_elements_for_lek(doc, cell, source_part=source_part, task=task)
 
         if not written and str(fallback_text or '').strip():
             doc.add_paragraph(str(fallback_text).strip())
@@ -1984,7 +2267,7 @@ class WordProcessor:
 
         return written
 
-    def _append_cell_block_elements_for_lek(self, doc, cell, source_part=None):
+    def _append_cell_block_elements_for_lek(self, doc, cell, source_part=None, task=None):
         """Kopiert Blockelemente einer Tabellenzelle (p/tbl/sdt) in ein LEK-Dokument."""
         if cell is None:
             return False
@@ -2003,6 +2286,12 @@ class WordProcessor:
             if tag_local == 'p':
                 paragraph_text = ''.join((node.text or '') for node in child.xpath('.//w:t')).strip()
                 if not paragraph_text:
+                    continue
+                marker = self._parse_external_table_reference_line(paragraph_text)
+                if marker and marker.get('type') == 'table':
+                    appended_any = self._insert_external_table_reference(doc, task) or appended_any
+                    continue
+                if marker and marker.get('type') == 'orientation':
                     continue
             elif tag_local not in ('tbl', 'sdt'):
                 continue
@@ -2062,7 +2351,7 @@ class WordProcessor:
 
         blocks_written = 0
         for _name, optional_block, cell, fallback in section_cells:
-            has_content = self._append_cell_as_flow_text(doc, cell, fallback_text=fallback)
+            has_content = self._append_cell_as_flow_text(doc, cell, fallback_text=fallback, task=task)
             if not has_content and optional_block:
                 continue
 
@@ -2070,6 +2359,10 @@ class WordProcessor:
                 blocks_written += 1
                 # Leerzeile zwischen allen geschriebenen Blöcken
                 doc.add_paragraph()
+
+        if self._insert_external_table_reference(doc, task):
+            blocks_written += 1
+            doc.add_paragraph()
 
         if blocks_written == 0:
             # Fallback: zumindest Titel/Content aus Task übernehmen
@@ -2109,6 +2402,75 @@ class WordProcessor:
         if is_heading or (title_norm and extracted_norm == title_norm):
             return elements[1:]
         return elements
+
+    def _append_task_elements_for_lek(self, doc, task, elements):
+        """Kopiert Aufgabenelemente und ersetzt Tabellenmarker durch externe Tabellenblöcke."""
+        elements = list(elements or [])
+        if not elements:
+            return False
+
+        body = doc._element.body
+        sect_pr = body.find(qn('w:sectPr'))
+        rel_map = {}
+        wrote_any = False
+        inserted_external = False
+
+        for element in elements:
+            try:
+                etype = element.get('type')
+                content = element.get('content')
+
+                if etype == 'paragraph':
+                    paragraph_text = str(getattr(content, 'text', '') or '').strip()
+                    marker = self._parse_external_table_reference_line(paragraph_text)
+                    if marker and marker.get('type') == 'table':
+                        inserted_external = self._insert_external_table_reference(doc, task) or inserted_external
+                        wrote_any = inserted_external or wrote_any
+                        continue
+                    if marker and marker.get('type') == 'orientation':
+                        continue
+                    xml_elem = content._element
+                elif etype == 'table':
+                    xml_elem = content._element
+                elif etype == 'sdt':
+                    xml_elem = content
+                else:
+                    continue
+
+                cloned = deepcopy(xml_elem)
+
+                if hasattr(content, 'part'):
+                    self._remap_relationship_ids_in_xml(
+                        xml_element=cloned,
+                        source_part=content.part,
+                        target_part=doc.part,
+                        rel_map=rel_map,
+                    )
+
+                self._remap_num_ids_in_element(cloned, self._num_id_map)
+
+                if etype == 'table':
+                    doc.add_paragraph()
+                    self._set_table_full_width_xml(cloned)
+
+                if sect_pr is not None:
+                    body.insert(list(body).index(sect_pr), cloned)
+                else:
+                    body.append(cloned)
+
+                if etype == 'table':
+                    doc.add_paragraph()
+
+                wrote_any = True
+            except Exception as e:
+                doc.add_paragraph(f"[Element konnte nicht kopiert werden: {str(e)[:80]}]")
+                wrote_any = True
+
+        if not inserted_external:
+            inserted_external = self._insert_external_table_reference(doc, task)
+            wrote_any = inserted_external or wrote_any
+
+        return wrote_any
 
     def _extract_points_text(self, task, table=None):
         """Ermittelt die Punkteangabe einer Aufgabe (z. B. '10')."""
@@ -2259,17 +2621,20 @@ class WordProcessor:
                 elements_to_copy = self._strip_leading_task_heading_element(all_elements, task.get('title', ''))
 
             if elements_to_copy:
-                self._copy_elements_for_lek(doc, elements_to_copy)
+                self._append_task_elements_for_lek(doc, task, elements_to_copy)
             return
 
         original_paragraphs = task.get('original_paragraphs') or []
         if original_paragraphs:
             self._copy_paragraphs_for_lek(doc, original_paragraphs)
+            self._insert_external_table_reference(doc, task)
             return
 
         for content_line in task.get('content', []) or []:
             if str(content_line).strip():
                 doc.add_paragraph(str(content_line))
+
+        self._insert_external_table_reference(doc, task)
 
     def _cell_text_lines(self, cell):
         """Liest nicht-leere Textzeilen aus einer Tabellenzelle in stabiler Reihenfolge."""
@@ -2287,7 +2652,7 @@ class WordProcessor:
             if raw:
                 lines = [line.strip() for line in raw.splitlines() if line.strip()]
 
-        return lines
+        return [line for line in lines if not self._parse_external_table_reference_line(line)]
 
     def build_task_flow_preview_lines(self, task):
         """
@@ -2343,11 +2708,19 @@ class WordProcessor:
 
         # Fallback für nicht-strukturierte Aufgaben
         content_lines = [str(line).strip() for line in (task.get('content') or []) if str(line).strip()]
+        external_table_label = self._task_external_table_label(task)
+        if external_table_label:
+            if content_lines:
+                content_lines.append('')
+            content_lines.append(external_table_label)
         if content_lines:
             return content_lines
 
         title = str(task.get('title') or '').strip()
-        return [title] if title else ['(kein Inhalt verfügbar)']
+        lines = [title] if title else ['(kein Inhalt verfügbar)']
+        if external_table_label:
+            lines.extend(['', external_table_label])
+        return lines
 
     def analyze_task_flow_preview_delta(self, task):
         """
