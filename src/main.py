@@ -144,6 +144,7 @@ class LEKBastlerGUI:
             3: "Aufgaben freigeben",
             4: "Exportieren",
         }
+        self._default_button_labels = {}
         
         self.setup_ui()
 
@@ -271,7 +272,7 @@ class LEKBastlerGUI:
         ttk.Label(file_frame, text="Word-Datei:").grid(row=0, column=0, sticky=tk.W)
         self.entry_file_path = ttk.Entry(file_frame, textvariable=self.file_path_var, width=50)
         self.entry_file_path.grid(row=0, column=1, padx=(10, 0))
-        self.btn_browse = ttk.Button(file_frame, text="Durchsuchen...", command=self.browse_and_load_file)
+        self.btn_browse = ttk.Button(file_frame, text="Datei wählen & laden...", command=self.browse_and_load_file)
         self.btn_browse.grid(row=0, column=2, padx=(10, 0))
         self.btn_import_task = ttk.Button(
             file_frame,
@@ -373,8 +374,11 @@ class LEKBastlerGUI:
         self.wizard_step_var = tk.StringVar(value="Schritt 1/4: Quelle wählen")
         ttk.Label(wizard_frame, textvariable=self.wizard_step_var).grid(row=0, column=0, sticky=tk.W)
 
+        self.wizard_hint_var = tk.StringVar(value="Nächster Schritt: Aufgabensammlung auswählen und laden.")
+        ttk.Label(wizard_frame, textvariable=self.wizard_hint_var).grid(row=1, column=0, sticky=tk.W, pady=(4, 0))
+
         nav_frame = ttk.Frame(wizard_frame)
-        nav_frame.grid(row=0, column=1, sticky=tk.E)
+        nav_frame.grid(row=0, column=1, rowspan=2, sticky=tk.E)
         self.btn_step_prev = ttk.Button(nav_frame, text="← Zurück", command=self._on_prev_step)
         self.btn_step_prev.pack(side=tk.LEFT, padx=(0, 8))
         self.btn_step_next = ttk.Button(nav_frame, text="Weiter →", command=self._on_next_step)
@@ -450,6 +454,13 @@ class LEKBastlerGUI:
         self.btn_export_selected.pack(side=tk.LEFT, padx=(0, 10))
         self.btn_export_all = ttk.Button(button_frame, text="Alle exportieren", command=self.export_all)
         self.btn_export_all.pack(side=tk.LEFT)
+
+        self._default_button_labels = {
+            self.btn_browse: "Datei wählen & laden...",
+            self.btn_filter: "Aufgaben filtern",
+            self.btn_approve: "Auswahl freigeben",
+            self.btn_export_all: "Alle exportieren",
+        }
         
         # Grid-Konfiguration für responsives Layout
         main_frame.columnconfigure(1, weight=1)
@@ -740,6 +751,37 @@ class LEKBastlerGUI:
         export_enabled = tk.NORMAL if has_session and self.current_step >= 4 and max_step >= 4 else tk.DISABLED
         self.btn_export_selected.configure(state=export_enabled)
         self.btn_export_all.configure(state=export_enabled)
+
+        if self.current_step <= 1:
+            self.wizard_hint_var.set("Nächster Schritt: Aufgabensammlung auswählen und laden.")
+            self._mark_primary_action(self.btn_browse)
+        elif self.current_step == 2:
+            self.wizard_hint_var.set("Nächster Schritt: Aufgaben prüfen/filtern und gewünschte Aufgaben markieren.")
+            self._mark_primary_action(self.btn_filter)
+        elif self.current_step == 3:
+            if approved_count > 0:
+                self.wizard_hint_var.set("Nächster Schritt: Freigaben prüfen und mit 'Weiter' zum Export wechseln.")
+            else:
+                self.wizard_hint_var.set("Nächster Schritt: Markierte Aufgaben über 'Auswahl freigeben' bestätigen.")
+            self._mark_primary_action(self.btn_approve)
+        else:
+            self.wizard_hint_var.set("Nächster Schritt: Export mit 'Alle exportieren' oder 'Markierte exportieren' starten.")
+            self._mark_primary_action(self.btn_export_all)
+
+    def _mark_primary_action(self, primary_button):
+        """Hebt die Primäraktion im aktuellen Wizard-Schritt sichtbar hervor."""
+        for button, label in self._default_button_labels.items():
+            try:
+                button.configure(text=label)
+            except Exception:
+                pass
+
+        if primary_button in self._default_button_labels:
+            try:
+                base_label = self._default_button_labels[primary_button]
+                primary_button.configure(text=f"➡ {base_label}")
+            except Exception:
+                pass
 
     def _refresh_wizard_status(self):
         """Aktualisiert die kompakte Statuszeile für den Wizard-Zustand."""
