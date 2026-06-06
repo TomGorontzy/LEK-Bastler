@@ -73,8 +73,136 @@ $ReleaseDir = 'release'
 $ReleaseZipName = "$DeployFolderName.zip"
 $ReleaseZipPath = Join-Path $ReleaseDir $ReleaseZipName
 
+function Set-FileContentIfChanged {
+    param(
+        [string]$Path,
+        [string]$Content
+    )
+
+    $existing = ''
+    if (Test-Path $Path) {
+        $existing = Get-Content -Path $Path -Raw -Encoding UTF8
+    }
+
+    if ($existing -ne $Content) {
+        Set-Content -Path $Path -Value $Content -Encoding UTF8
+        return $true
+    }
+    return $false
+}
+
+function Update-VersionReferences {
+    param(
+        [string]$Version,
+        [string]$ProjectRoot,
+        [string]$ReleaseNotesPath,
+        [string]$ReleaseZipName,
+        [string]$DeployFolderName,
+        [string]$VersionedExeName
+    )
+
+    Write-Host "0. Versionsreferenzen werden aktualisiert..." -ForegroundColor Yellow
+
+    $targets = @(
+        (Join-Path $ProjectRoot 'docs\DOKUMENTATION_ANWENDER.md'),
+        (Join-Path $ProjectRoot 'docs\DOKUMENTATION_TECHNIK.md'),
+        (Join-Path $ProjectRoot 'docs\DOKUMENTATION_PROJEKT.md'),
+        $ReleaseNotesPath
+    )
+
+    $updated = 0
+    foreach ($path in $targets) {
+        if (-not (Test-Path $path)) {
+            continue
+        }
+
+        $content = Get-Content -Path $path -Raw -Encoding UTF8
+        $newContent = $content
+
+        if ($path -like '*DOKUMENTATION_ANWENDER.md') {
+            $newContent = [regex]::Replace(
+                $newContent,
+                'Hinweis zum aktuellen Stand:\s*Version\s*\*\*[0-9]+\.[0-9]+\.[0-9]+\*\*\.',
+                "Hinweis zum aktuellen Stand: Version **$Version**."
+            )
+        }
+
+        if ($path -like '*DOKUMENTATION_TECHNIK.md') {
+            $newContent = [regex]::Replace(
+                $newContent,
+                'Aktueller Versionsstand:\s*\*\*[0-9]+\.[0-9]+\.[0-9]+\*\*\.',
+                "Aktueller Versionsstand: **$Version**."
+            )
+        }
+
+        if ($path -like '*DOKUMENTATION_PROJEKT.md') {
+            $newContent = [regex]::Replace(
+                $newContent,
+                'Aktueller Versionsstand:\s*\*\*[0-9]+\.[0-9]+\.[0-9]+\*\*\s*\(aus\s+`?src/build_version_info\.txt`?\)\.',
+                ('Aktueller Versionsstand: **{0}** (aus `src/build_version_info.txt`).' -f $Version)
+            )
+
+            $newContent = [regex]::Replace(
+                $newContent,
+                'dist/LEK-Bastler_[0-9]+\.[0-9]+\.[0-9]+/LEK-Bastler_[0-9]+\.[0-9]+\.[0-9]+\.exe',
+                "dist/$DeployFolderName/$VersionedExeName"
+            )
+
+            $newContent = [regex]::Replace(
+                $newContent,
+                'release/LEK-Bastler_[0-9]+\.[0-9]+\.[0-9]+\.zip',
+                "release/$ReleaseZipName"
+            )
+        }
+
+        if ($path -like '*RELEASE_NOTES_v*.md') {
+            $newContent = [regex]::Replace(
+                $newContent,
+                '^#\s+Release Notes\s+v[0-9]+\.[0-9]+\.[0-9]+\s*$',
+                "# Release Notes v$Version",
+                [System.Text.RegularExpressions.RegexOptions]::Multiline
+            )
+
+            $newContent = [regex]::Replace(
+                $newContent,
+                'Release-Build für\s*`[0-9]+\.[0-9]+\.[0-9]+`',
+                ('Release-Build für `{0}`' -f $Version)
+            )
+
+            $newContent = [regex]::Replace(
+                $newContent,
+                'dist/LEK-Bastler_[0-9]+\.[0-9]+\.[0-9]+/LEK-Bastler_[0-9]+\.[0-9]+\.[0-9]+\.exe',
+                "dist/$DeployFolderName/$VersionedExeName"
+            )
+
+            $newContent = [regex]::Replace(
+                $newContent,
+                'release/LEK-Bastler_[0-9]+\.[0-9]+\.[0-9]+\.zip',
+                "release/$ReleaseZipName"
+            )
+        }
+
+        if (Set-FileContentIfChanged -Path $path -Content $newContent) {
+            $updated += 1
+            Write-Host "   aktualisiert: $([System.IO.Path]::GetFileName($path))" -ForegroundColor DarkGray
+        }
+    }
+
+    if ($updated -eq 0) {
+        Write-Host "   keine Versionsanpassungen erforderlich" -ForegroundColor DarkGray
+    }
+}
+
 Write-Host "`nLEK-Bastler Build-Prozess" -ForegroundColor Green
 Write-Host "=========================`n" -ForegroundColor Green
+
+Update-VersionReferences `
+    -Version $Version `
+    -ProjectRoot $projectRoot `
+    -ReleaseNotesPath (Join-Path $projectRoot "release\RELEASE_NOTES_v$Version.md") `
+    -ReleaseZipName $ReleaseZipName `
+    -DeployFolderName $DeployFolderName `
+    -VersionedExeName $VersionedExeName
 
 # ─── Schritt 1: PyInstaller-Build ───────────────────────────────────────────
 if (-not $SkipBuild) {

@@ -181,5 +181,11 @@
     "prefer_mode_on_mixed": "headings",
     "fallback_to_secondary_on_empty": true,
     "include_secondary_in_mixed": false
+  },
+  "export_rules": {
+    "title_points_box": {
+      "min_inner_width": 12,
+      "padding_spaces": 1
+    }
   }
 }

@@ -1,0 +1,78 @@
+{
+  "json_files": [
+    {
+      "path": "data/config/import_rules.json",
+      "purpose": "Regelt Pflichtfelder, Alias-Namen, Schwierigkeitswerte sowie Vorschau-/Export-Reihenfolge und Export-Layout.",
+      "sections": [
+        "template_rules.required_fields",
+        "difficulty_rules.allowed_values",
+        "field_alias_rules.structured_task_fields",
+        "preview_rules.task_flow_sections",
+        "export_rules.title_points_box.min_inner_width",
+        "export_rules.title_points_box.padding_spaces"
+      ]
+    },
+    {
+      "path": "data/config/task_authoring_hints.json",
+      "purpose": "Pflegt Eingabehilfen, Formulierungsbeispiele und Textvorlagen für neue Aufgaben.",
+      "sections": [
+        "formulation_tips",
+        "task_description_template",
+        "title_examples"
+      ]
+    }
+  ],
+  "formulation_tips": [
+    "Titel präzise und knapp formulieren (möglichst 4-8 Wörter).",
+    "Aufgabenstellung mit einem klaren Operator beginnen (z. B. analysieren, begründen, erstellen).",
+    "Kontext nur ergänzen, wenn er für die Lösung zwingend notwendig ist.",
+    "Hinweise als Unterstützung formulieren, nicht als vorweggenommene Lösung.",
+    "Schlagworte fachlich konkret und kommagetrennt angeben."
+  ],
+  "task_description_template": [
+    "Ausgangslage: <kurzer Kontext in 1-2 Sätzen>",
+    "Aufgabe: <konkrete Arbeitsanweisung mit Ziel>",
+    "Ergebnisformat: <z. B. Tabelle, Stichpunkte, Begründung>",
+    "Bewertungskriterium: <woran wird eine korrekte Lösung erkannt?>"
+  ],
+  "title_examples": [
+    "Subnetzplanung für zwei Standorte",
+    "DHCP-Störung systematisch analysieren",
+    "Passwortrichtlinie fachlich begründen"
+  ],
+  "field_hints": {
+    "category": "Beispiel: Netzwerktechnik, IT-Sicherheit, Office-Praxis",
+    "difficulty": "Erlaubte Werte: leicht | mittel | schwer",
+    "keywords": "Beispiel: VLAN, Routing, Fehlersuche",
+    "title": "Kurz und konkret, z. B. 'Subnetzplanung Filiale Nord'"
+  },
+  "category_defaults": {
+    "netzwerktechnik": {
+      "keywords": [
+        "VLAN",
+        "Routing",
+        "Fehlersuche"
+      ],
+      "difficulty": "mittel",
+      "title_prefix": "Netzwerkaufgabe:"
+    },
+    "it-sicherheit": {
+      "keywords": [
+        "Authentifizierung",
+        "Richtlinie",
+        "Risikoanalyse"
+      ],
+      "difficulty": "mittel",
+      "title_prefix": "Security-Aufgabe:"
+    },
+    "office-praxis": {
+      "keywords": [
+        "Excel",
+        "Word",
+        "Dokumentation"
+      ],
+      "difficulty": "leicht",
+      "title_prefix": "Office-Aufgabe:"
+    }
+  ]
+}

@@ -14,12 +14,14 @@ from tkinter import filedialog, messagebox, ttk
 from tkinter import simpledialog
 from tkinter import scrolledtext
 from typing import Any
+import json
 import os
+import re
 import sys
 from pathlib import Path
 from word_processor import WordProcessor
 from task_selector import TaskSelector
-from import_wizard import ImportSession
+from import_wizard import ImportSession, is_blocking_warning
 
 
 def _runtime_base_dir() -> Path:
@@ -27,11 +29,99 @@ def _runtime_base_dir() -> Path:
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parents[1]
 
+
+class HoverTooltip:
+    """Zeigt einen kurzen Infotext an, wenn die Maus über einem Widget verweilt."""
+
+    def __init__(self, widget, text, delay_ms=350):
+        self.widget = widget
+        self.text = str(text or '').strip()
+        self.delay_ms = int(delay_ms)
+        self._after_id = None
+        self._tip_window = None
+
+        self.widget.bind('<Enter>', self._on_enter, add='+')
+        self.widget.bind('<Leave>', self._on_leave, add='+')
+        self.widget.bind('<Motion>', self._on_motion, add='+')
+        self.widget.bind('<ButtonPress>', self._on_leave, add='+')
+
+    def _on_enter(self, _event=None):
+        self._schedule_show()
+
+    def _on_motion(self, _event=None):
+        if self._tip_window is not None:
+            self._position_tip()
+
+    def _on_leave(self, _event=None):
+        self._cancel_show()
+        self._hide_tip()
+
+    def _schedule_show(self):
+        self._cancel_show()
+        if not self.text:
+            return
+        self._after_id = self.widget.after(self.delay_ms, self._show_tip)
+
+    def _cancel_show(self):
+        if self._after_id is not None:
+            try:
+                self.widget.after_cancel(self._after_id)
+            except Exception:
+                pass
+            self._after_id = None
+
+    def _show_tip(self):
+        self._after_id = None
+        if self._tip_window is not None or not self.text:
+            return
+
+        tip = tk.Toplevel(self.widget)
+        tip.wm_overrideredirect(True)
+        tip.attributes('-topmost', True)
+
+        label = tk.Label(
+            tip,
+            text=self.text,
+            justify=tk.LEFT,
+            background='#ffffe1',
+            relief=tk.SOLID,
+            borderwidth=1,
+            padx=8,
+            pady=4,
+            font=('Segoe UI', 9),
+        )
+        label.pack()
+
+        self._tip_window = tip
+        self._position_tip()
+
+    def _position_tip(self):
+        if self._tip_window is None:
+            return
+
+        try:
+            x = self.widget.winfo_pointerx() + 14
+            y = self.widget.winfo_pointery() + 14
+            self._tip_window.wm_geometry(f'+{x}+{y}')
+        except Exception:
+            pass
+
+    def _hide_tip(self):
+        if self._tip_window is not None:
+            try:
+                self._tip_window.destroy()
+            except Exception:
+                pass
+            self._tip_window = None
+
 class LEKBastlerGUI:
     def __init__(self, root):
         self.root = root
+        self._tooltips = []
         self._apply_window_icon()
-        self.root.title("LEK-Bastler - Aufgabenauswahl")
+        app_version = self._read_app_version()
+        title_suffix = f" v{app_version}" if app_version else ""
+        self.root.title(f"LEK-Bastler{title_suffix} - Aufgabenauswahl")
         self.root.geometry("1120x760")
         self.root.minsize(1024, 700)
         self._apply_window_state()
@@ -43,6 +133,10 @@ class LEKBastlerGUI:
         self.source_filename = ""  # Speichert den Namen der Quelldatei
         self.lek_theme = ""  # Speichert das extrahierte LEK-Thema
         self.import_session = None  # Wizard-Session (Sprint 1)
+        self._authoring_help_prompted = False
+        self._sort_column = None
+        self._sort_reverse = False
+        self.ui_mode_var = tk.StringVar(value="einfach (empfohlen)")
         self.current_step = 1
         self.step_labels = {
             1: "Quelle wählen",
@@ -77,6 +171,77 @@ class LEKBastlerGUI:
         except Exception:
             # Kein harter Fehler, falls Icon in einer Umgebung nicht gesetzt werden kann
             pass
+
+    def _read_app_version(self):
+        """Liest die App-Version aus build_version_info.txt (falls vorhanden)."""
+        candidates = [
+            _runtime_base_dir() / "src" / "build_version_info.txt",
+            _runtime_base_dir() / "build_version_info.txt",
+        ]
+
+        version_file = next((path for path in candidates if path.exists()), None)
+        if version_file is not None:
+            try:
+                content = version_file.read_text(encoding='utf-8', errors='ignore')
+            except Exception:
+                content = ""
+
+            if content:
+                m = re.search(r"StringStruct\('FileVersion',\s*'([^']+)'\)", content)
+                if m:
+                    return str(m.group(1)).strip()
+
+                tuple_match = re.search(r"filevers\s*=\s*\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*(\d+))?\)", content)
+                if tuple_match:
+                    major, minor, patch, build = tuple_match.groups()
+                    if build and str(build).strip() not in ('', '0'):
+                        return f"{major}.{minor}.{patch}.{build}"
+                    return f"{major}.{minor}.{patch}"
+
+        # Fallback für Deploy/EXE-Betrieb: Version aus Dateinamen/Ordnernamen ermitteln
+        # Beispiele: LEK-Bastler_3.7.0.exe, LEK-Bastler_3.7.0
+        runtime_markers = []
+        try:
+            exe_path = Path(sys.executable).resolve()
+            runtime_markers.extend([
+                exe_path.name,
+                exe_path.stem,
+                exe_path.parent.name,
+            ])
+        except Exception:
+            pass
+
+        try:
+            runtime_markers.append(_runtime_base_dir().name)
+        except Exception:
+            pass
+
+        try:
+            runtime_markers.append(Path(__file__).resolve().parent.name)
+        except Exception:
+            pass
+
+        try:
+            arg0 = Path(str(sys.argv[0] or '')).name
+            if arg0:
+                runtime_markers.append(arg0)
+        except Exception:
+            pass
+
+        for marker in runtime_markers:
+            text = str(marker or '').strip()
+            if not text:
+                continue
+
+            explicit = re.search(r'LEK-Bastler[_-](\d+\.\d+\.\d+(?:\.\d+)?)', text, flags=re.IGNORECASE)
+            if explicit:
+                return str(explicit.group(1)).strip()
+
+            generic = re.search(r'(\d+\.\d+\.\d+(?:\.\d+)?)', text)
+            if generic:
+                return str(generic.group(1)).strip()
+
+        return ""
     
     def setup_ui(self):
         """Erstellt die Benutzeroberfläche"""
@@ -88,10 +253,24 @@ class LEKBastlerGUI:
         # Datei-Auswahl Sektion
         file_frame = ttk.LabelFrame(main_frame, text="Aufgabensammlung laden", padding="10")
         file_frame.grid(row=0, column=0, columnspan=2, sticky="we", pady=(0, 10))
+
+        ttk.Label(file_frame, text="Modus:").grid(row=0, column=3, sticky=tk.E, padx=(10, 0))
+        self.ui_mode_combo = ttk.Combobox(
+            file_frame,
+            textvariable=self.ui_mode_var,
+            values=["einfach (empfohlen)", "erweitert"],
+            state="readonly",
+            width=12,
+        )
+        self.ui_mode_combo.grid(row=0, column=4, sticky=tk.W, padx=(8, 0))
+        self.ui_mode_combo.bind("<<ComboboxSelected>>", self._on_ui_mode_changed)
+        self.ui_mode_hint_var = tk.StringVar(value="Einfach blendet Expertenfunktionen aus.")
+        ttk.Label(file_frame, textvariable=self.ui_mode_hint_var).grid(row=0, column=5, sticky=tk.W, padx=(10, 0))
         
         self.file_path_var = tk.StringVar()
         ttk.Label(file_frame, text="Word-Datei:").grid(row=0, column=0, sticky=tk.W)
-        ttk.Entry(file_frame, textvariable=self.file_path_var, width=50).grid(row=0, column=1, padx=(10, 0))
+        self.entry_file_path = ttk.Entry(file_frame, textvariable=self.file_path_var, width=50)
+        self.entry_file_path.grid(row=0, column=1, padx=(10, 0))
         self.btn_browse = ttk.Button(file_frame, text="Durchsuchen...", command=self.browse_and_load_file)
         self.btn_browse.grid(row=0, column=2, padx=(10, 0))
         self.btn_import_task = ttk.Button(
@@ -106,8 +285,15 @@ class LEKBastlerGUI:
             command=self.import_tasks_bulk_from_word,
         )
         self.btn_import_tasks_bulk.grid(row=1, column=2, sticky=tk.W, padx=(10, 0), pady=(8, 0))
+        self.btn_authoring_help = ttk.Button(
+            file_frame,
+            text="Eingabehilfe (JSON & Formulierungen)",
+            command=self.show_task_authoring_help,
+        )
+        self.btn_authoring_help.grid(row=1, column=4, sticky=tk.W, padx=(10, 0), pady=(8, 0))
 
-        ttk.Label(file_frame, text="Duplikat-Preset:").grid(row=2, column=0, sticky=tk.W, pady=(8, 0))
+        self.lbl_duplicate_mode = ttk.Label(file_frame, text="Duplikat-Preset:")
+        self.lbl_duplicate_mode.grid(row=2, column=0, sticky=tk.W, pady=(8, 0))
         self.duplicate_mode_var = tk.StringVar()
         self.duplicate_mode_combo = ttk.Combobox(
             file_frame,
@@ -134,7 +320,8 @@ class LEKBastlerGUI:
         self.btn_save_duplicate_mode.grid(row=2, column=3, sticky=tk.W, padx=(10, 0), pady=(8, 0))
 
         self.duplicate_threshold_var = tk.StringVar(value="Aktive Duplikat-Schwelle: -")
-        ttk.Label(file_frame, textvariable=self.duplicate_threshold_var).grid(
+        self.lbl_duplicate_threshold = ttk.Label(file_frame, textvariable=self.duplicate_threshold_var)
+        self.lbl_duplicate_threshold.grid(
             row=3,
             column=1,
             columnspan=2,
@@ -150,20 +337,34 @@ class LEKBastlerGUI:
         # Suchbegriffe
         ttk.Label(criteria_frame, text="Suchbegriffe (kommagetrennt):").grid(row=0, column=0, sticky=tk.W)
         self.keywords_var = tk.StringVar()
-        ttk.Entry(criteria_frame, textvariable=self.keywords_var, width=60).grid(row=0, column=1, padx=(10, 0))
+        self.entry_keywords_filter = ttk.Entry(criteria_frame, textvariable=self.keywords_var, width=60)
+        self.entry_keywords_filter.grid(row=0, column=1, padx=(10, 0))
         
         # Schwierigkeitsgrad
         ttk.Label(criteria_frame, text="Schwierigkeitsgrad:").grid(row=1, column=0, sticky=tk.W, pady=(10, 0))
         self.difficulty_var = tk.StringVar()
-        difficulty_combo = ttk.Combobox(criteria_frame, textvariable=self.difficulty_var, 
-                                      values=["Alle", "Leicht", "Mittel", "Schwer"])
-        difficulty_combo.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 0))
-        difficulty_combo.set("Alle")
+        self.combo_filter_difficulty = ttk.Combobox(
+            criteria_frame,
+            textvariable=self.difficulty_var,
+            values=["Alle", "Leicht", "Mittel", "Schwer"],
+        )
+        self.combo_filter_difficulty.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 0))
+        self.combo_filter_difficulty.set("Alle")
         
         # Anzahl der Aufgaben
         ttk.Label(criteria_frame, text="Max. Anzahl Aufgaben:").grid(row=2, column=0, sticky=tk.W, pady=(10, 0))
-        self.max_tasks_var = tk.StringVar(value="10")
-        ttk.Spinbox(criteria_frame, from_=1, to=100, textvariable=self.max_tasks_var, width=10).grid(row=2, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 0))
+        self.max_tasks_var = tk.StringVar(value="20")
+        self.spin_max_tasks = ttk.Spinbox(criteria_frame, from_=1, to=20, textvariable=self.max_tasks_var, width=10)
+        self.spin_max_tasks.grid(row=2, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 0))
+
+        self.only_blockers_var = tk.BooleanVar(value=False)
+        self.chk_only_blockers = ttk.Checkbutton(
+            criteria_frame,
+            text="Nur Blocker anzeigen",
+            variable=self.only_blockers_var,
+            command=self._on_toggle_only_blockers,
+        )
+        self.chk_only_blockers.grid(row=3, column=1, sticky=tk.W, padx=(10, 0), pady=(10, 0))
         
         # Wizard-Navigation
         wizard_frame = ttk.LabelFrame(main_frame, text="Import-Assistent", padding="10")
@@ -191,34 +392,33 @@ class LEKBastlerGUI:
         )
         
         # Treeview für Aufgabenvorschau
-        columns = ("Nr", "Kategorie", "Titel", "Schwierigkeit", "Warnungen", "Suchbegriffe")
+        columns = ("Nr", "Kategorie", "Titel", "Schwierigkeit", "Hinweise", "Suchbegriffe")
         self.task_tree = ttk.Treeview(preview_frame, columns=columns, show="headings", height=10, selectmode="extended")
         
         # Spaltenbreiten optimiert setzen
-        self.task_tree.heading("Nr", text="Nr")
+        self.task_tree.heading("Nr", text="Nr", command=lambda: self._sort_task_tree_by_column("Nr"))
         self.task_tree.column("Nr", width=50, minwidth=40)
         
-        self.task_tree.heading("Kategorie", text="Kategorie")
+        self.task_tree.heading("Kategorie", text="Kategorie", command=lambda: self._sort_task_tree_by_column("Kategorie"))
         self.task_tree.column("Kategorie", width=170, minwidth=120)
 
-        self.task_tree.heading("Titel", text="Titel")
+        self.task_tree.heading("Titel", text="Titel", command=lambda: self._sort_task_tree_by_column("Titel"))
         self.task_tree.column("Titel", width=260, minwidth=180)
         
-        self.task_tree.heading("Schwierigkeit", text="Schwierigkeit")
+        self.task_tree.heading("Schwierigkeit", text="Schwierigkeit", command=lambda: self._sort_task_tree_by_column("Schwierigkeit"))
         self.task_tree.column("Schwierigkeit", width=100, minwidth=80)
 
-        self.task_tree.heading("Warnungen", text="Warnungen")
-        self.task_tree.column("Warnungen", width=260, minwidth=160)
+        self.task_tree.heading("Hinweise", text="Hinweise", command=lambda: self._sort_task_tree_by_column("Hinweise"))
+        self.task_tree.column("Hinweise", width=260, minwidth=160)
         
-        self.task_tree.heading("Suchbegriffe", text="Suchbegriffe")
+        self.task_tree.heading("Suchbegriffe", text="Suchbegriffe", command=lambda: self._sort_task_tree_by_column("Suchbegriffe"))
         self.task_tree.column("Suchbegriffe", width=200, minwidth=140)
         
         v_scrollbar = ttk.Scrollbar(preview_frame, orient=tk.VERTICAL, command=self.task_tree.yview)
         h_scrollbar = ttk.Scrollbar(preview_frame, orient=tk.HORIZONTAL, command=self.task_tree.xview)
         self.task_tree.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
         
-        self.task_tree.tag_configure('confidence_low', background='#ffe6e6')
-        self.task_tree.tag_configure('confidence_medium', background='#fff6dd')
+        self.task_tree.bind('<Double-1>', self._on_task_double_click)
 
         self.task_tree.grid(row=1, column=0, sticky="wens")
         v_scrollbar.grid(row=1, column=1, sticky="ns")
@@ -232,6 +432,10 @@ class LEKBastlerGUI:
         self.btn_filter.pack(side=tk.LEFT, padx=(0, 10))
         self.btn_select_all = ttk.Button(button_frame, text="Alle auswählen", command=self.select_all_tasks)
         self.btn_select_all.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_select_blockers = ttk.Button(button_frame, text="Nur Blocker auswählen", command=self.select_blocker_tasks)
+        self.btn_select_blockers.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_bulk_edit = ttk.Button(button_frame, text="Mehrfach bearbeiten", command=self.bulk_edit_selected_tasks)
+        self.btn_bulk_edit.pack(side=tk.LEFT, padx=(0, 10))
         self.btn_deselect_all = ttk.Button(button_frame, text="Auswahl aufheben", command=self.deselect_all_tasks)
         self.btn_deselect_all.pack(side=tk.LEFT, padx=(0, 10))
         self.btn_approve = ttk.Button(button_frame, text="Auswahl freigeben", command=self.approve_selected_tasks)
@@ -255,7 +459,109 @@ class LEKBastlerGUI:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         self._sync_duplicate_mode_ui()
+        self._apply_ui_mode()
+        self._attach_quick_tooltips()
         self._set_step(1, show_message=False)
+
+    def _attach_quick_tooltips(self):
+        """Hängt kurze Hover-Infotexte an zentrale Bedienbuttons."""
+        tooltip_map = {
+            self.ui_mode_combo: "Hier wählen Sie den Arbeitsmodus: 'einfach' für den Standardablauf, 'erweitert' für zusätzliche Import- und Diagnosefunktionen.",
+            self.entry_file_path: "Zeigt den Pfad zur aktuellen Aufgabensammlung. Sie können hier auch manuell einen .docx-Pfad eintragen.",
+            self.btn_browse: "Öffnet den Dateidialog, übernimmt die gewählte Datei und lädt die Aufgaben direkt in den Assistenten.",
+            self.btn_import_task: "Importiert genau eine neue Aufgabe aus einer separaten Word-Datei in die aktuell geladene Sammlung (nur erweitert).",
+            self.btn_import_tasks_bulk: "Importiert mehrere Word-Dateien nacheinander als Aufgabenserie in die aktuelle Sammlung (nur erweitert).",
+            self.btn_authoring_help: "Zeigt eine kurze Eingabehilfe mit Feldregeln, JSON-Referenzen und Formulierungsbeispielen für neue Aufgaben.",
+            self.duplicate_mode_combo: "Legt fest, wie streng ähnliche Aufgaben als Duplikat erkannt werden (strict/normal/relaxed).",
+            self.btn_apply_duplicate_mode: "Übernimmt das gewählte Duplikat-Preset sofort für diese Sitzung, ohne es dauerhaft zu speichern.",
+            self.btn_save_duplicate_mode: "Speichert das aktuelle Duplikat-Preset als Standard, damit es beim nächsten Start automatisch gilt.",
+            self.entry_keywords_filter: "Filtern Sie Aufgaben über Schlagworte (kommagetrennt), z. B. VLAN, Routing, Fehlersuche.",
+            self.combo_filter_difficulty: "Begrenzt die Anzeige auf einen Schwierigkeitsgrad oder zeigt mit 'Alle' die komplette Trefferliste.",
+            self.spin_max_tasks: "Begrenzt die Anzahl der angezeigten Treffer. Nützlich, um Auswahl und Prüfung übersichtlich zu halten.",
+            self.chk_only_blockers: "Blendet nur Aufgaben mit blockierenden Warnungen ein, damit Sie kritische Fälle zuerst korrigieren können.",
+            self.task_tree: "Zentrale Aufgabenliste: markieren, per Spaltenkopf sortieren und per Doppelklick eine Aufgabe direkt bearbeiten.",
+            self.btn_step_prev: "Wechselt zum vorherigen Assistenten-Schritt, ohne den aktuellen Stand zu verlieren.",
+            self.btn_step_next: "Wechselt zum nächsten Schritt, sobald die nötigen Voraussetzungen (z. B. Freigaben) erfüllt sind.",
+            self.btn_filter: "Wendet die aktuellen Kriterien an und aktualisiert die Aufgabenliste passend zu Ihren Filtereinstellungen.",
+            self.btn_select_all: "Markiert alle aktuell sichtbaren Aufgaben, damit Sie sie gemeinsam freigeben oder bearbeiten können.",
+            self.btn_select_blockers: "Markiert gezielt nur Aufgaben mit blockierenden Warnungen für eine schnelle Korrekturrunde.",
+            self.btn_bulk_edit: "Bearbeitet Kategorie, Schwierigkeit und Schlagworte für mehrere markierte Aufgaben in einem Schritt.",
+            self.btn_deselect_all: "Hebt die komplette aktuelle Markierung auf und startet die Auswahl bei Bedarf neu.",
+            self.btn_approve: "Gibt die markierten Aufgaben für Vorschau und Export frei und aktualisiert den Wizard-Fortschritt.",
+            self.btn_clear_approvals: "Entfernt alle bisherigen Freigaben, wenn Sie den Auswahlprozess neu aufsetzen möchten.",
+            self.btn_preview_selected: "Öffnet eine Textvorschau der aktuell ausgewählten Aufgabe zur schnellen Inhaltskontrolle.",
+            self.btn_preview_lek: "Zeigt die Gesamtvorschau der freigegebenen Aufgaben in der späteren Exportreihenfolge.",
+            self.btn_export_selected: "Exportiert nur die aktuell markierten und freigegebenen Aufgaben in ein LEK-Dokument.",
+            self.btn_export_all: "Exportiert alle freigegebenen Aufgaben gesammelt in eine vollständige LEK-Datei.",
+        }
+
+        self._tooltips = [HoverTooltip(widget, text) for widget, text in tooltip_map.items()]
+
+    def _is_advanced_mode(self):
+        """True, wenn der UI-Modus auf 'erweitert' steht."""
+        mode_value = str(self.ui_mode_var.get() or '').strip().lower()
+        return mode_value.startswith('erweitert')
+
+    def _on_ui_mode_changed(self, _event=None):
+        """Reagiert auf Moduswechsel (einfach/erweitert)."""
+        self._apply_ui_mode()
+
+        if not self._is_advanced_mode() and bool(self.only_blockers_var.get()):
+            self.only_blockers_var.set(False)
+            if self.loaded_tasks:
+                self.filter_tasks(show_message=False)
+
+    def _apply_ui_mode(self):
+        """Aktualisiert Verfügbarkeit erweiterter Funktionen je nach UI-Modus."""
+        advanced_enabled = self._is_advanced_mode()
+
+        if hasattr(self, 'ui_mode_hint_var'):
+            if advanced_enabled:
+                self.ui_mode_hint_var.set("Erweitert zeigt Import-/Diagnosefunktionen an.")
+            else:
+                self.ui_mode_hint_var.set("Einfach (empfohlen) für den Standard-Workflow.")
+
+        advanced_grid_widgets = [
+            self.btn_import_task,
+            self.btn_import_tasks_bulk,
+            self.btn_authoring_help,
+            self.lbl_duplicate_mode,
+            self.duplicate_mode_combo,
+            self.btn_apply_duplicate_mode,
+            self.btn_save_duplicate_mode,
+            self.lbl_duplicate_threshold,
+            self.chk_only_blockers,
+        ]
+
+        if advanced_enabled:
+            for widget in advanced_grid_widgets:
+                try:
+                    widget.grid()
+                except Exception:
+                    pass
+
+            self.duplicate_mode_combo.configure(state='readonly')
+            self.btn_apply_duplicate_mode.configure(state=tk.NORMAL)
+            self.btn_save_duplicate_mode.configure(state=tk.NORMAL)
+
+            if not self.btn_select_blockers.winfo_ismapped():
+                self.btn_select_blockers.pack(side=tk.LEFT, padx=(0, 10), before=self.btn_bulk_edit)
+        else:
+            for widget in advanced_grid_widgets:
+                try:
+                    widget.grid_remove()
+                except Exception:
+                    pass
+
+            self.duplicate_mode_combo.configure(state='disabled')
+            self.btn_apply_duplicate_mode.configure(state=tk.DISABLED)
+            self.btn_save_duplicate_mode.configure(state=tk.DISABLED)
+
+            if self.btn_select_blockers.winfo_ismapped():
+                self.btn_select_blockers.pack_forget()
+            self.btn_select_blockers.configure(state=tk.DISABLED)
+
+        self._update_wizard_step_ui()
 
     def _available_duplicate_modes(self):
         """Liefert verfügbare Duplikat-Presets aus den Regeln."""
@@ -293,6 +599,10 @@ class LEKBastlerGUI:
 
     def _apply_duplicate_mode_from_ui(self, show_message=True):
         """Übernimmt den im UI gewählten Duplikat-Modus in die Laufzeitregeln."""
+        if not self._is_advanced_mode():
+            messagebox.showinfo("Hinweis", "Duplikat-Presets sind nur im erweiterten Modus verfügbar.")
+            return
+
         selected = str(self.duplicate_mode_var.get() or '').strip().lower()
         if not selected:
             return
@@ -318,6 +628,10 @@ class LEKBastlerGUI:
 
     def _save_duplicate_mode_as_default(self, show_message=True):
         """Speichert den aktuell gewählten Duplikat-Modus dauerhaft in der Konfiguration."""
+        if not self._is_advanced_mode():
+            messagebox.showinfo("Hinweis", "Duplikat-Presets sind nur im erweiterten Modus verfügbar.")
+            return False
+
         # Sicherstellen, dass der UI-Wert in die Laufzeitregeln übernommen wurde
         self._apply_duplicate_mode_from_ui(show_message=False)
 
@@ -405,6 +719,9 @@ class LEKBastlerGUI:
 
         self.btn_filter.configure(state=enable_workflow)
         self.btn_select_all.configure(state=enable_workflow)
+        blockers_state = tk.NORMAL if (enable_workflow == tk.NORMAL and self._is_advanced_mode()) else tk.DISABLED
+        self.btn_select_blockers.configure(state=blockers_state)
+        self.btn_bulk_edit.configure(state=enable_workflow)
         self.btn_deselect_all.configure(state=enable_workflow)
         self.btn_approve.configure(state=enable_workflow)
         self.btn_clear_approvals.configure(state=enable_workflow)
@@ -433,14 +750,336 @@ class LEKBastlerGUI:
 
         stats = self.import_session.get_stats()
         warnings_total = stats.get('warnings', 0)
-        low_total = stats.get('low', 0)
+        blocking_total = stats.get('blocking', 0)
         approved = stats.get('approved', 0)
         total = stats.get('total', 0)
+        todo_hint = self._format_blocking_todo_hint()
 
         self.wizard_status_var.set(
-            f"Wizard-Status: Freigegeben {approved}/{total} | Warnungen {warnings_total} | Low-Confidence {low_total}"
+            f"Wizard-Status: Freigegeben {approved}/{total} | Warnungen {warnings_total} | Blocker {blocking_total}{todo_hint}"
         )
         self._update_wizard_step_ui()
+
+    def _warning_priority(self, warning_text):
+        """Liefert Sortierpriorität für Warnungen (kleiner = wichtiger)."""
+        text = str(warning_text or '').strip().lower()
+        if not text:
+            return 99
+
+        if 'pflichtfeld fehlt' in text:
+            return 0
+        if 'kategorie fehlt' in text:
+            return 1
+        if 'inkonsistenter schwierigkeitsgrad' in text:
+            return 2
+        if 'keinen verwertbaren inhalt' in text:
+            return 3
+        if 'einleitungs-/kontexttext' in text:
+            return 6
+        return 10
+
+    def _format_warning_preview(self, warnings, hints=None, max_items=2):
+        """Erzeugt eine kompakte Vorschau für Warnungen und Hinweise in der Tabelle."""
+        normalized_warnings = [str(w).strip() for w in (warnings or []) if str(w).strip()]
+        normalized_hints = [str(h).strip() for h in (hints or []) if str(h).strip()]
+
+        parts = []
+        if normalized_warnings:
+            sorted_warnings = sorted(normalized_warnings, key=lambda w: (self._warning_priority(w), w.lower()))
+            top = sorted_warnings[:max_items]
+            preview = '; '.join(top)
+            remaining = len(sorted_warnings) - len(top)
+            if remaining > 0:
+                preview += f"; +{remaining} weitere"
+            parts.append(preview)
+
+        if normalized_hints:
+            # Hinweise sichtbar kennzeichnen und kompakt halten
+            hint_text = '; '.join(f"Hinweis: {text}" for text in normalized_hints[:max_items])
+            hint_remaining = len(normalized_hints) - min(len(normalized_hints), max_items)
+            if hint_remaining > 0:
+                hint_text += f"; +{hint_remaining} weitere Hinweise"
+            parts.append(hint_text)
+
+        return ' | '.join(parts)
+
+    def _format_blocking_todo_hint(self):
+        """Formatiert eine knappe To-fix-Zusammenfassung für blockierende Warnungen."""
+        if not self.import_session:
+            return ""
+
+        summary_getter = getattr(self.import_session, 'get_blocking_summary', None)
+        if not callable(summary_getter):
+            return ""
+
+        summary = summary_getter() or {}
+        parts = []
+
+        title_count = int(summary.get('missing_title', 0) or 0)
+        if title_count > 0:
+            parts.append(f"Titel {title_count}")
+
+        category_count = int(summary.get('missing_category', 0) or 0)
+        if category_count > 0:
+            parts.append(f"Kategorie {category_count}")
+
+        diff_count = int(summary.get('inconsistent_difficulty', 0) or 0)
+        if diff_count > 0:
+            parts.append(f"Schwierigkeit {diff_count}")
+
+        required_count = int(summary.get('missing_required', 0) or 0)
+        if required_count > 0:
+            parts.append(f"Pflichtfelder {required_count}")
+
+        content_count = int(summary.get('missing_content', 0) or 0)
+        if content_count > 0:
+            parts.append(f"Inhalt {content_count}")
+
+        if not parts:
+            return ""
+
+        return " | To-fix: " + ", ".join(parts)
+
+    def _task_has_blocking_warning(self, task):
+        """Prüft, ob eine Aufgabe mindestens eine blockierende Warnung enthält."""
+        warnings = list(task.get('warnings', []) or [])
+        if not warnings:
+            warnings = list(task.get('pre_warnings', []) or [])
+
+        return any(is_blocking_warning(w) for w in warnings)
+
+    def _on_toggle_only_blockers(self):
+        """Aktualisiert die Ansicht beim Umschalten des Blocker-Filters."""
+        if not self._is_advanced_mode():
+            self.only_blockers_var.set(False)
+            return
+
+        if not self.loaded_tasks:
+            return
+        self.filter_tasks()
+
+    def _default_task_authoring_hints(self):
+        """Liefert Standard-Hinweise für intuitive Aufgabenerstellung."""
+        return {
+            "json_files": [
+                {
+                    "path": "data/config/import_rules.json",
+                    "purpose": "Regelt Pflichtfelder, Alias-Namen, Schwierigkeitswerte, Vorschau-/Export-Reihenfolge sowie Export-Layout.",
+                    "sections": [
+                        "template_rules.required_fields",
+                        "difficulty_rules.allowed_values",
+                        "field_alias_rules.structured_task_fields",
+                        "preview_rules.task_flow_sections",
+                        "export_rules.title_points_box.min_inner_width",
+                        "export_rules.title_points_box.padding_spaces",
+                    ],
+                },
+                {
+                    "path": "data/config/task_authoring_hints.json",
+                    "purpose": "Projektweite Formulierungs- und Eingabehilfe für neue Aufgaben.",
+                    "sections": [
+                        "formulation_tips",
+                        "task_description_template",
+                        "title_examples",
+                    ],
+                },
+            ],
+            "formulation_tips": [
+                "Titel kurz und eindeutig (max. ~8 Wörter, ohne Floskeln).",
+                "Aufgabenstellung mit klarer Handlungsanweisung beginnen (z. B. 'Analysieren Sie ...').",
+                "Einleitung/Kontext nur ergänzen, wenn sie für die Lösung wirklich nötig ist.",
+                "Hinweis nur als Hilfe formulieren, nicht als Vorwegnahme der Lösung.",
+                "Schlagworte konkret und kommagetrennt pflegen (z. B. VLAN, Routing, Fehlersuche).",
+            ],
+            "task_description_template": [
+                "Ausgangslage: <kurzer Kontext>",
+                "Aufgabe: <konkrete Arbeitsanweisung>",
+                "Ergebnisformat: <z. B. Tabelle, Stichpunkte, Begründung>",
+                "Bewertungskriterium: <was wird als korrekt gewertet?>",
+            ],
+            "title_examples": [
+                "Subnetz planen für zwei Standorte",
+                "Fehleranalyse bei DHCP-Ausfall",
+                "Sicheres Passwortkonzept begründen",
+            ],
+            "field_hints": {
+                "category": "Beispiel: Netzwerktechnik, IT-Sicherheit, Office-Praxis",
+                "difficulty": "Erlaubte Werte: leicht | mittel | schwer",
+                "keywords": "Beispiel: VLAN, Routing, Fehlersuche",
+                "title": "Kurz und konkret, z. B. 'Subnetzplanung Filiale Nord'",
+            },
+            "category_defaults": {
+                "netzwerktechnik": {
+                    "keywords": ["VLAN", "Routing", "Fehlersuche"],
+                    "difficulty": "mittel",
+                    "title_prefix": "Netzwerkaufgabe:",
+                },
+                "it-sicherheit": {
+                    "keywords": ["Authentifizierung", "Richtlinie", "Risikoanalyse"],
+                    "difficulty": "mittel",
+                    "title_prefix": "Security-Aufgabe:",
+                },
+                "office-praxis": {
+                    "keywords": ["Excel", "Word", "Dokumentation"],
+                    "difficulty": "leicht",
+                    "title_prefix": "Office-Aufgabe:",
+                },
+            },
+        }
+
+    def _load_task_authoring_hints(self):
+        """Lädt optionale Authoring-Hinweise aus JSON mit robustem Fallback."""
+        defaults = self._default_task_authoring_hints()
+        hints_path = _runtime_base_dir() / "data" / "config" / "task_authoring_hints.json"
+
+        if not hints_path.exists():
+            return defaults
+
+        try:
+            with hints_path.open('r', encoding='utf-8') as f:
+                loaded = json.load(f)
+            if not isinstance(loaded, dict):
+                return defaults
+
+            merged = dict(defaults)
+            for key in ('json_files', 'formulation_tips', 'task_description_template', 'title_examples'):
+                value = loaded.get(key)
+                if isinstance(value, list) and value:
+                    merged[key] = value
+
+            field_hints = loaded.get('field_hints')
+            if isinstance(field_hints, dict) and field_hints:
+                normalized_hints = {
+                    str(k).strip().lower(): str(v).strip()
+                    for k, v in field_hints.items()
+                    if str(k).strip() and str(v).strip()
+                }
+                if normalized_hints:
+                    merged['field_hints'] = normalized_hints
+
+            category_defaults = loaded.get('category_defaults')
+            if isinstance(category_defaults, dict) and category_defaults:
+                normalized_defaults = {}
+                for category_key, cfg in category_defaults.items():
+                    key = str(category_key).strip().lower()
+                    if not key or not isinstance(cfg, dict):
+                        continue
+                    normalized_defaults[key] = dict(cfg)
+                if normalized_defaults:
+                    merged['category_defaults'] = normalized_defaults
+            return merged
+        except Exception:
+            return defaults
+
+    def _user_config_path(self):
+        """Liefert den Pfad zur benutzerspezifischen Authoring-Config."""
+        return _runtime_base_dir() / "data" / "config" / "task_authoring_user_config.json"
+
+    def _load_authoring_user_config(self):
+        """Lädt die benutzerspezifische Authoring-Config robust mit Fallback."""
+        cfg_path = self._user_config_path()
+        if not cfg_path.exists():
+            return {}
+
+        try:
+            with cfg_path.open('r', encoding='utf-8') as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+
+    def _save_authoring_user_config(self, config):
+        """Speichert die benutzerspezifische Authoring-Config."""
+        if not isinstance(config, dict):
+            return False
+
+        cfg_path = self._user_config_path()
+        try:
+            cfg_path.parent.mkdir(parents=True, exist_ok=True)
+            with cfg_path.open('w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+                f.write('\n')
+            return True
+        except Exception:
+            return False
+
+    def _get_last_used_category(self):
+        """Liest die zuletzt verwendete Kategorie aus der User-Config."""
+        cfg = self._load_authoring_user_config()
+        return str(cfg.get('last_used_category', '') or '').strip()
+
+    def _set_last_used_category(self, category):
+        """Persistiert die zuletzt verwendete Kategorie in der User-Config."""
+        value = str(category or '').strip()
+        if not value:
+            return False
+
+        cfg = self._load_authoring_user_config()
+        cfg['last_used_category'] = value
+        return self._save_authoring_user_config(cfg)
+
+    def show_task_authoring_help(self):
+        """Zeigt eine kompakte Eingabehilfe für neue Aufgaben inklusive JSON-Hinweisen."""
+        hints = self._load_task_authoring_hints()
+
+        json_files = hints.get('json_files', []) or []
+        formulation_tips = hints.get('formulation_tips', []) or []
+        template_lines = hints.get('task_description_template', []) or []
+        title_examples = hints.get('title_examples', []) or []
+        field_hints = hints.get('field_hints', {}) or {}
+
+        lines = [
+            "Eingabehilfe: Neue Aufgabe intuitiv anlegen",
+            "",
+            "Geeignete JSON-Dateien:",
+        ]
+
+        if json_files:
+            for entry in json_files:
+                if not isinstance(entry, dict):
+                    continue
+                path = str(entry.get('path', '')).strip()
+                purpose = str(entry.get('purpose', '')).strip()
+                sections = entry.get('sections', []) or []
+                section_text = ", ".join(str(s).strip() for s in sections if str(s).strip())
+
+                if path:
+                    lines.append(f"- {path}")
+                if purpose:
+                    lines.append(f"  Zweck: {purpose}")
+                if section_text:
+                    lines.append(f"  Relevante Bereiche: {section_text}")
+        else:
+            lines.append("- data/config/import_rules.json")
+
+        lines.extend(["", "Formulierungs-Tipps:"])
+        if formulation_tips:
+            lines.extend(f"- {tip}" for tip in formulation_tips)
+        else:
+            lines.append("- Aufgaben klar, präzise und handlungsorientiert formulieren.")
+
+        if template_lines:
+            lines.extend(["", "Vorschlag für Aufgabenbeschreibung:"])
+            lines.extend(f"- {line}" for line in template_lines)
+
+        if title_examples:
+            lines.extend(["", "Titelbeispiele:"])
+            lines.extend(f"- {example}" for example in title_examples)
+
+        if isinstance(field_hints, dict) and field_hints:
+            lines.extend(["", "Feldhilfen (Kurz):"])
+            hint_order = [
+                ('category', 'Kategorie'),
+                ('difficulty', 'Schwierigkeit'),
+                ('keywords', 'Schlagworte'),
+                ('title', 'Titel'),
+            ]
+            for key, label in hint_order:
+                hint_text = str(field_hints.get(key, '') or '').strip()
+                if hint_text:
+                    lines.append(f"- {label}: {hint_text}")
+
+        messagebox.showinfo("Eingabehilfe", "\n".join(lines))
     
     def browse_and_load_file(self):
         """Öffnet einen Dateidialog zur Auswahl der Word-Datei und lädt sie direkt"""
@@ -569,7 +1208,6 @@ class LEKBastlerGUI:
             if diagnostics_report:
                 warning_hint = (
                     f"\nWarnungsbehaftete Aufgaben: {diagnostics_report.get('warning_task_count', 0)}"
-                    f"\nLow-Confidence: {diagnostics_report.get('low_confidence_count', 0)}"
                 )
 
             if stats.get('total', 0) == 0:
@@ -581,7 +1219,7 @@ class LEKBastlerGUI:
                     "- Kategorie als 'Überschrift 1'\n"
                     "- Aufgabe als 'Überschrift 2'\n\n"
                     "Empfehlung: Nutzen Sie die Musterdatei\n"
-                    "data/Vorlagen/AUFGABEN_MUSTER_STANDARD.docx",
+                    "data/Vorlagen/AUFGABEN-Vorlage.docx",
                 )
                 return
 
@@ -593,6 +1231,10 @@ class LEKBastlerGUI:
 
     def import_task_from_word(self):
         """Übernimmt eine neue Aufgabe aus einer separaten Word-Datei in die aktuelle Sammlung."""
+        if not self._is_advanced_mode():
+            messagebox.showinfo("Hinweis", "Diese Funktion ist nur im erweiterten Modus verfügbar.")
+            return
+
         target_collection = self._get_valid_import_target_collection()
         if not target_collection:
             return
@@ -650,6 +1292,10 @@ class LEKBastlerGUI:
 
     def import_tasks_bulk_from_word(self):
         """Übernimmt mehrere neue Aufgaben aus separaten Word-Dateien in die aktuelle Sammlung."""
+        if not self._is_advanced_mode():
+            messagebox.showinfo("Hinweis", "Diese Funktion ist nur im erweiterten Modus verfügbar.")
+            return
+
         target_collection = self._get_valid_import_target_collection()
         if not target_collection:
             return
@@ -816,82 +1462,298 @@ class LEKBastlerGUI:
 
         return target_collection
 
+    def _category_suggestions(self, preferred_category=None, category_defaults=None):
+        """Liefert Kategorievorschläge mit Ranking nach Häufigkeit (absteigend)."""
+        stats = {}
+
+        def _add(value, weight=1):
+            text = str(value or '').strip()
+            if not text:
+                return
+            key = text.lower()
+            if key not in stats:
+                stats[key] = {
+                    'label': text,
+                    'count': 0,
+                }
+            stats[key]['count'] += int(weight)
+
+        preferred_text = str(preferred_category or '').strip()
+        if preferred_text:
+            # bevorzugte Kategorie ist immer verfügbar, aber zählt nicht künstlich hoch
+            _add(preferred_text, weight=0)
+
+        # Aus aktuell geladenen Aufgaben (reale Nutzung)
+        for task in (self.loaded_tasks or []):
+            _add(task.get('category'), weight=1)
+
+        # Aus aktueller Session (reale Nutzung)
+        if self.import_session:
+            for task in getattr(self.import_session, 'tasks', []) or []:
+                _add(getattr(task, 'category', ''), weight=1)
+
+        # Aus konfigurierten Kategorie-Defaults (nur Verfügbarkeit, kein Nutzungsboost)
+        if isinstance(category_defaults, dict):
+            for key in category_defaults.keys():
+                _add(key, weight=0)
+
+        if not stats:
+            return [preferred_text] if preferred_text else []
+
+        preferred_key = preferred_text.lower() if preferred_text else None
+        ranked_items = [
+            item for key, item in stats.items()
+            if key != preferred_key
+        ]
+
+        ranked_items.sort(key=lambda item: (-int(item.get('count', 0)), str(item.get('label', '')).lower()))
+
+        suggestions = []
+        if preferred_key and preferred_key in stats:
+            suggestions.append(str(stats[preferred_key].get('label', preferred_text)))
+
+        suggestions.extend(str(item.get('label', '')).strip() for item in ranked_items if str(item.get('label', '')).strip())
+        return suggestions
+
+    def _ask_import_metadata_dialog(self, initial_values, allowed_values):
+        """Zeigt einen strukturierten Metadaten-Dialog mit Live-Validierung."""
+        result = {'value': None}
+        hints = self._load_task_authoring_hints()
+        field_hints = hints.get('field_hints', {}) or {}
+        category_defaults = hints.get('category_defaults', {}) or {}
+
+        def _hint_for(key, fallback=''):
+            text = str(field_hints.get(key, '') or '').strip()
+            return text or fallback
+
+        def _category_key(value):
+            return str(value or '').strip().lower()
+
+        def _keyword_csv(value):
+            if isinstance(value, str):
+                return value.strip()
+            if isinstance(value, (list, tuple, set)):
+                items = [str(item).strip() for item in value if str(item).strip()]
+                return ', '.join(items)
+            return ''
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Metadaten für neue Aufgabe")
+        dialog.transient(self.root)
+        dialog.resizable(False, False)
+
+        frame = ttk.Frame(dialog, padding="12")
+        frame.grid(row=0, column=0, sticky="nsew")
+
+        ttk.Label(
+            frame,
+            text="Bitte Metadaten vollständig pflegen. Pflicht: Kategorie und Schwierigkeitsgrad.",
+        ).grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=(0, 8))
+
+        category_var = tk.StringVar(value=str(initial_values.get('category', '') or ''))
+        difficulty_var = tk.StringVar(value=str(initial_values.get('difficulty', '') or ''))
+        keywords_var = tk.StringVar(value=str(initial_values.get('keywords', '') or ''))
+        title_var = tk.StringVar(value=str(initial_values.get('title', '') or ''))
+        category_suggestion_var = tk.StringVar(value="")
+
+        category_values = self._category_suggestions(
+            preferred_category=category_var.get(),
+            category_defaults=category_defaults,
+        )
+
+        ttk.Label(frame, text="Kategorie *").grid(row=1, column=0, sticky=tk.W, pady=(0, 6))
+        category_combo = ttk.Combobox(
+            frame,
+            textvariable=category_var,
+            values=category_values,
+            state="normal",
+            width=46,
+        )
+        category_combo.grid(row=1, column=1, columnspan=2, sticky="we", pady=(0, 6))
+        ttk.Label(
+            frame,
+            text=_hint_for('category', 'Beispiel: Netzwerktechnik, IT-Sicherheit, Office-Praxis'),
+        ).grid(row=2, column=1, columnspan=2, sticky=tk.W, pady=(0, 8))
+        ttk.Label(frame, textvariable=category_suggestion_var).grid(row=2, column=1, columnspan=2, sticky=tk.E, pady=(0, 8))
+
+        ttk.Label(frame, text="Schwierigkeitsgrad *").grid(row=3, column=0, sticky=tk.W, pady=(0, 6))
+        difficulty_combo = ttk.Combobox(
+            frame,
+            textvariable=difficulty_var,
+            values=list(allowed_values),
+            state="readonly",
+            width=20,
+        )
+        difficulty_combo.grid(row=3, column=1, sticky=tk.W, pady=(0, 6))
+        ttk.Label(
+            frame,
+            text=_hint_for('difficulty', 'Erlaubte Werte: leicht | mittel | schwer'),
+        ).grid(row=4, column=1, columnspan=2, sticky=tk.W, pady=(0, 8))
+
+        ttk.Label(frame, text="Schlagworte").grid(row=5, column=0, sticky=tk.W, pady=(0, 6))
+        ttk.Entry(frame, textvariable=keywords_var, width=48).grid(row=5, column=1, columnspan=2, sticky="we", pady=(0, 6))
+        ttk.Label(
+            frame,
+            text=_hint_for('keywords', 'Beispiel: VLAN, Routing, Fehlersuche'),
+        ).grid(row=6, column=1, columnspan=2, sticky=tk.W, pady=(0, 8))
+
+        ttk.Label(frame, text="Titel (optional)").grid(row=7, column=0, sticky=tk.W, pady=(0, 6))
+        ttk.Entry(frame, textvariable=title_var, width=48).grid(row=7, column=1, columnspan=2, sticky="we", pady=(0, 6))
+        ttk.Label(
+            frame,
+            text=_hint_for('title', "Kurz und konkret, z. B. 'Subnetzplanung Filiale Nord'"),
+        ).grid(row=8, column=1, columnspan=2, sticky=tk.W, pady=(0, 8))
+
+        status_var = tk.StringVar(value="")
+        status_label = ttk.Label(frame, textvariable=status_var)
+        status_label.grid(row=9, column=0, columnspan=3, sticky=tk.W, pady=(4, 10))
+
+        btn_frame = ttk.Frame(frame)
+        btn_frame.grid(row=10, column=0, columnspan=3, sticky=tk.E)
+
+        def _apply_category_defaults(force=False):
+            cfg = category_defaults.get(_category_key(category_var.get()))
+            if not isinstance(cfg, dict):
+                category_suggestion_var.set("")
+                return
+
+            suggested_keywords = _keyword_csv(cfg.get('keywords'))
+            suggested_difficulty = self._normalize_difficulty_value(cfg.get('difficulty'))
+            title_prefix = str(cfg.get('title_prefix', '') or '').strip()
+
+            suggestion_parts = []
+            if suggested_keywords:
+                suggestion_parts.append(f"KW: {suggested_keywords}")
+            if suggested_difficulty:
+                suggestion_parts.append(f"Diff: {suggested_difficulty}")
+            if title_prefix:
+                suggestion_parts.append(f"Titel-Präfix: {title_prefix}")
+
+            category_suggestion_var.set(" | ".join(suggestion_parts))
+
+            if suggested_keywords and (force or not str(keywords_var.get() or '').strip()):
+                keywords_var.set(suggested_keywords)
+
+            if suggested_difficulty:
+                current_diff = self._normalize_difficulty_value(difficulty_var.get())
+                if force or not current_diff:
+                    difficulty_var.set(suggested_difficulty)
+
+            if title_prefix and (force or not str(title_var.get() or '').strip()):
+                title_var.set(title_prefix)
+
+        def _validate():
+            category_ok = bool(str(category_var.get() or '').strip())
+            difficulty_ok = self._normalize_difficulty_value(difficulty_var.get()) is not None
+
+            if category_ok and difficulty_ok:
+                status_var.set("✓ Eingaben sind gültig.")
+                ok_btn.configure(state=tk.NORMAL)
+                return True
+
+            reasons = []
+            if not category_ok:
+                reasons.append("Kategorie fehlt")
+            if not difficulty_ok:
+                reasons.append("Schwierigkeitsgrad ungültig")
+
+            status_var.set("⚠ " + " | ".join(reasons))
+            ok_btn.configure(state=tk.DISABLED)
+            return False
+
+        def _on_save():
+            if not _validate():
+                return
+
+            normalized_difficulty = self._normalize_difficulty_value(difficulty_var.get())
+            selected_category = str(category_var.get() or '').strip()
+            result['value'] = {
+                'category': selected_category,
+                'difficulty': normalized_difficulty,
+                'keywords': str(keywords_var.get() or '').strip(),
+                'title': str(title_var.get() or '').strip(),
+            }
+            self._set_last_used_category(selected_category)
+            dialog.destroy()
+
+        def _on_cancel():
+            result['value'] = None
+            dialog.destroy()
+
+        ttk.Button(
+            btn_frame,
+            text="Hilfe anzeigen",
+            command=self.show_task_authoring_help,
+        ).pack(side=tk.LEFT, padx=(0, 8))
+
+        ttk.Button(
+            btn_frame,
+            text="Vorschläge übernehmen",
+            command=lambda: _apply_category_defaults(force=True),
+        ).pack(side=tk.LEFT, padx=(0, 8))
+
+        ok_btn = ttk.Button(btn_frame, text="Übernehmen", command=_on_save)
+        ok_btn.pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(btn_frame, text="Abbrechen", command=_on_cancel).pack(side=tk.LEFT)
+
+        for var in (category_var, difficulty_var, keywords_var, title_var):
+            var.trace_add('write', lambda *_args: _validate())
+
+        category_var.trace_add('write', lambda *_args: _apply_category_defaults(force=False))
+
+        dialog.protocol("WM_DELETE_WINDOW", _on_cancel)
+        dialog.bind('<Escape>', lambda _e: _on_cancel())
+        dialog.bind('<Return>', lambda _e: _on_save())
+
+        frame.columnconfigure(1, weight=1)
+        frame.columnconfigure(2, weight=1)
+
+        if not str(difficulty_var.get() or '').strip() and allowed_values:
+            difficulty_var.set(str(allowed_values[0]))
+
+        _apply_category_defaults(force=False)
+        _validate()
+        category_combo.focus_set()
+
+        dialog.grab_set()
+        self.root.wait_window(dialog)
+        return result['value']
+
     def _ask_import_metadata(self, default_category=None, default_difficulty=None, default_keywords=None, default_title=None):
         """Fragt Metadaten für Aufgabenimport ab und gibt diese normalisiert zurück."""
+        if not self._authoring_help_prompted:
+            show_help = messagebox.askyesno(
+                "Eingabehilfe anzeigen",
+                "Möchten Sie vor der Metadaten-Eingabe eine kurze Hilfe mit JSON-Hinweisen und Formulierungsbeispielen sehen?",
+            )
+            self._authoring_help_prompted = True
+            if show_help:
+                self.show_task_authoring_help()
+
         rules_default_category = str(self._rule_value('default_import_metadata.category', '') or '')
         rules_default_difficulty = str(self._rule_value('default_import_metadata.difficulty', 'mittel') or 'mittel')
         rules_default_keywords = str(self._rule_value('default_import_metadata.keywords', '') or '')
         rules_default_title = str(self._rule_value('default_import_metadata.title', '') or '')
         allowed_values = self._difficulty_allowed_values()
-        difficulty_prompt_values = " | ".join(allowed_values)
+        last_used_category = self._get_last_used_category()
 
         category_default = (
             default_category
             if default_category is not None
-            else (self.lek_theme or rules_default_category or "Allgemein")
+            else (last_used_category or self.lek_theme or rules_default_category or "Allgemein")
         )
-        difficulty_default = default_difficulty if default_difficulty is not None else rules_default_difficulty
+        difficulty_default_raw = default_difficulty if default_difficulty is not None else rules_default_difficulty
+        difficulty_default = self._normalize_difficulty_value(difficulty_default_raw) or (allowed_values[0] if allowed_values else 'mittel')
         keywords_default = default_keywords if default_keywords is not None else rules_default_keywords
         title_default = default_title if default_title is not None else rules_default_title
-        category = simpledialog.askstring(
-            "Kategorie",
-            "Kategorie für die neue Aufgabe:",
-            initialvalue=category_default,
-            parent=self.root,
-        )
-        if category is None:
-            return None
 
-        category = category.strip()
-        if not category:
-            messagebox.showwarning("Hinweis", "Kategorie darf nicht leer sein.")
-            return None
-
-        difficulty = ""
-        while True:
-            difficulty_input = simpledialog.askstring(
-                "Schwierigkeitsgrad",
-                f"Schwierigkeitsgrad ({difficulty_prompt_values}):",
-                initialvalue=difficulty or difficulty_default,
-                parent=self.root,
-            )
-            if difficulty_input is None:
-                return None
-
-            normalized_difficulty = self._normalize_difficulty_value(difficulty_input)
-            if normalized_difficulty:
-                difficulty = normalized_difficulty
-                break
-
-            messagebox.showwarning(
-                "Ungültiger Wert",
-                f"Bitte genau einen gültigen Schwierigkeitsgrad eingeben: {difficulty_prompt_values}.",
-            )
-
-        keywords = simpledialog.askstring(
-            "Schlagworte",
-            "Schlagworte (kommagetrennt, optional):",
-            initialvalue=keywords_default,
-            parent=self.root,
-        )
-        if keywords is None:
-            return None
-
-        title = simpledialog.askstring(
-            "Titel (optional)",
-            "Titel (optional, leer = automatisch aus Quelle ableiten):",
-            initialvalue=title_default,
-            parent=self.root,
-        )
-        if title is None:
-            return None
-
-        return {
-            'category': category,
-            'difficulty': difficulty,
-            'keywords': keywords,
-            'title': str(title or '').strip(),
+        initial_values = {
+            'category': category_default,
+            'difficulty': difficulty_default,
+            'keywords': keywords_default,
+            'title': title_default,
         }
+        return self._ask_import_metadata_dialog(initial_values, allowed_values)
 
     def _rule_value(self, key, default=None):
         """Liest Import-Regelwerte über den WordProcessor (inkl. Punktnotation)."""
@@ -1081,24 +1943,37 @@ class LEKBastlerGUI:
         # Fallback: Verwende den gesamten Dateinamen ohne Extension
         return name_without_ext
     
-    def filter_tasks(self):
+    def filter_tasks(self, show_message=True):
         """Filtert Aufgaben basierend auf den angegebenen Kriterien"""
         if not self.loaded_tasks:
             messagebox.showwarning("Warnung", "Bitte laden Sie zuerst eine Aufgabensammlung.")
             return
+
+        try:
+            max_count = int(self.max_tasks_var.get())
+        except Exception:
+            max_count = 20
+        max_count = max(1, min(20, max_count))
+        self.max_tasks_var.set(str(max_count))
         
         criteria = {
             'keywords': [kw.strip() for kw in self.keywords_var.get().split(',') if kw.strip()],
             'difficulty': self.difficulty_var.get() if self.difficulty_var.get() != "Alle" else None,
-            'max_count': int(self.max_tasks_var.get())
+            'max_count': max_count
         }
         
         filtered_tasks = self.task_selector.filter_tasks(self.loaded_tasks, criteria)
+        blocker_mode = bool(self.only_blockers_var.get()) and self._is_advanced_mode()
+        if blocker_mode:
+            filtered_tasks = [task for task in filtered_tasks if self._task_has_blocking_warning(task)]
+
         self.current_displayed_tasks = filtered_tasks  # Speichere die gefilterten Aufgaben
         self.populate_task_tree(filtered_tasks)
         self._refresh_wizard_status()
-        
-        messagebox.showinfo("Filter angewendet", f"{len(filtered_tasks)} Aufgaben entsprechen den Kriterien.")
+
+        if show_message:
+            mode_hint = " (nur Blocker)" if blocker_mode else ""
+            messagebox.showinfo("Filter angewendet", f"{len(filtered_tasks)} Aufgaben entsprechen den Kriterien{mode_hint}.")
     
     def populate_task_tree(self, tasks):
         """Füllt die Treeview mit den gefundenen Aufgaben"""
@@ -1116,15 +1991,9 @@ class LEKBastlerGUI:
             # Keywords sicher formatieren
             keywords = task.get('keywords', [])
             keywords_text = ', '.join(keywords) if keywords else ''
-            confidence = task.get('confidence', '-')
             warnings = task.get('warnings', [])
-            warnings_text = '; '.join(warnings[:2]) if warnings else ''
-            
-            item_tags = ()
-            if confidence == 'low':
-                item_tags = ('confidence_low',)
-            elif confidence == 'medium':
-                item_tags = ('confidence_medium',)
+            hints = task.get('hints', [])
+            warnings_text = self._format_warning_preview(warnings, hints=hints, max_items=2)
 
             self.task_tree.insert("", "end", iid=str(internal_number), values=(
                 display_number,
@@ -1133,7 +2002,225 @@ class LEKBastlerGUI:
                 task.get('difficulty', 'Unbekannt'),
                 warnings_text,
                 keywords_text
-            ), tags=item_tags)
+            ))
+
+        self._update_tree_heading_sort_indicator()
+
+    def _update_tree_heading_sort_indicator(self):
+        """Aktualisiert die Header-Texte inkl. Sortierpfeil für die aktive Spalte."""
+        columns = ("Nr", "Kategorie", "Titel", "Schwierigkeit", "Hinweise", "Suchbegriffe")
+        for column in columns:
+            arrow = ""
+            if self._sort_column == column:
+                arrow = " ▲" if not self._sort_reverse else " ▼"
+            self.task_tree.heading(column, text=f"{column}{arrow}")
+
+    def _number_sort_key(self, value):
+        """Erstellt einen stabilen Sortierschlüssel für Nummern wie 1, 1.1, 2.10."""
+        text = str(value or '').strip()
+        if not text:
+            return (float('inf'), float('inf'), text)
+
+        parts = text.split('.')
+        nums = []
+        for part in parts[:2]:
+            try:
+                nums.append(int(part))
+            except Exception:
+                nums.append(float('inf'))
+
+        while len(nums) < 2:
+            nums.append(float('inf'))
+
+        return (nums[0], nums[1], text.lower())
+
+    def _task_sort_key(self, task, column):
+        """Liefert den Sortierschlüssel je angeklickter Spalte."""
+        if column == "Nr":
+            return self._number_sort_key(self._task_number_label(task))
+        if column == "Kategorie":
+            return str(task.get('category') or '').strip().lower()
+        if column == "Titel":
+            return str(task.get('title') or '').strip().lower()
+        if column == "Schwierigkeit":
+            difficulty_order = {'leicht': 0, 'mittel': 1, 'schwer': 2}
+            val = str(task.get('difficulty') or '').strip().lower()
+            return (difficulty_order.get(val, 99), val)
+        if column == "Hinweise":
+            warnings = list(task.get('warnings', []) or [])
+            text = self._format_warning_preview(warnings, max_items=5)
+            return (0 if warnings else 1, text.lower())
+        if column == "Suchbegriffe":
+            keywords = ', '.join(task.get('keywords', []) or [])
+            return keywords.lower()
+        return str(task.get('title') or '').strip().lower()
+
+    def _sort_task_tree_by_column(self, column):
+        """Sortiert die aktuell angezeigten Aufgaben nach der angegebenen Spalte."""
+        if not self.current_displayed_tasks:
+            return
+
+        if self._sort_column == column:
+            self._sort_reverse = not self._sort_reverse
+        else:
+            self._sort_column = column
+            self._sort_reverse = False
+
+        self.current_displayed_tasks = sorted(
+            self.current_displayed_tasks,
+            key=lambda task: self._task_sort_key(task, column),
+            reverse=self._sort_reverse,
+        )
+        self.populate_task_tree(self.current_displayed_tasks)
+
+    def _sync_import_session_task(self, edited_task):
+        """Synchronisiert geänderte Task-Metadaten in die ImportSession."""
+        if not self.import_session or not isinstance(edited_task, dict):
+            return
+
+        task_id = edited_task.get('number')
+        for session_task in self.import_session.tasks:
+            if session_task.id != task_id:
+                continue
+
+            session_task.raw_task = edited_task
+            session_task.category = str(edited_task.get('category') or '').strip()
+            session_task.title = str(edited_task.get('title') or '').strip()
+            session_task.difficulty = str(edited_task.get('difficulty') or '').strip()
+            session_task.keywords = list(edited_task.get('keywords', []) or [])
+            session_task.warnings = list(edited_task.get('warnings', []) or [])
+            session_task.intro = list(edited_task.get('intro', []) or [])
+            break
+
+    def _on_task_double_click(self, event):
+        """Öffnet die Bearbeitung für die doppelt geklickte Aufgabe."""
+        row_id = self.task_tree.identify_row(event.y)
+        if not row_id:
+            return
+
+        try:
+            internal_id = int(row_id)
+        except Exception:
+            return
+
+        task = self._find_task_by_internal_number(internal_id)
+        if not task:
+            return
+
+        self._open_task_edit_dialog(task)
+
+    def _open_task_edit_dialog(self, task):
+        """Bearbeitet Metadaten und Inhalt einer Aufgabe in einem Dialog."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title(f"Aufgabe bearbeiten – Nr {self._task_number_label(task)}")
+        dialog.transient(self.root)
+        dialog.geometry("920x700")
+
+        frame = ttk.Frame(dialog, padding="12")
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        title_var = tk.StringVar(value=str(task.get('title') or ''))
+        category_var = tk.StringVar(value=str(task.get('category') or ''))
+        difficulty_var = tk.StringVar(value=str(task.get('difficulty') or ''))
+        keywords_var = tk.StringVar(value=', '.join(task.get('keywords', []) or []))
+
+        ttk.Label(frame, text="Titel *").grid(row=0, column=0, sticky=tk.W, pady=(0, 6))
+        ttk.Entry(frame, textvariable=title_var, width=60).grid(row=0, column=1, sticky="we", pady=(0, 6))
+
+        ttk.Label(frame, text="Kategorie *").grid(row=1, column=0, sticky=tk.W, pady=(0, 6))
+        ttk.Entry(frame, textvariable=category_var, width=60).grid(row=1, column=1, sticky="we", pady=(0, 6))
+
+        ttk.Label(frame, text="Schwierigkeit *").grid(row=2, column=0, sticky=tk.W, pady=(0, 6))
+        difficulty_combo = ttk.Combobox(
+            frame,
+            textvariable=difficulty_var,
+            values=self._difficulty_allowed_values(),
+            state="readonly",
+            width=20,
+        )
+        difficulty_combo.grid(row=2, column=1, sticky=tk.W, pady=(0, 6))
+
+        ttk.Label(frame, text="Schlagworte (kommagetrennt)").grid(row=3, column=0, sticky=tk.W, pady=(0, 6))
+        ttk.Entry(frame, textvariable=keywords_var, width=60).grid(row=3, column=1, sticky="we", pady=(0, 6))
+
+        ttk.Label(frame, text="Inhalt (zeilenweise)").grid(row=4, column=0, sticky=tk.W, pady=(8, 6))
+        content_text = scrolledtext.ScrolledText(frame, wrap=tk.WORD, height=18, font=("Segoe UI", 10))
+        content_text.grid(row=4, column=1, sticky="nsew", pady=(8, 6))
+        existing_content = task.get('content', []) or []
+        content_text.insert(tk.END, "\n".join(str(line) for line in existing_content))
+
+        status_var = tk.StringVar(value="")
+        ttk.Label(frame, textvariable=status_var).grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(2, 8))
+
+        btn_frame = ttk.Frame(frame)
+        btn_frame.grid(row=6, column=0, columnspan=2, sticky=tk.E)
+
+        def _validate_inputs():
+            title_ok = bool(str(title_var.get() or '').strip())
+            category_ok = bool(str(category_var.get() or '').strip())
+            difficulty_ok = self._normalize_difficulty_value(difficulty_var.get()) is not None
+
+            if title_ok and category_ok and difficulty_ok:
+                status_var.set("✓ Eingaben sind gültig.")
+                save_btn.configure(state=tk.NORMAL)
+                return True
+
+            reasons = []
+            if not title_ok:
+                reasons.append("Titel fehlt")
+            if not category_ok:
+                reasons.append("Kategorie fehlt")
+            if not difficulty_ok:
+                reasons.append("Schwierigkeit ungültig")
+            status_var.set("⚠ " + " | ".join(reasons))
+            save_btn.configure(state=tk.DISABLED)
+            return False
+
+        def _on_save():
+            if not _validate_inputs():
+                return
+
+            new_keywords = [k.strip() for k in str(keywords_var.get() or '').split(',') if k.strip()]
+            new_content = [line.strip() for line in content_text.get('1.0', tk.END).splitlines() if line.strip()]
+
+            task['title'] = str(title_var.get() or '').strip()
+            task['category'] = str(category_var.get() or '').strip()
+            task['difficulty'] = self._normalize_difficulty_value(difficulty_var.get()) or str(difficulty_var.get() or '').strip()
+            task['keywords'] = new_keywords
+            task['content'] = new_content
+
+            # Diagnostik nach Bearbeitung neu berechnen (wenn verfügbar)
+            try:
+                diagnostic = self.word_processor._build_task_diagnostic(task)
+                task['intro'] = diagnostic.get('intro', [])
+                task['warnings'] = diagnostic.get('warnings', [])
+                task['hints'] = diagnostic.get('hints', [])
+            except Exception:
+                pass
+
+            self._sync_import_session_task(task)
+            self.populate_task_tree(self.current_displayed_tasks)
+            self._refresh_wizard_status()
+            dialog.destroy()
+            messagebox.showinfo("Aufgabe aktualisiert", "Die Aufgabe wurde erfolgreich aktualisiert.")
+
+        def _on_cancel():
+            dialog.destroy()
+
+        save_btn = ttk.Button(btn_frame, text="Speichern", command=_on_save)
+        save_btn.pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(btn_frame, text="Abbrechen", command=_on_cancel).pack(side=tk.LEFT)
+
+        for var in (title_var, category_var, difficulty_var, keywords_var):
+            var.trace_add('write', lambda *_args: _validate_inputs())
+
+        _validate_inputs()
+
+        frame.columnconfigure(1, weight=1)
+        frame.rowconfigure(4, weight=1)
+
+        dialog.grab_set()
+        dialog.focus_force()
 
     def _task_number_label(self, task):
         """Liefert die anzuzeigende Aufgaben-Nummer (Haupt-/Nebennummer), falls vorhanden."""
@@ -1353,6 +2440,225 @@ class LEKBastlerGUI:
         """Wählt alle Aufgaben in der Treeview aus"""
         for item in self.task_tree.get_children():
             self.task_tree.selection_add(item)
+
+    def select_blocker_tasks(self):
+        """Markiert nur Aufgaben mit blockierenden Warnungen in der aktuellen Ansicht."""
+        if not self.current_displayed_tasks:
+            messagebox.showwarning("Hinweis", "Keine Aufgaben in der aktuellen Ansicht.")
+            return
+
+        self.task_tree.selection_remove(self.task_tree.selection())
+
+        selected_count = 0
+        for task in self.current_displayed_tasks:
+            if not self._task_has_blocking_warning(task):
+                continue
+
+            task_id = str(task.get('number', ''))
+            if task_id and self.task_tree.exists(task_id):
+                self.task_tree.selection_add(task_id)
+                selected_count += 1
+
+        if selected_count == 0:
+            messagebox.showinfo("Blocker-Auswahl", "Keine blockerbehafteten Aufgaben in der aktuellen Ansicht gefunden.")
+            return
+
+        messagebox.showinfo("Blocker-Auswahl", f"{selected_count} blockerbehaftete Aufgabe(n) wurden markiert.")
+
+    def bulk_edit_selected_tasks(self):
+        """Bearbeitet Kategorie/Schwierigkeit/Schlagworte für mehrere ausgewählte Aufgaben gleichzeitig."""
+        selected_ids = self._selected_task_ids_from_tree()
+        if not selected_ids:
+            messagebox.showwarning("Hinweis", "Bitte zuerst mindestens eine Aufgabe auswählen.")
+            return
+
+        selected_tasks = []
+        for task_id in selected_ids:
+            task = self._find_task_by_internal_number(task_id)
+            if task:
+                selected_tasks.append(task)
+
+        if not selected_tasks:
+            messagebox.showwarning("Hinweis", "Die ausgewählten Aufgaben konnten nicht aufgelöst werden.")
+            return
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title(f"Mehrfachbearbeitung ({len(selected_tasks)} Aufgaben)")
+        dialog.transient(self.root)
+        dialog.resizable(False, False)
+
+        frame = ttk.Frame(dialog, padding="12")
+        frame.grid(row=0, column=0, sticky="nsew")
+
+        ttk.Label(
+            frame,
+            text="Sie können Kategorie, Schwierigkeit und/oder Schlagworte für alle ausgewählten Aufgaben setzen.",
+        ).grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=(0, 10))
+
+        set_category_var = tk.BooleanVar(value=False)
+        category_value_var = tk.StringVar(value="")
+
+        set_difficulty_var = tk.BooleanVar(value=False)
+        difficulty_value_var = tk.StringVar(value=self._difficulty_allowed_values()[0])
+
+        set_keywords_var = tk.BooleanVar(value=False)
+        keywords_value_var = tk.StringVar(value="")
+        keywords_mode_var = tk.StringVar(value="ersetzen")
+
+        ttk.Checkbutton(
+            frame,
+            text="Kategorie setzen",
+            variable=set_category_var,
+        ).grid(row=1, column=0, sticky=tk.W, pady=(0, 6))
+        category_entry = ttk.Entry(frame, textvariable=category_value_var, width=40)
+        category_entry.grid(row=1, column=1, columnspan=2, sticky="we", pady=(0, 6))
+
+        ttk.Checkbutton(
+            frame,
+            text="Schwierigkeit setzen",
+            variable=set_difficulty_var,
+        ).grid(row=2, column=0, sticky=tk.W, pady=(0, 6))
+        difficulty_combo = ttk.Combobox(
+            frame,
+            textvariable=difficulty_value_var,
+            values=self._difficulty_allowed_values(),
+            state="readonly",
+            width=20,
+        )
+        difficulty_combo.grid(row=2, column=1, sticky=tk.W, pady=(0, 6))
+
+        ttk.Checkbutton(
+            frame,
+            text="Schlagworte bearbeiten",
+            variable=set_keywords_var,
+        ).grid(row=3, column=0, sticky=tk.W, pady=(0, 6))
+        keywords_entry = ttk.Entry(frame, textvariable=keywords_value_var, width=40)
+        keywords_entry.grid(row=3, column=1, sticky="we", pady=(0, 6))
+        keywords_mode_combo = ttk.Combobox(
+            frame,
+            textvariable=keywords_mode_var,
+            values=["ersetzen", "anhängen"],
+            state="readonly",
+            width=12,
+        )
+        keywords_mode_combo.grid(row=3, column=2, sticky=tk.W, pady=(0, 6))
+
+        status_var = tk.StringVar(value="")
+        ttk.Label(frame, textvariable=status_var).grid(row=4, column=0, columnspan=3, sticky=tk.W, pady=(4, 10))
+
+        btn_frame = ttk.Frame(frame)
+        btn_frame.grid(row=5, column=0, columnspan=3, sticky=tk.E)
+
+        def _validate():
+            wants_category = bool(set_category_var.get())
+            wants_difficulty = bool(set_difficulty_var.get())
+            wants_keywords = bool(set_keywords_var.get())
+
+            if not wants_category and not wants_difficulty and not wants_keywords:
+                status_var.set("⚠ Bitte mindestens eine Änderung aktivieren.")
+                apply_btn.configure(state=tk.DISABLED)
+                return False
+
+            if wants_category and not str(category_value_var.get() or '').strip():
+                status_var.set("⚠ Kategorie ist aktiviert, aber leer.")
+                apply_btn.configure(state=tk.DISABLED)
+                return False
+
+            if wants_difficulty and self._normalize_difficulty_value(difficulty_value_var.get()) is None:
+                status_var.set("⚠ Ungültiger Schwierigkeitsgrad.")
+                apply_btn.configure(state=tk.DISABLED)
+                return False
+
+            if wants_keywords and not str(keywords_value_var.get() or '').strip():
+                status_var.set("⚠ Schlagworte sind aktiviert, aber leer.")
+                apply_btn.configure(state=tk.DISABLED)
+                return False
+
+            if wants_keywords and keywords_mode_var.get() not in ("ersetzen", "anhängen"):
+                status_var.set("⚠ Ungültiger Schlagwort-Modus.")
+                apply_btn.configure(state=tk.DISABLED)
+                return False
+
+            status_var.set("✓ Änderungen können angewendet werden.")
+            apply_btn.configure(state=tk.NORMAL)
+            return True
+
+        def _apply_changes():
+            if not _validate():
+                return
+
+            new_category = str(category_value_var.get() or '').strip()
+            new_difficulty = self._normalize_difficulty_value(difficulty_value_var.get())
+            raw_keywords = str(keywords_value_var.get() or '').strip()
+            new_keywords = [part.strip() for part in raw_keywords.split(',') if part.strip()]
+            keywords_mode = keywords_mode_var.get()
+
+            changed = 0
+            for task in selected_tasks:
+                if set_category_var.get():
+                    task['category'] = new_category
+                if set_difficulty_var.get() and new_difficulty:
+                    task['difficulty'] = new_difficulty
+                if set_keywords_var.get():
+                    current_keywords = task.get('keywords', [])
+                    if not isinstance(current_keywords, list):
+                        current_keywords = []
+
+                    if keywords_mode == "ersetzen":
+                        task['keywords'] = new_keywords
+                    else:
+                        existing_lookup = {str(item).strip().lower() for item in current_keywords if str(item).strip()}
+                        merged_keywords = list(current_keywords)
+                        for kw in new_keywords:
+                            if kw.lower() not in existing_lookup:
+                                merged_keywords.append(kw)
+                                existing_lookup.add(kw.lower())
+                        task['keywords'] = merged_keywords
+
+                try:
+                    diagnostic = self.word_processor._build_task_diagnostic(task)
+                    task['intro'] = diagnostic.get('intro', [])
+                    task['warnings'] = diagnostic.get('warnings', [])
+                    task['hints'] = diagnostic.get('hints', [])
+                except Exception:
+                    pass
+
+                self._sync_import_session_task(task)
+                changed += 1
+
+            if self._sort_column:
+                self.current_displayed_tasks = sorted(
+                    self.current_displayed_tasks,
+                    key=lambda task: self._task_sort_key(task, self._sort_column),
+                    reverse=self._sort_reverse,
+                )
+
+            self.populate_task_tree(self.current_displayed_tasks)
+            self._refresh_wizard_status()
+            dialog.destroy()
+            messagebox.showinfo("Mehrfachbearbeitung", f"{changed} Aufgabe(n) wurden aktualisiert.")
+
+        def _cancel():
+            dialog.destroy()
+
+        apply_btn = ttk.Button(btn_frame, text="Änderungen anwenden", command=_apply_changes)
+        apply_btn.pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(btn_frame, text="Abbrechen", command=_cancel).pack(side=tk.LEFT)
+
+        for var in (
+            set_category_var,
+            category_value_var,
+            set_difficulty_var,
+            difficulty_value_var,
+            set_keywords_var,
+            keywords_value_var,
+            keywords_mode_var,
+        ):
+            var.trace_add('write', lambda *_args: _validate())
+
+        _validate()
+        category_entry.focus_set()
+        dialog.grab_set()
     
     def deselect_all_tasks(self):
         """Hebt die Auswahl aller Aufgaben auf"""

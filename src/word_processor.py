@@ -4,7 +4,7 @@ WordProcessor - Klasse für die Verarbeitung von Word-Dokumenten
 
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
-from docx.enum.text import WD_LINE_SPACING, WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_LINE_SPACING, WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
 from docx.enum.section import WD_SECTION
 from docx.oxml.shared import qn
 from docx.oxml import OxmlElement
@@ -131,6 +131,12 @@ class WordProcessor:
                 'prefer_mode_on_mixed': 'headings',
                 'fallback_to_secondary_on_empty': True,
                 'include_secondary_in_mixed': False,
+            },
+            'export_rules': {
+                'title_points_box': {
+                    'min_inner_width': 12,
+                    'padding_spaces': 1,
+                },
             },
             'difficulty_rules': {
                 'allowed_values': ['leicht', 'mittel', 'schwer'],
@@ -1114,7 +1120,7 @@ class WordProcessor:
                 continue
 
             raw_key = row.cells[0].text.strip()
-            raw_value = row.cells[1].text.strip()
+            raw_value = self._extract_cell_value_text(row.cells[1])
             norm_key = self._normalize_table_key(raw_key)
             if not norm_key:
                 continue
@@ -1229,6 +1235,26 @@ class WordProcessor:
             'pre_warnings': pre_warnings,
         }
 
+    def _extract_cell_value_text(self, cell):
+        """Liest robusten Zelltext inkl. verschachtelter Tabellen und SDT-Texte aus."""
+        if cell is None:
+            return ''
+
+        raw = str(cell.text or '').strip()
+        if raw:
+            return raw
+
+        text_nodes = []
+        try:
+            for node in cell._tc.xpath('.//w:t'):
+                value = str(node.text or '').strip()
+                if value:
+                    text_nodes.append(value)
+        except Exception:
+            return ''
+
+        return '\n'.join(text_nodes).strip()
+
     def extract_tasks_with_diagnostics(self, file_path):
         """
         Extrahiert Aufgaben und ergänzt Diagnoseinformationen pro Aufgabe.
@@ -1246,6 +1272,7 @@ class WordProcessor:
             diagnostic = self._build_task_diagnostic(task)
             task['intro'] = diagnostic['intro']
             task['warnings'] = diagnostic['warnings']
+            task['hints'] = diagnostic.get('hints', [])
             task['confidence'] = diagnostic['confidence']
 
             if diagnostic['confidence'] == 'low':
@@ -1284,6 +1311,7 @@ class WordProcessor:
         difficulty = (task.get('difficulty') or '').strip()
 
         warnings = list(task.get('pre_warnings') or [])
+        hints = []
 
         if not content_lines:
             warnings.append('Aufgabe enthält keinen verwertbaren Inhalt.')
@@ -1303,7 +1331,7 @@ class WordProcessor:
 
         intro_lines = self._extract_intro_lines(content_lines)
         if intro_lines:
-            warnings.append('Einleitungs-/Kontexttext erkannt (Bitte prüfen).')
+            hints.append('Einleitung für Aufgabe und Folgeaufgaben erforderlich.')
 
         # Confidence-Heuristik (Sprint 1)
         score = 100
@@ -1325,6 +1353,7 @@ class WordProcessor:
         return {
             'intro': intro_lines,
             'warnings': warnings,
+            'hints': hints,
             'confidence': confidence,
         }
 
@@ -1630,10 +1659,20 @@ class WordProcessor:
 
                 new_elem = deepcopy(xml_elem)
                 self._remap_num_ids_in_element(new_elem, self._num_id_map)
+
+                if etype == 'table':
+                    # Vor Tabellen im LEK immer eine Leerzeile
+                    doc.add_paragraph()
+                    self._set_table_full_width_xml(new_elem)
+
                 if sect_pr is not None:
                     body.insert(list(body).index(sect_pr), new_elem)
                 else:
                     body.append(new_elem)
+
+                if etype == 'table':
+                    # Nach Tabellen im LEK immer eine Leerzeile
+                    doc.add_paragraph()
             except Exception as e:
                 # Fallback: Fehlermeldung als Absatz einfügen
                 doc.add_paragraph(f"[Element konnte nicht kopiert werden: {str(e)[:80]}]")
@@ -1933,13 +1972,11 @@ class WordProcessor:
         return None
 
     def _append_cell_as_flow_text(self, doc, cell, fallback_text=''):
-        """Überträgt den Inhalt einer Tabellenzelle als Fließtext-Absätze ins Dokument."""
+        """Überträgt den Inhalt einer Tabellenzelle als Fließtext-/Blockelemente ins Dokument."""
         written = False
         if cell is not None:
-            for paragraph in cell.paragraphs:
-                if str(paragraph.text or '').strip():
-                    self._copy_single_paragraph_with_formatting(doc, paragraph)
-                    written = True
+            source_part = getattr(cell, 'part', None)
+            written = self._append_cell_block_elements_for_lek(doc, cell, source_part=source_part)
 
         if not written and str(fallback_text or '').strip():
             doc.add_paragraph(str(fallback_text).strip())
@@ -1947,10 +1984,70 @@ class WordProcessor:
 
         return written
 
-    def _append_structured_task_as_flow_text(self, doc, task, table):
+    def _append_cell_block_elements_for_lek(self, doc, cell, source_part=None):
+        """Kopiert Blockelemente einer Tabellenzelle (p/tbl/sdt) in ein LEK-Dokument."""
+        if cell is None:
+            return False
+
+        tc = cell._tc
+        body = doc._element.body
+        sect_pr = body.find(qn('w:sectPr'))
+        rel_map = {}
+        appended_any = False
+
+        for child in list(tc):
+            tag_local = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+            if tag_local == 'tcPr':
+                continue
+
+            if tag_local == 'p':
+                paragraph_text = ''.join((node.text or '') for node in child.xpath('.//w:t')).strip()
+                if not paragraph_text:
+                    continue
+            elif tag_local not in ('tbl', 'sdt'):
+                continue
+
+            cloned = deepcopy(child)
+
+            if source_part is not None:
+                self._remap_relationship_ids_in_xml(
+                    xml_element=cloned,
+                    source_part=source_part,
+                    target_part=doc.part,
+                    rel_map=rel_map,
+                )
+
+            self._remap_num_ids_in_element(cloned, self._num_id_map)
+
+            if tag_local == 'tbl':
+                # Vor Tabellen immer eine Leerzeile
+                doc.add_paragraph()
+                self._set_table_full_width_xml(cloned)
+
+            if sect_pr is not None:
+                body.insert(list(body).index(sect_pr), cloned)
+            else:
+                body.append(cloned)
+
+            if tag_local == 'tbl':
+                # Nach Tabellen immer eine Leerzeile
+                doc.add_paragraph()
+
+            appended_any = True
+
+        return appended_any
+
+    def _append_structured_task_as_flow_text(self, doc, task, table, include_title=True):
         """Schreibt strukturierte Aufgaben als Fließtext (ohne Tabelle) in fester Reihenfolge."""
         section_cells = []
         for section in self._task_flow_sections():
+            section_name = str(section.get('name', '')).strip().lower()
+            if not include_title and section_name == 'title':
+                continue
+            # Punkte nur im Titel (Heading), nicht zusätzlich im Fließtext ausgeben
+            if section_name == 'points':
+                continue
+
             aliases = []
             for field_key in section.get('fields', []):
                 aliases.extend(self._field_aliases(field_key))
@@ -1986,17 +2083,183 @@ class WordProcessor:
                 if line_text:
                     doc.add_paragraph(line_text)
 
-    def append_task_content_for_lek(self, doc, task):
+    def _strip_leading_task_heading_element(self, all_elements, task_title=''):
+        """Entfernt einen führenden Aufgaben-Heading-Absatz aus all_elements (falls vorhanden)."""
+        elements = list(all_elements or [])
+        if not elements:
+            return elements
+
+        first = elements[0]
+        if first.get('type') != 'paragraph':
+            return elements
+
+        para = first.get('content')
+        if para is None:
+            return elements
+
+        text = str(getattr(para, 'text', '') or '').strip()
+        title_norm = str(task_title or '').strip().lower()
+        extracted_norm = self._extract_task_title(text).strip().lower() if text else ''
+
+        try:
+            is_heading = self._is_heading1(para) or self._is_heading2(para)
+        except Exception:
+            is_heading = False
+
+        if is_heading or (title_norm and extracted_norm == title_norm):
+            return elements[1:]
+        return elements
+
+    def _extract_points_text(self, task, table=None):
+        """Ermittelt die Punkteangabe einer Aufgabe (z. B. '10')."""
+        points_raw = ''
+
+        if table is not None:
+            aliases = self._field_aliases('punkte', fallback_aliases=['punktzahl', 'bewertung'])
+            cell = self._structured_table_value_cell_by_aliases(table, aliases)
+            lines = self._cell_text_lines(cell)
+            if lines:
+                points_raw = str(lines[0] or '').strip()
+
+        if not points_raw:
+            for line in (task.get('content', []) or []):
+                text = str(line or '').strip()
+                if not text:
+                    continue
+                match = re.match(r'^\s*punkte\s*:\s*(.+)$', text, flags=re.IGNORECASE)
+                if match:
+                    points_raw = str(match.group(1) or '').strip()
+                    break
+
+        points_raw = str(points_raw or '').strip()
+        if not points_raw:
+            return ''
+
+        # Das Wort "Punkte"/"Punkt"/"Pkt." soll entfallen; nur die Anzahl bleibt.
+        normalized = re.sub(r'\b(punkte?|pkt\.?)\b', '', points_raw, flags=re.IGNORECASE)
+        normalized = re.sub(r'\s+', ' ', normalized).strip(' :-;,.')
+        normalized = normalized.strip()
+
+        return normalized or points_raw
+
+    def _format_points_label(self, points_text, min_inner_width=None):
+        """Formatiert die Punkte-Box mit Innenabstand und Mindestbreite."""
+        text = str(points_text or '').strip()
+        if not text:
+            return ''
+
+        if min_inner_width is None:
+            configured_width = self.get_import_rule('export_rules.title_points_box.min_inner_width', 12)
+        else:
+            configured_width = min_inner_width
+
+        configured_padding = self.get_import_rule('export_rules.title_points_box.padding_spaces', 1)
+
+        try:
+            min_width = max(1, int(configured_width))
+        except Exception:
+            min_width = 12
+
+        try:
+            padding_spaces = max(0, int(configured_padding))
+        except Exception:
+            padding_spaces = 1
+
+        inner_width = max(min_width, len(text))
+        padded = text.ljust(inner_width)
+        pad = ' ' * padding_spaces
+        return f"{pad}{padded}{pad}"
+
+    def _apply_run_border(self, run):
+        """Fügt einem Run einen einfachen Rahmen hinzu."""
+        try:
+            r = run._r
+            rPr = r.get_or_add_rPr()
+            bdr = OxmlElement('w:bdr')
+            bdr.set(qn('w:val'), 'single')
+            bdr.set(qn('w:sz'), '8')
+            bdr.set(qn('w:space'), '2')
+            bdr.set(qn('w:color'), '000000')
+            rPr.append(bdr)
+        except Exception:
+            pass
+
+    def _append_task_heading_with_points(self, doc, task, table=None):
+        """Schreibt den Aufgabentitel als Heading 1 und Punkte rechtsbündig mit Rahmen."""
+        title_text = str(task.get('title') or '').strip() or 'Ohne Titel'
+        paragraph = doc.add_heading(level=1)
+        paragraph.add_run(title_text)
+
+        points_text = self._extract_points_text(task, table=table)
+        if not points_text:
+            return
+
+        points_label = self._format_points_label(points_text)
+        if not points_label:
+            return
+
+        try:
+            section = doc.sections[-1]
+            right_pos = section.page_width - section.left_margin - section.right_margin
+            paragraph.paragraph_format.tab_stops.add_tab_stop(right_pos, WD_TAB_ALIGNMENT.RIGHT)
+        except Exception:
+            pass
+
+        paragraph.add_run('\t')
+        points_run = paragraph.add_run(points_label)
+        points_run.font.name = 'Aptos'
+        points_run.bold = True
+        self._apply_run_border(points_run)
+
+    def append_task_to_lek_document(self, doc, task):
+        """Fügt eine Aufgabe als Heading1 (+ Punkte) und Inhalt in ein LEK-Dokument ein."""
+        all_elements = task.get('all_elements') or []
+        table = None
+        if len(all_elements) == 1 and all_elements[0].get('type') == 'table':
+            table = all_elements[0].get('content')
+
+        self._append_task_heading_with_points(doc, task, table=table)
+        # Nach Überschrift 1 immer eine Leerzeile einfügen.
+        doc.add_paragraph()
+        self.append_task_content_for_lek(doc, task, include_title=False)
+
+    def _set_table_full_width_xml(self, table_xml_element):
+        """Setzt eine Tabellenbreite auf 100 % (OOXML: w:type='pct', w:w='5000')."""
+        if table_xml_element is None:
+            return
+
+        try:
+            tbl_pr = table_xml_element.find(qn('w:tblPr'))
+            if tbl_pr is None:
+                tbl_pr = OxmlElement('w:tblPr')
+                table_xml_element.insert(0, tbl_pr)
+
+            tbl_w = tbl_pr.find(qn('w:tblW'))
+            if tbl_w is None:
+                tbl_w = OxmlElement('w:tblW')
+                tbl_pr.append(tbl_w)
+
+            tbl_w.set(qn('w:type'), 'pct')
+            tbl_w.set(qn('w:w'), '5000')
+        except Exception:
+            pass
+
+    def append_task_content_for_lek(self, doc, task, include_title=True):
         """Fügt Aufgabeninhalt in LEK ein; strukturierte Tabellen als Fließtext ohne Tabellenlayout."""
         all_elements = task.get('all_elements') or []
         if len(all_elements) == 1 and all_elements[0].get('type') == 'table':
             table = all_elements[0].get('content')
             if self._is_structured_task_table_for_export(table):
-                self._append_structured_task_as_flow_text(doc, task, table)
+                self._append_structured_task_as_flow_text(doc, task, table, include_title=include_title)
                 return
 
         if all_elements:
-            self._copy_elements_for_lek(doc, all_elements)
+            elements_to_copy = all_elements
+            if not include_title:
+                elements_to_copy = self._strip_leading_task_heading_element(all_elements, task.get('title', ''))
+
+            if elements_to_copy:
+                self._copy_elements_for_lek(doc, elements_to_copy)
             return
 
         original_paragraphs = task.get('original_paragraphs') or []
@@ -2492,9 +2755,9 @@ class WordProcessor:
                 
                 # Jede Aufgabe hinzufügen
                 for i, task in enumerate(tasks, 1):
-                    # Aufgabeninhalt mit zentraler Exportlogik (strukturierte Tabellen -> Fließtext)
+                    # Aufgaben als Heading1 + Punkte und zentraler Inhaltslogik
                     try:
-                        self.append_task_content_for_lek(doc, task)
+                        self.append_task_to_lek_document(doc, task)
                     except Exception as e:
                         # Notfall-Fallback: Verwende original_paragraphs wenn elements-Kopierung fehlschlägt
                         print(f"Warnung: Element-Kopierung fehlgeschlagen für Aufgabe {i}: {e}")

@@ -9,6 +9,9 @@ release/*
 # Generierte Exportdateien
 LEKs/*.docx
 
+# Lokale benutzerspezifische Einstellungen
+data/config/task_authoring_user_config.json
+
 # Python
 __pycache__/
 *.py[cod]

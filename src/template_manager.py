@@ -275,8 +275,8 @@ class TemplateManager:
         
         # Aufgaben hinzufügen
         for i, task in enumerate(tasks, 1):
-            # Zentrale Exportlogik (strukturierte Tabellen => rechte Spalte als Fließtext)
-            wp.append_task_content_for_lek(doc, task)
+            # Zentrale Exportlogik: Heading1 + Punkte, strukturierte Tabellen als Fließtext
+            wp.append_task_to_lek_document(doc, task)
             
             # Metadaten (optional, auskommentiert für sauberes Layout)
             # if task.get('difficulty') or task.get('keywords'):

@@ -8,7 +8,7 @@
 - Selektion: `src/task_selector.py`
 - Anwendungssymbol: `src/app_icon.ico`
 
-Aktueller Versionsstand: **3.6.2**.
+Aktueller Versionsstand: **3.7.0**.
 
 ## 2. Build-Konfiguration
 
@@ -82,6 +82,8 @@ Wesentliche Bereiche:
   - Modus-/Schwellwertsteuerung für Duplikatprüfung.
 - `default_import_metadata`
   - GUI-Defaults für Kategorie, Schwierigkeitsgrad, Schlagworte, Titel.
+- `export_rules.title_points_box`
+  - Feintuning für Punkte-Box am Titelende (`min_inner_width`, `padding_spaces`).
 
 Technische Leitlinie:
 

@@ -16,7 +16,7 @@ Mit dem LEK-Bastler erstellen Sie aus vorbereiteten Aufgaben-Worddateien schnell
 1. Python-Umgebung vorbereiten
 2. Anwendung starten über `src/main.py`
 
-Hinweis zum aktuellen Stand: Version **3.6.2**.
+Hinweis zum aktuellen Stand: Version **3.7.0**.
 
 ## 3. Typischer Ablauf
 
@@ -39,6 +39,9 @@ Das Diagramm zeigt den typischen Pfad von der Aufgabensammlung bis zum Export in
 - Der Ordner `data/LEKs/` wird beim Export automatisch erstellt, falls er fehlt.
 - Für beste Ergebnisse sollten Aufgaben sauber mit Überschriften oder als strukturierte 2-Spalten-Tabellen aufgebaut sein.
 - Vorlagen liegen im Ordner `data/Vorlagen/`.
+- Relevante Vorlagen im aktuellen Stand:
+  - `data/Vorlagen/LEK-Vorlage.docx` (LEK-Export)
+  - `data/Vorlagen/AUFGABEN-Vorlage.docx` (Muster für Aufgabensammlungen)
 - Falls keine passende Spezialvorlage gefunden wird, wird die Standardvorlage verwendet.
 - Vorschau und Export nutzen dieselbe fachliche Reihenfolge bei strukturierten Aufgaben (Titel → Intro → Aufgabenstellung → Hinweis → Punkte).
 

@@ -4,6 +4,48 @@ Alle relevanten Änderungen an diesem Projekt werden hier dokumentiert.
 
 ## [Unreleased]
 
+### Added
+
+- Keine Änderungen dokumentiert.
+
+### Changed
+
+- GUI-Titelleiste/EXE-Versionserkennung stabilisiert: Wenn `build_version_info.txt` im Deploy fehlt, wird die Versionsnummer robust aus EXE-/Ordnernamen (z. B. `LEK-Bastler_3.7.0.exe`) ermittelt und wieder im Fenstertitel angezeigt.
+
+## [3.7.0] - 2026-06-06
+
+### Added
+
+- Wizard-/Listen-UX ausgebaut:
+  - **Nur Blocker anzeigen** und **Nur Blocker auswählen** ergänzt.
+  - Aufgabenliste nach Spalten sortierbar.
+  - Doppelklick-Bearbeitung einzelner Aufgaben ergänzt.
+  - Mehrfachbearbeitung erweitert (Kategorie/Schwierigkeit, Schlagworte ersetzen oder anhängen).
+- Aufgabenanlage und Metadatenpflege verbessert:
+  - Eingabehilfe ergänzt (Button **"Eingabehilfe (JSON & Formulierungen)"**) samt konfigurierbarer Datei `data/config/task_authoring_hints.json`.
+  - Strukturierter Metadaten-Dialog mit Live-Validierung und direktem Hilfezugriff ergänzt.
+  - Inline-Feldhilfen (`field_hints`) und Smart Defaults pro Kategorie (`category_defaults`) ergänzt.
+  - Kategorieeingabe als editierbare Autovervollständigung ergänzt; Vorschläge werden nach Nutzung priorisiert.
+  - Zuletzt verwendete Kategorie wird benutzerspezifisch in `data/config/task_authoring_user_config.json` gespeichert.
+- Modussteuerung in der GUI ergänzt:
+  - Neuer Modus-Schalter `einfach` vs. `erweitert`.
+  - Erweiterte Aktionen (Word-Import, Duplikat-Preset, Blockerfilter) nur im Modus `erweitert`.
+  - Erweiterte Funktionen werden im Modus `einfach` vollständig ausgeblendet; Anzeige `einfach (empfohlen)` ergänzt.
+  - Auswahlkriterium **Max. Anzahl Aufgaben** auf 20 begrenzt (Default 20).
+- Export und Layout erweitert:
+  - Übernahme von Tabellen und Inhaltssteuerelementen (z. B. Kontrollkästchen) beim LEK-Export.
+  - Aufgabentitel als `Überschrift 1`; Punkte am Titelende rechtsbündig mit Rahmen.
+  - Punkte-Box visuell vereinheitlicht und über `data/config/import_rules.json` (`export_rules.title_points_box.*`) konfigurierbar gemacht.
+  - GUI-Eingabehilfe verweist explizit auf die Export-Layout-Keys.
+- Versions- und Vorlagenpflege:
+  - GUI-Titelleiste zeigt die Version aus `build_version_info.txt`.
+  - Vorlagenbereinigung: `AUFGABEN_MUSTER_STANDARD.docx` → `AUFGABEN-Vorlage.docx`; `AUFGABEN_GERUEST_WORD.docx` entfernt.
+
+### Changed
+
+- Wizard-Status zeigt neben Warnungs-/Blockeranzahl jetzt konkrete **To-fix-Hinweise** (z. B. Titel/Kategorie/Schwierigkeit).
+- Sortierzustand wird in der Aufgabenliste visuell über Header-Pfeile (`▲`/`▼`) angezeigt.
+
 ## [3.6.2] - 2026-05-31
 
 ### Changed

@@ -16,6 +16,62 @@ import re
 Confidence = str  # "high" | "medium" | "low"
 
 
+def _as_string_list(value: Any) -> list[str]:
+    """Normalisiert beliebige Eingaben robust auf eine Liste von Strings."""
+    if value is None:
+        return []
+
+    if isinstance(value, str):
+        item = value.strip()
+        return [item] if item else []
+
+    if isinstance(value, (list, tuple, set)):
+        normalized: list[str] = []
+        for item in value:
+            text = str(item or "").strip()
+            if text:
+                normalized.append(text)
+        return normalized
+
+    text = str(value).strip()
+    return [text] if text else []
+
+
+def is_blocking_warning(text: str) -> bool:
+    """Klassifiziert Warnungen, die in der Regel den Export blockieren sollten."""
+    warning_text = str(text or "").strip().lower()
+    if not warning_text:
+        return False
+
+    blocking_markers = (
+        "pflichtfeld fehlt",
+        "kategorie fehlt",
+        "inkonsistenter schwierigkeitsgrad",
+        "keinen verwertbaren inhalt",
+    )
+    return any(marker in warning_text for marker in blocking_markers)
+
+
+def _blocking_warning_key(text: str) -> str | None:
+    """Ordnet eine blockierende Warnung einem stabilen Schlüssel zu."""
+    warning_text = str(text or "").strip().lower()
+    if not warning_text:
+        return None
+
+    if "pflichtfeld fehlt" in warning_text:
+        if "titel" in warning_text:
+            return "missing_title"
+        return "missing_required"
+    if "kategorie fehlt" in warning_text:
+        return "missing_category"
+    if "inkonsistenter schwierigkeitsgrad" in warning_text:
+        return "inconsistent_difficulty"
+    if "keinen verwertbaren inhalt" in warning_text:
+        return "missing_content"
+
+    return None
+
+
 @dataclass
 class ImportTask:
     """Repräsentiert eine importierte Aufgabe inkl. Diagnosemetadaten."""
@@ -54,10 +110,10 @@ class ImportTask:
         category = task.get("category", "Ohne Kategorie")
         title = task.get("title", "Ohne Titel")
         difficulty = task.get("difficulty", "Mittel")
-        keywords = list(task.get("keywords", []) or [])
+        keywords = _as_string_list(task.get("keywords", []))
         elements = list(task.get("all_elements", []) or [])
-        intro = list(task.get("intro", []) or [])
-        warnings = list(task.get("warnings", []) or [])
+        intro = _as_string_list(task.get("intro", []))
+        warnings = _as_string_list(task.get("warnings", []))
         confidence = task.get("confidence", default_confidence)
 
         return cls(
@@ -139,6 +195,11 @@ class ImportSession:
         medium = sum(1 for t in self.tasks if t.confidence == "medium")
         low = sum(1 for t in self.tasks if t.confidence == "low")
         warnings = sum(1 for t in self.tasks if t.warnings)
+        blocking = sum(
+            1
+            for t in self.tasks
+            if any(is_blocking_warning(w) for w in (t.warnings or []))
+        )
 
         return {
             "total": total,
@@ -147,6 +208,7 @@ class ImportSession:
             "medium": medium,
             "low": low,
             "warnings": warnings,
+            "blocking": blocking,
         }
 
     def approve_all(self) -> None:
@@ -160,10 +222,15 @@ class ImportSession:
             task.accepted = False
 
     def set_task_approval(self, task_id: int, accepted: bool) -> None:
+        found = False
         for task in self.tasks:
             if task.id == task_id:
                 task.accepted = accepted
+                found = True
                 break
+
+        if not found:
+            return
 
         if accepted:
             self.approved_task_ids.add(task_id)
@@ -173,3 +240,27 @@ class ImportSession:
     def get_approved_raw_tasks(self) -> list[dict[str, Any]]:
         approved_ids = self.approved_task_ids
         return [t.raw_task for t in self.tasks if t.id in approved_ids]
+
+    def get_blocking_summary(self) -> dict[str, int]:
+        """Liefert eine kategoriale Zusammenfassung blockierender Warnungen."""
+        counts = {
+            "missing_title": 0,
+            "missing_required": 0,
+            "missing_category": 0,
+            "inconsistent_difficulty": 0,
+            "missing_content": 0,
+        }
+
+        for task in self.tasks:
+            task_keys = set()
+            for warning in task.warnings or []:
+                key = _blocking_warning_key(warning)
+                if key:
+                    task_keys.add(key)
+
+            for key in task_keys:
+                if key in counts:
+                    counts[key] += 1
+
+        counts["total"] = sum(counts.values())
+        return counts

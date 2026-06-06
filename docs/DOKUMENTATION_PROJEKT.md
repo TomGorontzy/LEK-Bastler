@@ -1,5 +1,7 @@
 # LEK-Bastler – Projektdokumentation
 
+<!-- markdownlint-disable MD012 -->
+
 ## 1. Ziel und Funktionsumfang
 
 Der **LEK-Bastler** unterstützt die Erstellung von Lernerfolgskontrollen (LEKs) aus Word-Aufgabensammlungen.
@@ -12,7 +14,7 @@ Kernfunktionen:
 - Erhaltung von Struktur und Formatierungen (inkl. Tabellen und Inhaltssteuerelemente)
 - Automatische Ablage im Verzeichnis `data/LEKs/`
 
-Aktueller Versionsstand: **3.6.2** (aus `src/build_version_info.txt`).
+Aktueller Versionsstand: **3.7.0** (aus `src/build_version_info.txt`).
 
 ## 2. Projektstruktur (aktuell)
 
@@ -92,8 +94,8 @@ Build-Skript: `src/build.ps1`
 
 Beispiel für aktuelle Version:
 
-- `dist/LEK-Bastler_3.6.2/LEK-Bastler_3.6.2.exe`
-- `release/LEK-Bastler_3.6.2.zip`
+- `dist/LEK-Bastler_3.7.0/LEK-Bastler_3.7.0.exe`
+- `release/LEK-Bastler_3.7.0.zip`
 
 ### 4.2 Deploy-Inhalt
 
@@ -135,3 +137,6 @@ Automatisierte Regression:
 ## 7. Historischer Kontext
 
 Historische Inhalte wurden in diese Dokumentation fachlich übernommen und auf den aktuellen Stand (Version, Struktur, Namen) gebracht.
+<!-- EOF -->
+<!-- END -->
+
