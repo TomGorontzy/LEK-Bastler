@@ -2323,7 +2323,11 @@ class LEKBastlerGUI:
                 return
 
             new_keywords = [k.strip() for k in str(keywords_var.get() or '').split(',') if k.strip()]
-            new_content = [line.strip() for line in content_text.get('1.0', tk.END).splitlines() if line.strip()]
+            raw_lines = [line.rstrip() for line in content_text.get('1.0', tk.END).splitlines()]
+            # Leere Absätze bewusst erhalten (nur überflüssige Leerzeilen am Ende entfernen)
+            while raw_lines and raw_lines[-1] == '':
+                raw_lines.pop()
+            new_content = raw_lines
 
             task['title'] = str(title_var.get() or '').strip()
             task['category'] = str(category_var.get() or '').strip()

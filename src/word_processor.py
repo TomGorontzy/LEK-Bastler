@@ -2688,8 +2688,10 @@ class WordProcessor:
             return
 
         for content_line in task.get('content', []) or []:
-            if str(content_line).strip():
-                doc.add_paragraph(str(content_line))
+            # Leere Zeilen als leere Absätze übernehmen, damit Absatzabstände erhalten bleiben.
+            if content_line is None:
+                continue
+            doc.add_paragraph(str(content_line))
 
         self._insert_external_table_reference(doc, task)
 
