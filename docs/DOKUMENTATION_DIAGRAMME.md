@@ -38,6 +38,17 @@ Dieses Verzeichnis bündelt die ausgelagerten Mermaid-Quellen und die daraus erz
 	- Position: direkt nach Abschnitt **GitHub Release-Workflow** in `docs/DOKUMENTATION_RELEASES.md`
 	- Zweck: Build-, QA- und Publishing-Kette transparent machen
 
+## Visuelle Legende (einheitlich)
+
+Die Mermaid-Quellen nutzen ein gemeinsames Farbschema und Klassenmodell:
+
+- `ui` = Benutzeroberfläche / Steuerung
+- `process` = Verarbeitung / Modul-Logik
+- `quality` = Prüfung / Freigabe / QA
+- `decision` = Entscheidung / Gating
+- `data` = Dateien, Ordner, Konfigurationen
+- `release` = Build-/Release-Artefakte
+
 ## Hinweis
 
 Die Mermaid-Dateien sind die pflegbaren Quellen. Die SVG-Dateien dienen als direkt einbindbare Grafiken für GitHub, VS Code und Release-Dokumentation.
