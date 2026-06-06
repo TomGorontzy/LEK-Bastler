@@ -73,6 +73,15 @@ $ReleaseDir = 'release'
 $ReleaseZipName = "$DeployFolderName.zip"
 $ReleaseZipPath = Join-Path $ReleaseDir $ReleaseZipName
 
+$DocsFilesToExcludeFromRelease = @(
+    'CHANGELOG.md',
+    'DOKUMENTATION_DIAGRAMME.md',
+    'DOKUMENTATION_PROJEKT.md',
+    'DOKUMENTATION_RELEASES.md',
+    'RELEASE_QA_CHECKLISTE.md',
+    'RELEASE_SMOKETEST_PROTOKOLL.md'
+)
+
 function Set-FileContentIfChanged {
     param(
         [string]$Path,
@@ -252,8 +261,22 @@ $foldersToInclude = @("data", "docs")
 foreach ($folder in $foldersToInclude) {
     if (Test-Path $folder) {
         Copy-Item $folder "$DeployDir\" -Recurse
+
+        if ($folder -eq 'docs') {
+            foreach ($excludedDoc in $DocsFilesToExcludeFromRelease) {
+                $excludedPath = Join-Path $DeployDir "docs\$excludedDoc"
+                if (Test-Path $excludedPath) {
+                    Remove-Item $excludedPath -Force
+                }
+            }
+        }
+
         $count = (Get-ChildItem "$DeployDir\$folder" -File -Recurse).Count
         Write-Host "   $folder\ ($count Datei(en))" -ForegroundColor DarkGray
+
+        if ($folder -eq 'docs' -and $DocsFilesToExcludeFromRelease.Count -gt 0) {
+            Write-Host ("   docs\ (ohne: {0})" -f (($DocsFilesToExcludeFromRelease | ForEach-Object { [System.IO.Path]::GetFileName($_) }) -join ', ')) -ForegroundColor DarkGray
+        }
     } else {
         Write-Host "   WARNUNG: Ordner nicht gefunden – $folder\" -ForegroundColor Yellow
     }
