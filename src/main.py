@@ -450,25 +450,25 @@ class LEKBastlerGUI:
 
         self.btn_bulk_edit = ttk.Button(review_group, text="Mehrfach bearbeiten", command=self.bulk_edit_selected_tasks)
         self.btn_bulk_edit.pack(side=tk.LEFT, padx=(0, 8))
-        self.btn_preview_selected = ttk.Button(review_group, text="Vorschau Auswahl", command=self.preview_selected_task)
+        self.btn_preview_selected = ttk.Button(review_group, text="Auswahl prüfen", command=self.preview_selected_task)
         self.btn_preview_selected.pack(side=tk.LEFT, padx=(0, 8))
         self.btn_approve = ttk.Button(review_group, text="Auswahl freigeben", command=self.approve_selected_tasks)
         self.btn_approve.pack(side=tk.LEFT, padx=(0, 8))
         self.btn_clear_approvals = ttk.Button(review_group, text="Freigaben löschen", command=self.clear_task_approvals)
         self.btn_clear_approvals.pack(side=tk.LEFT)
 
-        self.btn_preview_lek = ttk.Button(export_group, text="LEK-Gesamtvorschau", command=self.preview_lek_output)
+        self.btn_preview_lek = ttk.Button(export_group, text="Gesamtausgabe prüfen", command=self.preview_lek_output)
         self.btn_preview_lek.pack(side=tk.LEFT, padx=(0, 8))
-        self.btn_export_selected = ttk.Button(export_group, text="Markierte exportieren", command=self.export_selected)
+        self.btn_export_selected = ttk.Button(export_group, text="Auswahl exportieren", command=self.export_selected)
         self.btn_export_selected.pack(side=tk.LEFT, padx=(0, 8))
-        self.btn_export_all = ttk.Button(export_group, text="Alle exportieren", command=self.export_all)
+        self.btn_export_all = ttk.Button(export_group, text="Freigaben exportieren", command=self.export_all)
         self.btn_export_all.pack(side=tk.LEFT)
 
         self._default_button_labels = {
             self.btn_browse: "Datei wählen & laden...",
             self.btn_filter: "Aufgaben filtern",
             self.btn_approve: "Auswahl freigeben",
-            self.btn_export_all: "Alle exportieren",
+            self.btn_export_all: "Freigaben exportieren",
         }
         
         # Grid-Konfiguration für responsives Layout
@@ -509,8 +509,8 @@ class LEKBastlerGUI:
             self.btn_deselect_all: "Hebt die komplette aktuelle Markierung auf und startet die Auswahl bei Bedarf neu.",
             self.btn_approve: "Gibt die markierten Aufgaben für Vorschau und Export frei und aktualisiert den Wizard-Fortschritt.",
             self.btn_clear_approvals: "Entfernt alle bisherigen Freigaben, wenn Sie den Auswahlprozess neu aufsetzen möchten.",
-            self.btn_preview_selected: "Öffnet eine Textvorschau der aktuell ausgewählten Aufgabe zur schnellen Inhaltskontrolle.",
-            self.btn_preview_lek: "Zeigt die Gesamtvorschau der freigegebenen Aufgaben in der späteren Exportreihenfolge.",
+            self.btn_preview_selected: "Prüft die aktuell ausgewählte Aufgabe als Textvorschau zur schnellen Inhaltskontrolle.",
+            self.btn_preview_lek: "Prüft die Gesamtausgabe der freigegebenen Aufgaben in der späteren Exportreihenfolge.",
             self.btn_export_selected: "Exportiert nur die aktuell markierten und freigegebenen Aufgaben in ein LEK-Dokument.",
             self.btn_export_all: "Exportiert alle freigegebenen Aufgaben gesammelt in eine vollständige LEK-Datei.",
         }
@@ -804,7 +804,7 @@ class LEKBastlerGUI:
             if approved_count > 0:
                 if advanced_mode:
                     self.wizard_hint_var.set(
-                        "Nächster Schritt: Freigaben prüfen, optional LEK-Gesamtvorschau öffnen und mit 'Weiter' zum Export wechseln."
+                        "Nächster Schritt: Freigaben prüfen, optional 'Gesamtausgabe prüfen' öffnen und mit 'Weiter' zum Export wechseln."
                     )
                 else:
                     self.wizard_hint_var.set("Nächster Schritt: Freigaben prüfen und mit 'Weiter' zum Export wechseln.")
@@ -818,10 +818,10 @@ class LEKBastlerGUI:
         else:
             if advanced_mode:
                 self.wizard_hint_var.set(
-                    "Nächster Schritt: Export mit 'Alle exportieren' oder 'Markierte exportieren' starten (optional vorher Gesamtvorschau prüfen)."
+                    "Nächster Schritt: Export mit 'Freigaben exportieren' oder 'Auswahl exportieren' starten (optional vorher Gesamtausgabe prüfen)."
                 )
             else:
-                self.wizard_hint_var.set("Nächster Schritt: Export mit 'Alle exportieren' oder 'Markierte exportieren' starten.")
+                self.wizard_hint_var.set("Nächster Schritt: Export mit 'Freigaben exportieren' oder 'Auswahl exportieren' starten.")
             self._mark_primary_action(self.btn_export_all)
 
     def _mark_primary_action(self, primary_button):

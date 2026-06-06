@@ -45,7 +45,7 @@ Der aktuelle Versionsstand wird über `src/build_version_info.txt` und die GitHu
 1. Aufgabensammlung laden
 2. Aufgaben sichten und filtern
 3. Geeignete Aufgaben auswählen und freigeben
-4. Optional die LEK-Gesamtvorschau prüfen
+4. Optional die Gesamtausgabe prüfen
 5. Export in `data/LEKs/` starten
 
 ![Anwenderablauf LEK-Bastler](docs/diagramme/anwender_ablauf.svg)
@@ -54,8 +54,8 @@ Der aktuelle Versionsstand wird über `src/build_version_info.txt` und die GitHu
 
 1. **Word-Datei laden**: Klicken Sie auf **Datei wählen & laden...** und wählen Sie Ihre Aufgabensammlung
 2. **Aufgaben auswählen und freigeben**: Markieren Sie Aufgaben und klicken Sie auf **Auswahl freigeben**
-3. **Optional Vorschau prüfen**: Öffnen Sie die **LEK-Gesamtvorschau**
-4. **Exportieren**: Klicken Sie auf **Alle exportieren** oder **Markierte exportieren**
+3. **Optional Vorschau prüfen**: Öffnen Sie **Gesamtausgabe prüfen**
+4. **Exportieren**: Klicken Sie auf **Freigaben exportieren** oder **Auswahl exportieren**
 
 ## 🗂️ Projektstruktur
 

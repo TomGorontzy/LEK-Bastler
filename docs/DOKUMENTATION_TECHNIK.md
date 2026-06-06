@@ -58,7 +58,7 @@ Die Grafik zeigt die zentralen Quellmodule, die Konfigurationsdaten und den Expo
   - Aufgabenstellung
   - Hinweis (optional)
   - Punkte (optional)
-- Die Schritt-3-`LEK-Gesamtvorschau` in `src/main.py` nutzt dieselbe zentrale Fließtext-Logik wie der Exportpfad in `src/word_processor.py`.
+- Die Schritt-3-`Gesamtausgabe prüfen`-Vorschau in `src/main.py` nutzt dieselbe zentrale Fließtext-Logik wie der Exportpfad in `src/word_processor.py`.
 - Ein zusätzlicher Delta-Check markiert fehlende optionale Blöcke transparent, ohne den Exportinhalt künstlich zu verändern.
 
 Technische Umsetzung der Gruppenlogik:

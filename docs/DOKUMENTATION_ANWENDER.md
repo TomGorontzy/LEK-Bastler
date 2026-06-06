@@ -23,7 +23,7 @@ Hinweis zum aktuellen Stand: Version **3.7.0**.
 1. **Aufgabensammlung laden** (`data/Aufgaben/*.docx`)
 2. **Aufgaben filtern** (optional, z. B. über Suchbegriffe/Schwierigkeit)
 3. **Aufgaben auswählen und freigeben**
-4. **Optional LEK-Gesamtvorschau prüfen**
+4. **Optional Gesamtausgabe prüfen**
 5. **Export starten**
 6. Zieldatei im Ordner `data/LEKs/` speichern
 
