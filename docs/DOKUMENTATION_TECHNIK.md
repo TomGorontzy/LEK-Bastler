@@ -51,6 +51,7 @@ Die Grafik zeigt die zentralen Quellmodule, die Konfigurationsdaten und den Expo
 
 - Der Wizard arbeitet mit einer persistenten `ImportSession`; zwischen Schritt 3 und 4 erfolgt keine Re-Extraktion.
 - Exportiert werden ausschließlich die freigegebenen Aufgaben aus `approved_task_ids` bzw. den bestätigten Raw-Tasks.
+- Hauptaufgaben und Unteraufgaben werden über die führende Hauptnummer gruppiert (z. B. `1.0`, `1.1`, `1.2` → Gruppe `1`). Freigabe und Export erweitern eine Auswahl deshalb automatisch auf alle Aufgaben derselben Gruppe.
 - Für strukturierte Aufgaben-Tabellen wird dieselbe fachliche Reihenfolge für Vorschau und Export verwendet:
   - Titel
   - Intro/Einleitung (optional)
@@ -59,6 +60,12 @@ Die Grafik zeigt die zentralen Quellmodule, die Konfigurationsdaten und den Expo
   - Punkte (optional)
 - Die Schritt-3-`LEK-Gesamtvorschau` in `src/main.py` nutzt dieselbe zentrale Fließtext-Logik wie der Exportpfad in `src/word_processor.py`.
 - Ein zusätzlicher Delta-Check markiert fehlende optionale Blöcke transparent, ohne den Exportinhalt künstlich zu verändern.
+
+Technische Umsetzung der Gruppenlogik:
+
+- `ImportTask` in `src/import_wizard.py` führt dafür einen `group_key`, der aus `number_display` bzw. der Hauptnummer abgeleitet wird.
+- `ImportSession.set_task_approvals(...)` setzt Freigaben gruppenweise und hält `approved_task_ids` konsistent.
+- `src/main.py` erweitert markierte Aufgaben vor Freigabe und `export_selected()` automatisch auf die vollständige Aufgabenfamilie.
 
 ## 4b. Regelwerk und Konfiguration (Sprint 2)
 
@@ -126,6 +133,7 @@ Standardverhalten (`auto`) bleibt kompatibel:
 - Regressionstest-Suite: `tools/test_regression_core.py`
   - Kernfälle R1–R6 (Vorschau/Export-Reihenfolge, Delta-Check, Kategoriepflicht,
     Titel-Fallback, Difficulty-Blockade, Teilfreigabe).
+  - Zusätzlich abgesichert: gruppierte Freigabe und gruppiertes Entfernen für Haupt-/Unteraufgaben.
 - Testfallmatrix: `memos/MEMO_REGRESSIONSTEST_MATRIX.md`
 - Release-QA-Checkliste: `docs/RELEASE_QA_CHECKLISTE.md`
 

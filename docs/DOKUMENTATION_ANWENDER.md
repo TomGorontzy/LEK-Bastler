@@ -38,6 +38,8 @@ Das Diagramm zeigt den typischen Pfad von der Aufgabensammlung bis zum Export in
 
 - Der Ordner `data/LEKs/` wird beim Export automatisch erstellt, falls er fehlt.
 - Für beste Ergebnisse sollten Aufgaben sauber mit Überschriften oder als strukturierte 2-Spalten-Tabellen aufgebaut sein.
+- Zusammengehörige Aufgabenfamilien werden automatisch gemeinsam behandelt: Wenn eine Hauptaufgabe mit Unteraufgaben vorliegt (z. B. `1.0`, `1.1`, `1.2`), übernimmt der LEK-Bastler diese bei Auswahl, Freigabe und Export immer als vollständige Gruppe.
+- Wenn Sie nur eine Unteraufgabe markieren, erweitert die Anwendung die Auswahl automatisch auf die restlichen Aufgaben derselben Hauptnummer.
 - Vorlagen liegen im Ordner `data/Vorlagen/`.
 - Relevante Vorlagen im aktuellen Stand:
   - `data/Vorlagen/LEK-Vorlage.docx` (LEK-Export)
@@ -64,6 +66,7 @@ Das Diagramm zeigt den typischen Pfad von der Aufgabensammlung bis zum Export in
 - Sicherstellen, dass die Eingabedatei nicht in Word gesperrt ist.
 - Schreibrechte im Zielordner prüfen.
 - Prüfen, ob `data/Vorlagen/LEK-Vorlage.docx` vorhanden ist.
+- Prüfen, ob zusammengehörige Teilaufgaben fachlich vollständig gepflegt sind; da Aufgabenfamilien gemeinsam exportiert werden, können Warnungen in einer Unteraufgabe die gesamte Gruppe betreffen.
 - Bei ungewöhnlichen Formatproblemen mit einer alternativen Aufgabenquelle gegenprüfen.
 
 ### Icon wird nicht korrekt angezeigt
