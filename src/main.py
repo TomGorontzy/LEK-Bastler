@@ -950,7 +950,11 @@ class LEKBastlerGUI:
         if not callable(summary_getter):
             return ""
 
-        summary = summary_getter() or {}
+        raw_summary = summary_getter()
+        if not isinstance(raw_summary, dict):
+            return ""
+
+        summary: dict[str, Any] = raw_summary
         parts = []
 
         title_count = int(summary.get('missing_title', 0) or 0)
@@ -1655,7 +1659,7 @@ class LEKBastlerGUI:
 
     def _ask_import_metadata_dialog(self, initial_values, allowed_values):
         """Zeigt einen strukturierten Metadaten-Dialog mit Live-Validierung."""
-        result = {'value': None}
+        result: dict[str, Any] = {'value': None}
         hints = self._load_task_authoring_hints()
         field_hints = hints.get('field_hints', {}) or {}
         category_defaults = hints.get('category_defaults', {}) or {}
