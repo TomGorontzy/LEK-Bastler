@@ -14,6 +14,21 @@ Alle relevanten Änderungen an diesem Projekt werden hier dokumentiert.
 - Auswahl-, Freigabe- und Exportlogik für Aufgabenfamilien erweitert: Hauptaufgaben und zugehörige Unteraufgaben (z. B. `1.0`, `1.1`, `1.2`) werden jetzt automatisch gemeinsam behandelt und nur als vollständige Gruppe in die LEK übernommen.
 - Externe Großtabellen können jetzt per Marker `<<tabelle=Dateiname>>` aus einem lernbereichsspezifischen Unterordner unter `data/Aufgaben/` referenziert und beim Export automatisch in passender Hoch-/Querformat-Orientierung übernommen werden.
 
+## [3.7.1] - 2026-06-06
+
+### Changed
+
+- Diagramm-Dokumentation für Mermaid-Workflows erweitert und stabilisiert:
+  - Starter-Snippet und Mini-Do/Don't-Liste für renderstabile Styles ergänzt.
+  - Hinweis auf mermaid-cli-kompatible `linkStyle`-Nutzung präzisiert.
+- Typrobustheit in der GUI-Logik verbessert:
+  - Guard für Blocking-Summary in `src/main.py` ergänzt.
+  - Ergebnis-Typisierung im Metadaten-Dialog präzisiert, um Pylance-Fehler zu vermeiden.
+
+### Quality
+
+- Regressionstest-Suite erfolgreich: **23/23 OK** (`tools/test_regression_core.py`).
+
 ## [3.7.0] - 2026-06-06
 
 ### Added
