@@ -79,6 +79,8 @@ LEK-Bastler/
 └── docs/                  # Aktuelle Projektdokumentation
 ```
 
+**Team-Konvention (Stand: 2026-06-06):** Dateien unter `data/Aufgaben/*.docx` dürfen bis auf Weiteres grundsätzlich mitcommitted werden.
+
 ## 📝 Änderungsverlauf
 
 Der konsolidierte Änderungsverlauf wird zentral in `docs/CHANGELOG.md` gepflegt.
