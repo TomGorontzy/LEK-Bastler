@@ -45,8 +45,7 @@ Der aktuelle Versionsstand wird über `src/build_version_info.txt` und die GitHu
 1. Aufgabensammlung laden
 2. Aufgaben sichten und filtern
 3. Geeignete Aufgaben auswählen
-4. Optional ein LEK-Thema vergeben
-5. Export in `data/LEKs/` starten
+4. Export in `data/LEKs/` starten
 
 ![Anwenderablauf LEK-Bastler](docs/diagramme/anwender_ablauf.svg)
 
@@ -54,8 +53,7 @@ Der aktuelle Versionsstand wird über `src/build_version_info.txt` und die GitHu
 
 1. **Word-Datei laden**: Klicken Sie "Durchsuchen" und wählen Sie Ihre Aufgabensammlung
 2. **Aufgaben auswählen**: Wählen Sie gewünschte Aufgaben aus der Liste
-3. **LEK-Thema eingeben**: Optional für thematische Gruppierung
-4. **Exportieren**: Klicken Sie "LEK erstellen" für automatischen Export
+3. **Exportieren**: Klicken Sie "LEK erstellen" für automatischen Export
 
 ## 🗂️ Projektstruktur
 
