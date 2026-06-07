@@ -898,6 +898,106 @@ class RegressionCoreTests(unittest.TestCase):
             self.assertIn('Brutto', all_table_text)
             self.assertIn('Netto', all_table_text)
 
+    def test_external_table_reference_with_orientation_is_inserted_only_once_in_structured_export(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            aufgaben_dir = os.path.join(tmp, 'data', 'Aufgaben')
+            os.makedirs(aufgaben_dir, exist_ok=True)
+
+            collection_path = os.path.join(aufgaben_dir, 'Aufgaben_Personalwirtschaft.docx')
+            subfolder = os.path.join(aufgaben_dir, 'Personalwirtschaft')
+            os.makedirs(subfolder, exist_ok=True)
+            external_path = os.path.join(subfolder, 'Entgeltabrechnung.docx')
+
+            doc = Document()
+            table = doc.add_table(rows=0, cols=2)
+            for key, value in [
+                ('ID', 'A-901'),
+                ('Titel', 'Entgeltabrechnung strukturiert'),
+                ('Kategorie', 'Personalwirtschaft'),
+                ('Schwierigkeitsgrad', 'mittel'),
+                ('Aufgabenstellung (Pflicht)', ''),
+            ]:
+                row = table.add_row()
+                row.cells[0].text = key
+                row.cells[1].text = value
+
+            task_cell = table.rows[-1].cells[1]
+            task_cell.text = ''
+            task_cell.paragraphs[0].add_run('Bearbeiten Sie die Entgeltabrechnung.')
+            task_cell.add_paragraph('<<tabelle=Entgeltabrechnung.docx>>')
+            task_cell.add_paragraph('<<tabelle_format=portrait>>')
+            doc.save(collection_path)
+
+            ext_doc = Document()
+            ext_doc.add_paragraph('Schriftprobe extern')
+            ext_table = ext_doc.add_table(rows=1, cols=2)
+            ext_table.cell(0, 0).text = 'Brutto'
+            ext_table.cell(0, 1).text = 'Netto'
+            ext_doc.save(external_path)
+
+            task = self._extract_first_task(collection_path)
+            out_doc = Document()
+            self.wp.append_task_to_lek_document(out_doc, task)
+
+            found_rows = [
+                row
+                for table in out_doc.tables
+                for row in table.rows
+                if any('Brutto' in str(cell.text or '') for cell in row.cells)
+            ]
+            self.assertEqual(len(found_rows), 1, 'Externe Tabelle wurde mehrfach eingefügt.')
+
+    def test_external_document_style_conflicts_are_remapped_to_preserve_font_context(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            aufgaben_dir = os.path.join(tmp, 'data', 'Aufgaben')
+            os.makedirs(aufgaben_dir, exist_ok=True)
+
+            collection_path = os.path.join(aufgaben_dir, 'Aufgaben_Personalwirtschaft.docx')
+            subfolder = os.path.join(aufgaben_dir, 'Personalwirtschaft')
+            os.makedirs(subfolder, exist_ok=True)
+            external_path = os.path.join(subfolder, 'Entgeltabrechnung.docx')
+
+            src_doc = Document()
+            src_table = src_doc.add_table(rows=0, cols=2)
+            for key, value in [
+                ('ID', 'A-902'),
+                ('Titel', 'Style-Konflikt-Test'),
+                ('Kategorie', 'Personalwirtschaft'),
+                ('Schwierigkeitsgrad', 'mittel'),
+                ('Aufgabenstellung (Pflicht)', ''),
+            ]:
+                row = src_table.add_row()
+                row.cells[0].text = key
+                row.cells[1].text = value
+
+            task_cell = src_table.rows[-1].cells[1]
+            task_cell.text = ''
+            task_cell.paragraphs[0].add_run('Bitte nutzen Sie die externe Anlage.')
+            task_cell.add_paragraph('<<tabelle=Entgeltabrechnung.docx>>')
+            src_doc.save(collection_path)
+
+            ext_doc = Document()
+            # Konfliktfall: gleicher Style-ID "Normal", aber andere Schriftkonfiguration
+            ext_doc.styles['Normal'].font.name = 'Courier New'
+            ext_doc.styles['Normal'].font.size = None
+            ext_doc.add_paragraph('Schriftprobe extern im Konfliktstil')
+            ext_doc.save(external_path)
+
+            task = self._extract_first_task(collection_path)
+            out_doc = Document()
+            out_doc.styles['Normal'].font.name = 'Aptos'
+            self.wp.append_task_to_lek_document(out_doc, task)
+
+            external_para = next(
+                (p for p in out_doc.paragraphs if str(p.text or '').strip() == 'Schriftprobe extern im Konfliktstil'),
+                None,
+            )
+            self.assertIsNotNone(external_para, 'Externer Absatz wurde nicht übernommen.')
+            self.assertTrue(
+                str(external_para.style.style_id or '').lower().startswith('ext_'),
+                'Konfliktstil wurde nicht remappt; externe Schriftkonfiguration kann verloren gehen.',
+            )
+
     def test_external_table_reference_inserts_landscape_document(self):
         with tempfile.TemporaryDirectory() as tmp:
             aufgaben_dir = os.path.join(tmp, 'data', 'Aufgaben')

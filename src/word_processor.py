@@ -2165,8 +2165,11 @@ class WordProcessor:
             if tag_local in ('p', 'tbl', 'sdt'):
                 xml_elements.append(child)
 
+        default_para_style = self._default_paragraph_style_id(external_doc.part)
         used_style_ids, _used_num_ids = self._collect_used_style_and_num_ids_from_xml_elements(xml_elements)
-        self._merge_required_styles(external_doc.part, target_doc.part, used_style_ids)
+        if default_para_style:
+            used_style_ids.add(str(default_para_style))
+        style_id_map = self._merge_styles_for_external_content(external_doc.part, target_doc.part, used_style_ids)
         external_num_map = self._ensure_local_numbering_map(external_doc.part, target_doc.part, xml_elements)
 
         body = target_doc._element.body
@@ -2181,13 +2184,171 @@ class WordProcessor:
                 target_part=target_doc.part,
                 rel_map=rel_map,
             )
+            self._materialize_default_paragraph_style_in_element(cloned, default_para_style)
             self._materialize_style_numbering_in_element(cloned, external_doc.part, external_num_map)
+            self._remap_style_ids_in_element(cloned, style_id_map)
             self._remap_num_ids_in_element(cloned, external_num_map)
 
             if sect_pr is not None:
                 body.insert(list(body).index(sect_pr), cloned)
             else:
                 body.append(cloned)
+
+    def _build_unique_style_id(self, preferred_id, existing_ids):
+        """Erzeugt eine eindeutige Style-ID für konfliktfreie externe Stilkopien."""
+        base = re.sub(r'[^A-Za-z0-9_]+', '_', str(preferred_id or 'ext_style')).strip('_')
+        if not base:
+            base = 'ext_style'
+        if not base.lower().startswith('ext_'):
+            base = f'ext_{base}'
+
+        candidate = base[:240]
+        counter = 2
+        while candidate in existing_ids:
+            suffix = f'_{counter}'
+            candidate = f"{base[:max(1, 240 - len(suffix))]}{suffix}"
+            counter += 1
+
+        existing_ids.add(candidate)
+        return candidate
+
+    def _merge_styles_for_external_content(self, source_part, target_part, used_style_ids):
+        """Kopiert benötigte Styles für externe Inhalte konfliktfrei und liefert ein Style-Mapping."""
+        from copy import deepcopy
+
+        style_id_map = {}
+        if not used_style_ids:
+            return style_id_map
+
+        try:
+            source_styles = source_part.styles.element
+            target_styles = target_part.styles.element
+        except Exception:
+            return style_id_map
+
+        src_by_id = {
+            s.get(qn('w:styleId')): s
+            for s in source_styles.xpath('./w:style')
+            if s.get(qn('w:styleId'))
+        }
+        target_ids = {
+            s.get(qn('w:styleId'))
+            for s in target_styles.xpath('./w:style')
+            if s.get(qn('w:styleId'))
+        }
+        existing_ids = set(target_ids)
+
+        # Abhängigkeiten (basedOn/link/next) der verwendeten Styles miterfassen
+        pending = list(used_style_ids)
+        collected = []
+        seen = set()
+        while pending:
+            style_id = pending.pop()
+            if not style_id or style_id in seen:
+                continue
+            seen.add(style_id)
+
+            src_style = src_by_id.get(style_id)
+            if src_style is None:
+                continue
+
+            collected.append(style_id)
+            for dep_xpath in ('./w:basedOn', './w:link', './w:next'):
+                for dep in src_style.xpath(dep_xpath):
+                    dep_id = dep.get(qn('w:val'))
+                    if dep_id and dep_id not in seen:
+                        pending.append(dep_id)
+
+        cloned_styles_by_source = {}
+        for source_style_id in collected:
+            src_style = src_by_id.get(source_style_id)
+            if src_style is None:
+                continue
+
+            if source_style_id not in target_ids:
+                clone = deepcopy(src_style)
+                target_styles.append(clone)
+                target_ids.add(source_style_id)
+                existing_ids.add(source_style_id)
+                style_id_map[source_style_id] = source_style_id
+                cloned_styles_by_source[source_style_id] = clone
+                continue
+
+            # Konflikt: gleiche Style-ID existiert bereits -> externe Kopie mit neuer ID verwenden
+            new_style_id = self._build_unique_style_id(source_style_id, existing_ids)
+            clone = deepcopy(src_style)
+            clone.set(qn('w:styleId'), new_style_id)
+
+            name_nodes = clone.xpath('./w:name')
+            if name_nodes:
+                old_name = str(name_nodes[0].get(qn('w:val')) or '').strip()
+                if old_name:
+                    name_nodes[0].set(qn('w:val'), f"{old_name} (extern)")
+
+            target_styles.append(clone)
+            target_ids.add(new_style_id)
+            style_id_map[source_style_id] = new_style_id
+            cloned_styles_by_source[source_style_id] = clone
+
+        # Abhängigkeiten innerhalb der neu kopierten Styles auf remappte IDs umbiegen
+        for source_style_id, clone in cloned_styles_by_source.items():
+            _ = source_style_id  # nur für Lesbarkeit im Loop
+            for dep_xpath in ('./w:basedOn', './w:link', './w:next'):
+                for dep in clone.xpath(dep_xpath):
+                    dep_id = dep.get(qn('w:val'))
+                    if dep_id in style_id_map:
+                        dep.set(qn('w:val'), style_id_map[dep_id])
+
+        return style_id_map
+
+    def _remap_style_ids_in_element(self, xml_element, style_id_map):
+        """Remappt pStyle/rStyle/tblStyle in einem XML-Element anhand eines Style-Mappings."""
+        if xml_element is None or not style_id_map:
+            return
+
+        for node in xml_element.xpath('.//w:pStyle|.//w:rStyle|.//w:tblStyle'):
+            old_style_id = node.get(qn('w:val'))
+            if old_style_id in style_id_map:
+                node.set(qn('w:val'), style_id_map[old_style_id])
+
+    def _default_paragraph_style_id(self, source_part):
+        """Liefert die Default-Paragraph-Style-ID eines Dokuments (Fallback: Normal)."""
+        try:
+            styles_element = source_part.styles.element
+            for style in styles_element.xpath('./w:style'):
+                style_type = style.get(qn('w:type'))
+                is_default = style.get(qn('w:default'))
+                style_id = style.get(qn('w:styleId'))
+                if style_type == 'paragraph' and is_default in {'1', 'true', 'on'} and style_id:
+                    return style_id
+        except Exception:
+            pass
+        return 'Normal'
+
+    def _materialize_default_paragraph_style_in_element(self, xml_element, default_style_id):
+        """Schreibt fehlende pStyle-Angaben explizit in Absätze eines XML-Elements."""
+        if xml_element is None or not str(default_style_id or '').strip():
+            return
+
+        paragraph_nodes = []
+        tag_local = xml_element.tag.split('}')[-1] if '}' in xml_element.tag else xml_element.tag
+        if tag_local == 'p':
+            paragraph_nodes.append(xml_element)
+        paragraph_nodes.extend(xml_element.xpath('.//*[local-name()="p"]'))
+
+        for para in paragraph_nodes:
+            p_pr = para.find(qn('w:pPr'))
+            if p_pr is None:
+                p_pr = OxmlElement('w:pPr')
+                para.insert(0, p_pr)
+
+            p_style = p_pr.find(qn('w:pStyle'))
+            if p_style is not None:
+                continue
+
+            p_style = OxmlElement('w:pStyle')
+            p_style.set(qn('w:val'), str(default_style_id))
+            p_pr.insert(0, p_style)
 
     def _insert_external_table_reference(self, doc, task):
         """Fügt eine referenzierte externe Tabellen-/Dokumentdatei in die LEK ein."""
@@ -2510,23 +2671,32 @@ class WordProcessor:
         return None
 
     def _append_cell_as_flow_text(self, doc, cell, fallback_text='', task=None):
-        """Überträgt den Inhalt einer Tabellenzelle als Fließtext-/Blockelemente ins Dokument."""
+        """Überträgt Zelleninhalt als Fließtext und meldet Schreib-/Externeinfüge-Status zurück."""
         written = False
+        inserted_external = False
         if cell is not None:
             source_part = getattr(cell, 'part', None)
-            written = self._append_cell_block_elements_for_lek(doc, cell, source_part=source_part, task=task)
+            result = self._append_cell_block_elements_for_lek(doc, cell, source_part=source_part, task=task)
+            written = bool(result.get('written'))
+            inserted_external = bool(result.get('inserted_external'))
 
         if not written and str(fallback_text or '').strip():
             fallback_paragraph = doc.add_paragraph(str(fallback_text).strip())
             self._set_paragraph_keep_rules(fallback_paragraph, keep_with_next=True, keep_together=True)
             written = True
 
-        return written
+        return {
+            'written': written,
+            'inserted_external': inserted_external,
+        }
 
     def _append_cell_block_elements_for_lek(self, doc, cell, source_part=None, task=None):
         """Kopiert Blockelemente einer Tabellenzelle (p/tbl/sdt) in ein LEK-Dokument."""
         if cell is None:
-            return False
+            return {
+                'written': False,
+                'inserted_external': False,
+            }
 
         tc = cell._tc
         copy_candidates = [
@@ -2539,6 +2709,7 @@ class WordProcessor:
         rel_map = {}
         appended_any = False
         started_content = False
+        inserted_external = False
 
         for child in list(tc):
             tag_local = child.tag.split('}')[-1] if '}' in child.tag else child.tag
@@ -2549,7 +2720,9 @@ class WordProcessor:
                 paragraph_text = ''.join((node.text or '') for node in child.xpath('.//w:t')).strip()
                 marker = self._parse_external_table_reference_line(paragraph_text)
                 if marker and marker.get('type') == 'table':
-                    appended_any = self._insert_external_table_reference(doc, task) or appended_any
+                    inserted = self._insert_external_table_reference(doc, task)
+                    appended_any = inserted or appended_any
+                    inserted_external = inserted_external or inserted
                     started_content = started_content or appended_any
                     continue
                 if marker and marker.get('type') == 'orientation':
@@ -2597,7 +2770,10 @@ class WordProcessor:
             appended_any = True
             started_content = True
 
-        return appended_any
+        return {
+            'written': appended_any,
+            'inserted_external': inserted_external,
+        }
 
     def _is_effectively_empty_paragraph_xml(self, paragraph_xml):
         """Prüft, ob ein Absatz praktisch leer ist (kein sichtbarer Text/Objektinhalt)."""
@@ -2697,8 +2873,11 @@ class WordProcessor:
             ))
 
         blocks_written = 0
+        inserted_external = False
         for _name, optional_block, cell, fallback in section_cells:
-            has_content = self._append_cell_as_flow_text(doc, cell, fallback_text=fallback, task=task)
+            append_result = self._append_cell_as_flow_text(doc, cell, fallback_text=fallback, task=task)
+            has_content = bool(append_result.get('written'))
+            inserted_external = inserted_external or bool(append_result.get('inserted_external'))
             if not has_content and optional_block:
                 continue
 
@@ -2708,7 +2887,7 @@ class WordProcessor:
                     doc.add_paragraph()
                 blocks_written += 1
 
-        if self._insert_external_table_reference(doc, task):
+        if not inserted_external and self._insert_external_table_reference(doc, task):
             if blocks_written > 0:
                 doc.add_paragraph()
             blocks_written += 1
