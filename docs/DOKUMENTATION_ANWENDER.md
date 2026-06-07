@@ -16,7 +16,7 @@ Mit dem LEK-Bastler erstellen Sie aus vorbereiteten Aufgaben-Worddateien schnell
 1. Python-Umgebung vorbereiten
 2. Anwendung starten über `src/main.py`
 
-Hinweis zum aktuellen Stand: Version **3.7.4**.
+Hinweis zum aktuellen Stand: Version **3.7.5**.
 
 ## 3. Typischer Ablauf
 

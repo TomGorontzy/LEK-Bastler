@@ -12,6 +12,23 @@ Alle relevanten Änderungen an diesem Projekt werden hier dokumentiert.
 
 - Keine Änderungen dokumentiert.
 
+## [3.7.5] - 2026-06-07
+
+### Fixed
+
+- Externe Tabellenreferenzen im strukturierten Export korrigiert:
+  - Marker-Kombinationen wie `<<tabelle=...>>` und `<<tabelle_format=...>>` führen nicht mehr zu doppeltem Einfügen derselben externen Datei.
+  - Der Exportpfad verhindert jetzt explizit den Fallback-Doppelinsert, wenn die externe Tabelle bereits beim Marker-Parsing übernommen wurde.
+- Stil-/Schriftübernahme bei extern referenzierten Dokumenten gehärtet:
+  - Konflikte bei gleichnamigen Style-IDs (z. B. `Normal`) werden konfliktfrei remappt (`ext_*`).
+  - Implizite Default-Absatzstile externer Inhalte werden materialisiert und auf remappte Styles umgebogen, sodass Schriftkontexte stabil übernommen werden.
+- GUI-Layout stabilisiert:
+  - Flattern im Bereich unterhalb des Import-Assistenten bei Resize wurde durch Guard-Logik gegen redundante Re-Layouts beseitigt.
+
+### Quality
+
+- Regressionstest-Suite erweitert und erfolgreich ausgeführt: **32/32 OK** (`tools/test_regression_core.py`).
+
 ## [3.7.4] - 2026-06-07
 
 ### Added

@@ -142,6 +142,8 @@ class LEKBastlerGUI:
         self._action_group_base_width = 560
         self._action_group_min_width = 360
         self._resize_after_id = None
+        self._last_root_width = 0
+        self._last_applied_action_group_width = 0
         self.step_labels = {
             1: "Quelle wählen",
             2: "Erkennung prüfen",
@@ -497,8 +499,26 @@ class LEKBastlerGUI:
         self.root.after_idle(self._apply_adaptive_action_group_width)
         self._set_step(1, show_message=False)
 
-    def _on_root_resize(self, _event=None):
+    def _on_root_resize(self, event=None):
         """Reagiert gedrosselt auf Fenstergrößenänderungen für adaptive Gruppenbreiten."""
+        # Nur auf echte Root-Resize-Events reagieren (kein Child-Flattern)
+        if event is not None:
+            try:
+                if event.widget is not self.root:
+                    return
+            except Exception:
+                pass
+
+            try:
+                new_width = int(getattr(event, 'width', 0) or 0)
+            except Exception:
+                new_width = 0
+
+            if new_width > 0 and new_width == self._last_root_width:
+                return
+            if new_width > 0:
+                self._last_root_width = new_width
+
         if self._resize_after_id is not None:
             try:
                 self.root.after_cancel(self._resize_after_id)
@@ -531,11 +551,22 @@ class LEKBastlerGUI:
         target_width = min(self._action_group_base_width, available_per_column)
         target_width = max(self._action_group_min_width, target_width)
 
+        if self._last_applied_action_group_width == target_width:
+            return
+
+        changed = False
         for group in groups:
             try:
+                current_width = int(group.cget('width') or 0)
+                if current_width == target_width:
+                    continue
                 group.configure(width=target_width)
+                changed = True
             except Exception:
                 continue
+
+        if changed:
+            self._last_applied_action_group_width = target_width
 
     def _attach_quick_tooltips(self):
         """Hängt kurze Hover-Infotexte an zentrale Bedienbuttons."""
