@@ -8,7 +8,7 @@
 - Selektion: `src/task_selector.py`
 - Anwendungssymbol: `src/app_icon.ico`
 
-Aktueller Versionsstand: **3.7.6**.
+Aktueller Versionsstand: **3.7.7**.
 
 ## 2. Build-Konfiguration
 

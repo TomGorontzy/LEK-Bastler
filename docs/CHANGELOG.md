@@ -12,6 +12,19 @@ Alle relevanten Änderungen an diesem Projekt werden hier dokumentiert.
 
 - Keine Änderungen dokumentiert.
 
+## [3.7.7] - 2026-06-07
+
+### Changed
+
+- Fensterverhalten im erweiterten Modus verbessert:
+  - Die GUI passt ihre Höhe bei Bedarf dynamisch an, damit die unteren Schaltflächen sichtbar bleiben.
+  - Der Fix greift sowohl beim initialen Start als auch beim Umschalten zwischen einfachem und erweitertem Modus.
+
+### Quality
+
+- Syntax-/Problems-Check für `src/main.py` ohne Fehler.
+- Regressionstest-Suite erfolgreich: **33/33 OK** (`tools/test_regression_core.py`).
+
 ## [3.7.6] - 2026-06-07
 
 ### Added

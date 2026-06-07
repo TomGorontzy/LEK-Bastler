@@ -497,6 +497,7 @@ class LEKBastlerGUI:
         self._attach_quick_tooltips()
         self.root.bind('<Configure>', self._on_root_resize, add='+')
         self.root.after_idle(self._apply_adaptive_action_group_width)
+        self.root.after_idle(self._sync_window_height_to_visible_content)
         self._set_step(1, show_message=False)
 
     def _on_root_resize(self, event=None):
@@ -567,6 +568,26 @@ class LEKBastlerGUI:
 
         if changed:
             self._last_applied_action_group_width = target_width
+
+    def _sync_window_height_to_visible_content(self):
+        """Erhöht die Fensterhöhe bei Bedarf, damit der sichtbare Inhalt vollständig passt."""
+        try:
+            self.root.update_idletasks()
+
+            requested_height = int(self.root.winfo_reqheight() or 0)
+            current_height = int(self.root.winfo_height() or 0)
+            current_width = int(self.root.winfo_width() or 0)
+
+            if requested_height <= 0 or current_width <= 0:
+                return
+
+            target_height = max(current_height, requested_height)
+            if target_height <= current_height:
+                return
+
+            self.root.geometry(f"{current_width}x{target_height}")
+        except Exception:
+            pass
 
     def _attach_quick_tooltips(self):
         """Hängt kurze Hover-Infotexte an zentrale Bedienbuttons."""
@@ -667,6 +688,7 @@ class LEKBastlerGUI:
             self.btn_select_blockers.configure(state=tk.DISABLED)
 
         self._update_wizard_step_ui()
+        self.root.after_idle(self._sync_window_height_to_visible_content)
 
     def _available_duplicate_modes(self):
         """Liefert verfügbare Duplikat-Presets aus den Regeln."""
