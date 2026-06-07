@@ -47,6 +47,7 @@ Der aktuelle Versionsstand wird über `src/build_version_info.txt` und die GitHu
 3. Geeignete Aufgaben auswählen und freigeben
 4. Optional die Gesamtausgabe prüfen
 5. Export in `data/LEKs/` starten
+6. Generierte LEK vor Veröffentlichung auf ungünstige Seitenumbrüche prüfen und bei Bedarf manuell nachbearbeiten
 
 ![Anwenderablauf LEK-Bastler](docs/diagramme/anwender_ablauf.svg)
 
@@ -56,6 +57,7 @@ Der aktuelle Versionsstand wird über `src/build_version_info.txt` und die GitHu
 2. **Aufgaben auswählen und freigeben**: Markieren Sie Aufgaben und klicken Sie auf **Auswahl freigeben**
 3. **Optional Vorschau prüfen**: Öffnen Sie **Gesamtausgabe prüfen**
 4. **Exportieren**: Klicken Sie auf **Freigaben exportieren** oder **Auswahl exportieren**
+5. **Ergebnis prüfen**: Kontrollieren Sie die erzeugte LEK vor Veröffentlichung auf ungünstige Seitenumbrüche und überarbeiten Sie diese bei Bedarf manuell in Word
 
 ## 🗂️ Projektstruktur
 

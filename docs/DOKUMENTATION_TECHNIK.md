@@ -8,7 +8,7 @@
 - Selektion: `src/task_selector.py`
 - Anwendungssymbol: `src/app_icon.ico`
 
-Aktueller Versionsstand: **3.7.3**.
+Aktueller Versionsstand: **3.7.4**.
 
 ## 2. Build-Konfiguration
 
@@ -179,5 +179,3 @@ Aus den historischen Dokumenten übernommen und auf aktuellen Stand angepasst:
 5. GUI-Fenstericon korrekt
 6. Exportfunktion erstellt Word-Datei unter `data/LEKs/`
 7. Vorlagenersetzung und Aufgabenübernahme fachlich plausibel
-
-

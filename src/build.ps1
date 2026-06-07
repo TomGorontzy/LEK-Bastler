@@ -3,6 +3,7 @@
 
 param(
     [switch]$SkipBuild,
+    [switch]$SkipLint,
     [switch]$Help
 )
 
@@ -14,6 +15,7 @@ if ($PSVersionTable.PSVersion.Major -ge 6) {
 if ($Help) {
     Write-Host "LEK-Bastler Build-Skript - Optionen:" -ForegroundColor DarkCyan
     Write-Host "  -Help       : Nur diese Hilfe anzeigen" -ForegroundColor DarkGray
+    Write-Host "  -SkipLint   : Markdown-Lintpruefung ueberspringen" -ForegroundColor DarkGray
     Write-Host "  -SkipBuild  : PyInstaller-Build ueberspringen (nur Deploy-Paket neu erstellen)" -ForegroundColor DarkGray
     exit 0
 }
@@ -94,7 +96,8 @@ function Set-FileContentIfChanged {
     }
 
     if ($existing -ne $Content) {
-        Set-Content -Path $Path -Value $Content -Encoding UTF8
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText($Path, $Content, $utf8NoBom)
         return $true
     }
     return $false
@@ -172,6 +175,13 @@ function Update-VersionReferences {
                 [System.Text.RegularExpressions.RegexOptions]::Multiline
             )
 
+            # Markdownlint MD022: H1 am Dateianfang + genau eine Leerzeile danach sicherstellen
+            $newContent = [regex]::Replace(
+                $newContent,
+                '^#\s+Release Notes\s+v[0-9]+\.[0-9]+\.[0-9]+(?:\r?\n)+',
+                "# Release Notes v$Version`r`n`r`n"
+            )
+
             $newContent = [regex]::Replace(
                 $newContent,
                 'Release-Build für\s*`[0-9]+\.[0-9]+\.[0-9]+`',
@@ -189,6 +199,9 @@ function Update-VersionReferences {
                 'release/LEK-Bastler_[0-9]+\.[0-9]+\.[0-9]+\.zip',
                 "release/$ReleaseZipName"
             )
+
+            # Markdownlint MD012: überzählige Leerzeilen am Dateiende entfernen
+            $newContent = $newContent.TrimEnd("`r", "`n") + "`r`n"
         }
 
         if (Set-FileContentIfChanged -Path $path -Content $newContent) {
@@ -212,6 +225,32 @@ Update-VersionReferences `
     -ReleaseZipName $ReleaseZipName `
     -DeployFolderName $DeployFolderName `
     -VersionedExeName $VersionedExeName
+
+# ─── Schritt 0: Markdown-Lintpruefung ───────────────────────────────────────
+if (-not $SkipLint) {
+    Write-Host "0. Markdown-Lintpruefung wird ausgefuehrt..." -ForegroundColor Yellow
+
+    $npxCmd = Get-Command npx -ErrorAction SilentlyContinue
+    if (-not $npxCmd) {
+        Write-Host "   npx wurde nicht gefunden. Bitte Node.js installieren oder Build mit -SkipLint starten." -ForegroundColor Red
+        exit 1
+    }
+
+    & $npxCmd.Source --yes markdownlint-cli2 `
+        "README.md" `
+        "docs/**/*.md" `
+        "release/**/*.md" `
+        "data/**/*.md"
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "   Markdown-Lintpruefung fehlgeschlagen. Bitte gemeldete MD-Regelverstoesse beheben." -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host "   Markdown-Lintpruefung erfolgreich." -ForegroundColor Green
+} else {
+    Write-Host "0. Markdown-Lintpruefung uebersprungen (-SkipLint)." -ForegroundColor DarkGray
+}
 
 # ─── Schritt 1: PyInstaller-Build ───────────────────────────────────────────
 if (-not $SkipBuild) {

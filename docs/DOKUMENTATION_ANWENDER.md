@@ -16,7 +16,7 @@ Mit dem LEK-Bastler erstellen Sie aus vorbereiteten Aufgaben-Worddateien schnell
 1. Python-Umgebung vorbereiten
 2. Anwendung starten über `src/main.py`
 
-Hinweis zum aktuellen Stand: Version **3.7.3**.
+Hinweis zum aktuellen Stand: Version **3.7.4**.
 
 ## 3. Typischer Ablauf
 
@@ -48,6 +48,7 @@ Es bildet zusätzlich die Freigabe-Gating-Logik ab ("Weiter gesperrt", solange k
   - `data/Vorlagen/AUFGABEN-Vorlage.docx` (Muster für Aufgabensammlungen)
 - Falls keine passende Spezialvorlage gefunden wird, wird die Standardvorlage verwendet.
 - Vorschau und Export nutzen dieselbe fachliche Reihenfolge bei strukturierten Aufgaben (Titel → Intro → Aufgabenstellung → Hinweis → Punkte).
+- Generierte LEKs sollten vor einer Veröffentlichung kurz auf ungünstige Seitenumbrüche geprüft und bei Bedarf manuell in Word nachbearbeitet werden.
 
 ## 4a. Regelwerk im Alltag (ab v3.6.0)
 
@@ -112,4 +113,3 @@ Es bildet zusätzlich die Freigabe-Gating-Logik ab ("Weiter gesperrt", solange k
 
 - **Kurzcheckliste**: für einen schnellen Alltagstest mit kompaktem Gesamteindruck
 - **Vollcheckliste**: für strukturierte Rückmeldungen zu Funktionalität, Verständlichkeit und Bedienbarkeit
-

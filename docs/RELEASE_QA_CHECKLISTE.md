@@ -17,6 +17,7 @@ Kurzer, reproduzierbarer Pflichtdurchlauf vor jedem Release.
 4. Schritt-3-Gesamtvorschau prüfen
 5. Export durchführen
 6. Ergebnisdokument fachlich gegenprüfen
+7. Ergebnisdokument auf ungünstige Seitenumbrüche prüfen und bei Bedarf manuell nachbearbeiten
 
 ## 2a. Post-Release-Verifikation (skriptbar)
 
@@ -38,6 +39,7 @@ Kurzer, reproduzierbarer Pflichtdurchlauf vor jedem Release.
 - Vorschau == Export-Reihenfolge für strukturierte Aufgaben
 - Blockierregeln greifen (Kategorie/Pflichtfelder/Difficulty)
 - Teilfreigabe exportiert exakt freigegebene Aufgaben
+- Vor Veröffentlichung verbleiben keine auffälligen, fachlich störenden Seitenumbrüche in der LEK
 - Keine neuen Fehler in der Probleme-Konsole
 
 ## 4) Freigabeentscheidung

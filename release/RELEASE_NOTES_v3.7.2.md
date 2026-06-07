@@ -1,4 +1,5 @@
 # Release Notes v3.7.2
+
 ## Enthalten
 
 - Stabilisierung der GUI-Versionsanzeige: Fallback auf EXE-/Ordnernamen, wenn `build_version_info.txt` im Deploy-Kontext fehlt.
@@ -18,4 +19,3 @@
 - dist/LEK-Bastler_3.7.2/LEK-Bastler_3.7.2.exe
 - release/LEK-Bastler_3.7.2.zip
 - release/RELEASE_NOTES_v3.7.2.md
-

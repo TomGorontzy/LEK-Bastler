@@ -1,4 +1,5 @@
 # Release Notes v3.7.3
+
 ## Enthalten
 
 - LEK-Exportlayout für Aufgabenabstände verfeinert:
@@ -23,4 +24,3 @@
 - dist/LEK-Bastler_3.7.3/LEK-Bastler_3.7.3.exe
 - release/LEK-Bastler_3.7.3.zip
 - release/RELEASE_NOTES_v3.7.3.md
-

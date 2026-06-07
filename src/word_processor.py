@@ -173,6 +173,9 @@ class WordProcessor:
                 'block_export_on_missing': True,
                 'missing_values': ['', 'ohne kategorie', '-', 'n/a', 'keine'],
             },
+            'numbering_rules': {
+                'block_export_on_duplicate_number_display': True,
+            },
         }
 
     def _deep_merge_dict(self, base, override):
@@ -494,6 +497,79 @@ class WordProcessor:
             if normalized_number:
                 task['number_display'] = normalized_number
 
+        self._annotate_duplicate_number_displays(tasks)
+
+    def _normalized_number_display_key(self, value):
+        """Normalisiert die sichtbare Aufgabennummer für robuste Dublettenprüfung."""
+        text = str(value or '').strip()
+        if not text:
+            return ''
+        return re.sub(r'\s+', '', text)
+
+    def collect_duplicate_number_display_groups(self, tasks):
+        """Sammelt doppelte sichtbare Aufgabennummern inkl. zugehöriger Tasks."""
+        groups = {}
+
+        for task in tasks or []:
+            display = str(task.get('number_display') or '').strip()
+            key = self._normalized_number_display_key(display)
+            if not key:
+                continue
+
+            if key not in groups:
+                groups[key] = {
+                    'display': display,
+                    'tasks': [],
+                }
+
+            groups[key]['tasks'].append(task)
+
+        duplicate_groups = [
+            group for group in groups.values()
+            if len(group.get('tasks') or []) > 1
+        ]
+
+        duplicate_groups.sort(
+            key=lambda g: self._normalized_number_display_key(g.get('display', ''))
+        )
+        return duplicate_groups
+
+    def _annotate_duplicate_number_displays(self, tasks):
+        """Markiert Aufgaben mit doppelter Anzeige-Nummer und ergänzt Warnungen."""
+        duplicate_groups = self.collect_duplicate_number_display_groups(tasks)
+        duplicate_keys = {
+            self._normalized_number_display_key(group.get('display', ''))
+            for group in duplicate_groups
+        }
+
+        # Vorhandene Dubletten-Warnungen bereinigen, damit die Prüfung idempotent bleibt
+        for task in tasks or []:
+            existing = [
+                str(w).strip()
+                for w in (task.get('pre_warnings') or [])
+                if str(w).strip()
+                and 'doppelte aufgabennummer erkannt' not in str(w).strip().lower()
+            ]
+            task['pre_warnings'] = existing
+            task['duplicate_number_display'] = False
+
+        for group in duplicate_groups:
+            display = str(group.get('display') or '').strip()
+            key = self._normalized_number_display_key(display)
+            if key not in duplicate_keys:
+                continue
+
+            for task in group.get('tasks') or []:
+                warnings = list(task.get('pre_warnings') or [])
+                warning_text = (
+                    f"Doppelte Aufgabennummer erkannt: {display}. "
+                    "Bitte Nummerierung in der Quelldatei anpassen."
+                )
+                if warning_text not in warnings:
+                    warnings.append(warning_text)
+                task['pre_warnings'] = warnings
+                task['duplicate_number_display'] = True
+
     def _reindex_task_numbers(self, tasks):
         """Vergibt laufende interne Nummern (1..n) für kombinierte Parser-Ergebnisse."""
         for idx, task in enumerate(tasks, 1):
@@ -547,19 +623,30 @@ class WordProcessor:
         orientation = 'auto'
 
         for line in (lines or []):
-            text = str(line or '').strip()
-            marker = self._parse_external_table_reference_line(text)
-            if not marker:
-                if text:
-                    filtered_lines.append(text)
+            raw_text = str(line or '')
+            if raw_text == '':
                 continue
 
-            if marker.get('type') == 'table' and not table_reference:
-                table_reference = str(marker.get('value') or '').strip()
-            elif marker.get('type') == 'orientation':
-                candidate = str(marker.get('value') or '').strip().lower()
-                if candidate in {'auto', 'landscape', 'portrait'}:
-                    orientation = candidate
+            remaining_segments = []
+            segments = raw_text.splitlines() or [raw_text]
+
+            for segment in segments:
+                segment_text = str(segment or '').strip()
+                marker = self._parse_external_table_reference_line(segment_text)
+                if not marker:
+                    remaining_segments.append(segment)
+                    continue
+
+                if marker.get('type') == 'table' and not table_reference:
+                    table_reference = str(marker.get('value') or '').strip()
+                elif marker.get('type') == 'orientation':
+                    candidate = str(marker.get('value') or '').strip().lower()
+                    if candidate in {'auto', 'landscape', 'portrait'}:
+                        orientation = candidate
+
+            cleaned_text = '\n'.join(remaining_segments).strip()
+            if cleaned_text:
+                filtered_lines.append(cleaned_text)
 
         return {
             'lines': filtered_lines,
@@ -1439,12 +1526,43 @@ class WordProcessor:
         if len(tasks) == 0:
             global_warnings.append("Keine Aufgaben erkannt. Prüfen Sie die Formatierung (Überschrift 2 für Aufgaben).")
 
+        duplicate_groups = self.collect_duplicate_number_display_groups(tasks)
+        if duplicate_groups:
+            duplicate_labels = ', '.join(
+                str(group.get('display') or '').strip()
+                for group in duplicate_groups
+                if str(group.get('display') or '').strip()
+            )
+            if duplicate_labels:
+                global_warnings.append(
+                    "Doppelte Aufgabennummern erkannt "
+                    f"({duplicate_labels}). Bitte Nummerierung in der Quelldatei anpassen."
+                )
+
+        duplicate_numbering = []
+        for group in duplicate_groups:
+            tasks_in_group = list(group.get('tasks') or [])
+            duplicate_numbering.append({
+                'number_display': str(group.get('display') or '').strip(),
+                'internal_numbers': [task.get('number') for task in tasks_in_group],
+                'titles': [str(task.get('title') or 'Ohne Titel').strip() or 'Ohne Titel' for task in tasks_in_group],
+            })
+
         report = {
             'task_count': len(tasks),
             'low_confidence_count': low_confidence_count,
             'warning_task_count': warning_count,
             'global_warnings': global_warnings,
             'task_diagnostics': task_diagnostics,
+            'duplicate_numbering': [
+                {
+                    'number_display': entry.get('number_display'),
+                    'internal_numbers': list(entry.get('internal_numbers') or []),
+                    'titles': list(entry.get('titles') or []),
+                }
+                for entry in duplicate_numbering
+            ],
+            'duplicate_numbering_count': len(duplicate_numbering),
         }
 
         return tasks, report

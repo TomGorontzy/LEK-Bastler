@@ -138,6 +138,10 @@ class LEKBastlerGUI:
         self._sort_reverse = False
         self.ui_mode_var = tk.StringVar(value="einfach (empfohlen)")
         self.current_step = 1
+        self._action_groups = []
+        self._action_group_base_width = 560
+        self._action_group_min_width = 360
+        self._resize_after_id = None
         self.step_labels = {
             1: "Quelle wählen",
             2: "Erkennung prüfen",
@@ -433,11 +437,19 @@ class LEKBastlerGUI:
         action_frame.grid(row=4, column=0, columnspan=2, sticky="we", pady=(10, 0))
 
         select_group = ttk.LabelFrame(action_frame, text="Auswahl", padding="8")
-        select_group.grid(row=0, column=0, sticky="w", padx=(0, 10))
+        select_group.grid(row=0, column=0, sticky="w", padx=(0, 10), pady=(0, 8))
         review_group = ttk.LabelFrame(action_frame, text="Prüfung", padding="8")
-        review_group.grid(row=0, column=1, sticky="w", padx=(0, 10))
+        review_group.grid(row=1, column=0, sticky="w", padx=(0, 10))
         export_group = ttk.LabelFrame(action_frame, text="Export", padding="8")
-        export_group.grid(row=0, column=2, sticky="w")
+        export_group.grid(row=0, column=1, rowspan=2, sticky="e")
+
+        self._action_groups = [select_group, review_group, export_group]
+        for group in self._action_groups:
+            group.configure(width=self._action_group_base_width)
+            group.grid_propagate(False)
+
+        action_frame.columnconfigure(0, weight=1)
+        action_frame.columnconfigure(1, weight=1)
 
         self.btn_filter = ttk.Button(select_group, text="Aufgaben filtern", command=self.filter_tasks)
         self.btn_filter.pack(side=tk.LEFT, padx=(0, 8))
@@ -481,7 +493,49 @@ class LEKBastlerGUI:
         self._sync_duplicate_mode_ui()
         self._apply_ui_mode()
         self._attach_quick_tooltips()
+        self.root.bind('<Configure>', self._on_root_resize, add='+')
+        self.root.after_idle(self._apply_adaptive_action_group_width)
         self._set_step(1, show_message=False)
+
+    def _on_root_resize(self, _event=None):
+        """Reagiert gedrosselt auf Fenstergrößenänderungen für adaptive Gruppenbreiten."""
+        if self._resize_after_id is not None:
+            try:
+                self.root.after_cancel(self._resize_after_id)
+            except Exception:
+                pass
+
+        self._resize_after_id = self.root.after(80, self._apply_adaptive_action_group_width)
+
+    def _apply_adaptive_action_group_width(self):
+        """Passt die Breite der Aktionsgruppen an die aktuelle Fensterbreite an."""
+        self._resize_after_id = None
+
+        groups = list(getattr(self, '_action_groups', []) or [])
+        if not groups:
+            return
+
+        try:
+            window_width = int(self.root.winfo_width() or 0)
+        except Exception:
+            window_width = 0
+
+        if window_width <= 0:
+            return
+
+        # Linke/rechte Außenabstände + mittlerer Spaltenabstand grob berücksichtigen
+        estimated_side_padding = 80
+        estimated_middle_gap = 20
+        available_per_column = (window_width - estimated_side_padding - estimated_middle_gap) // 2
+
+        target_width = min(self._action_group_base_width, available_per_column)
+        target_width = max(self._action_group_min_width, target_width)
+
+        for group in groups:
+            try:
+                group.configure(width=target_width)
+            except Exception:
+                continue
 
     def _attach_quick_tooltips(self):
         """Hängt kurze Hover-Infotexte an zentrale Bedienbuttons."""
@@ -908,10 +962,12 @@ class LEKBastlerGUI:
             return 0
         if 'kategorie fehlt' in text:
             return 1
-        if 'inkonsistenter schwierigkeitsgrad' in text:
+        if 'doppelte aufgabennummer' in text:
             return 2
-        if 'keinen verwertbaren inhalt' in text:
+        if 'inkonsistenter schwierigkeitsgrad' in text:
             return 3
+        if 'keinen verwertbaren inhalt' in text:
+            return 4
         if 'einleitungs-/kontexttext' in text:
             return 6
         return 10
@@ -976,6 +1032,10 @@ class LEKBastlerGUI:
         content_count = int(summary.get('missing_content', 0) or 0)
         if content_count > 0:
             parts.append(f"Inhalt {content_count}")
+
+        duplicate_numbering_count = int(summary.get('duplicate_numbering', 0) or 0)
+        if duplicate_numbering_count > 0:
+            parts.append(f"Nummerierung {duplicate_numbering_count}")
 
         if not parts:
             return ""
@@ -1340,6 +1400,7 @@ class LEKBastlerGUI:
                 source_filename=self.source_filename,
                 lek_theme=self.lek_theme,
                 raw_tasks=self.loaded_tasks,
+                global_warnings=(diagnostics_report or {}).get('global_warnings', []),
             )
             
             self.populate_task_tree(self.loaded_tasks)
@@ -1366,6 +1427,29 @@ class LEKBastlerGUI:
                 return
 
             self._set_step(2, show_message=False)
+
+            duplicate_numbering = (diagnostics_report or {}).get('duplicate_numbering', []) or []
+            if duplicate_numbering:
+                details = []
+                for entry in duplicate_numbering[:8]:
+                    label = str(entry.get('number_display') or '').strip() or '-'
+                    titles = [str(title or '').strip() for title in (entry.get('titles') or []) if str(title or '').strip()]
+                    title_preview = ' | '.join(titles[:3]) if titles else 'Ohne Titel'
+                    if len(titles) > 3:
+                        title_preview += f" | +{len(titles) - 3} weitere"
+                    details.append(f"- {label}: {title_preview}")
+                if len(duplicate_numbering) > 8:
+                    details.append(f"- ... (+{len(duplicate_numbering) - 8} weitere Dubletten)")
+
+                messagebox.showwarning(
+                    "Doppelte Aufgabennummern erkannt",
+                    f"{stats['total']} Aufgaben geladen.{warning_hint}\n\n"
+                    "Es wurden doppelte Aufgabennummern erkannt.\n"
+                    "Bitte passen Sie die Nummerierungen in der Quelldatei an und laden Sie die Sammlung danach erneut.\n\n"
+                    "Betroffene Nummern:\n"
+                    + "\n".join(details),
+                )
+                return
 
             messagebox.showinfo("Erfolg", f"{stats['total']} Aufgaben geladen.{warning_hint}")
         except Exception as e:
@@ -2946,6 +3030,7 @@ class LEKBastlerGUI:
         blocked_category_tasks = []
         blocked_required_tasks = []
         blocked_external_table_tasks = []
+        blocked_duplicate_number_tasks = []
         block_difficulty = bool(self._rule_value('difficulty_rules.block_export_on_inconsistent', True))
         allowed_difficulty = {str(v).strip().lower() for v in self._difficulty_allowed_values()}
         block_category = bool(self._rule_value('category_rules.block_export_on_missing', True))
@@ -2991,7 +3076,13 @@ class LEKBastlerGUI:
                         f"#{self._task_number_label(task)} {task.get('title', 'Ohne Titel')}"
                     )
 
-        if blocked_difficulty_tasks or blocked_category_tasks or blocked_required_tasks or blocked_external_table_tasks:
+            duplicate_warning = any('Doppelte Aufgabennummer erkannt' in str(w) for w in warnings)
+            if duplicate_warning:
+                blocked_duplicate_number_tasks.append(
+                    f"#{self._task_number_label(task)} {task.get('title', 'Ohne Titel')}"
+                )
+
+        if blocked_difficulty_tasks or blocked_category_tasks or blocked_required_tasks or blocked_external_table_tasks or blocked_duplicate_number_tasks:
             details = []
 
             if blocked_difficulty_tasks:
@@ -3028,6 +3119,15 @@ class LEKBastlerGUI:
                 details.append(
                     "Fehlende externe Tabellenreferenz:\n"
                     f"{sample_external}"
+                )
+
+            if blocked_duplicate_number_tasks:
+                sample_duplicates = "\n".join(f"- {entry}" for entry in blocked_duplicate_number_tasks[:8])
+                if len(blocked_duplicate_number_tasks) > 8:
+                    sample_duplicates += f"\n- ... (+{len(blocked_duplicate_number_tasks) - 8} weitere)"
+                details.append(
+                    "Doppelte Aufgabennummern:\n"
+                    f"{sample_duplicates}"
                 )
 
             messagebox.showwarning(

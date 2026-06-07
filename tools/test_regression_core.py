@@ -335,7 +335,63 @@ class RegressionCoreTests(unittest.TestCase):
         self.assertTrue(is_blocking_warning('Pflichtfeld fehlt: Titel'))
         self.assertTrue(is_blocking_warning('Kategorie fehlt (Pflichtfeld).'))
         self.assertTrue(is_blocking_warning('Inkonsistenter Schwierigkeitsgrad erkannt.'))
+        self.assertTrue(is_blocking_warning('Doppelte Aufgabennummer erkannt: 23.0. Bitte Nummerierung in der Quelldatei anpassen.'))
         self.assertFalse(is_blocking_warning('Keine Schlüsselwörter erkannt.'))
+
+    def test_blocking_summary_counts_duplicate_numbering(self):
+        raw_tasks = [
+            {
+                'number': 1,
+                'number_display': '23.0',
+                'category': 'A',
+                'title': 'Arbeitsbescheinigung',
+                'content': ['c1'],
+                'difficulty': 'Mittel',
+                'keywords': [],
+                'warnings': ['Doppelte Aufgabennummer erkannt: 23.0. Bitte Nummerierung in der Quelldatei anpassen.'],
+            },
+            {
+                'number': 2,
+                'number_display': '23.0',
+                'category': 'A',
+                'title': 'Betriebsrat',
+                'content': ['c2'],
+                'difficulty': 'Mittel',
+                'keywords': [],
+                'warnings': ['Doppelte Aufgabennummer erkannt: 23.0. Bitte Nummerierung in der Quelldatei anpassen.'],
+            },
+        ]
+
+        session = ImportSession.from_raw_tasks(
+            source_file='dummy.docx',
+            source_filename='dummy.docx',
+            lek_theme='Demo',
+            raw_tasks=raw_tasks,
+        )
+
+        summary = session.get_blocking_summary()
+        self.assertEqual(summary.get('duplicate_numbering'), 2)
+
+    def test_extract_tasks_reports_duplicate_numbering(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src_path = os.path.join(tmp, 'duplicate_numbering.docx')
+
+            doc = Document()
+            doc.add_heading('Personalwirtschaft', level=1)
+            doc.add_heading('Aufgabe 23 Arbeitsbescheinigung', level=2)
+            doc.add_paragraph('Beschreiben Sie die Ausstellung der Arbeitsbescheinigung.')
+            doc.add_heading('Aufgabe 23 Betriebsrat', level=2)
+            doc.add_paragraph('Beschreiben Sie die Beteiligungsrechte des Betriebsrats.')
+            doc.save(src_path)
+
+            tasks, diagnostics = self.wp.extract_tasks_with_diagnostics(src_path)
+
+            self.assertEqual(len(tasks), 2)
+            self.assertEqual(diagnostics.get('duplicate_numbering_count'), 1)
+            self.assertTrue(any('Doppelte Aufgabennummern erkannt' in warning for warning in (diagnostics.get('global_warnings') or [])))
+            for task in tasks:
+                warnings = task.get('warnings') or []
+                self.assertTrue(any('Doppelte Aufgabennummer erkannt: 23' in warning for warning in warnings))
 
     def test_structured_export_copies_nested_tables_from_task_cell(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -789,6 +845,58 @@ class RegressionCoreTests(unittest.TestCase):
             self.assertEqual(os.path.normpath(task.get('external_table_path', '')), os.path.normpath(external_path))
             self.assertFalse(task.get('external_table_missing'))
             self.assertFalse(any('tabelle=' in line.lower() for line in (task.get('content') or [])))
+
+    def test_external_table_reference_detected_inside_multiline_task_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            aufgaben_dir = os.path.join(tmp, 'data', 'Aufgaben')
+            os.makedirs(aufgaben_dir, exist_ok=True)
+
+            collection_path = os.path.join(aufgaben_dir, 'Aufgaben_Personalwirtschaft.docx')
+            subfolder = os.path.join(aufgaben_dir, 'Personalwirtschaft')
+            os.makedirs(subfolder, exist_ok=True)
+            external_path = os.path.join(subfolder, 'Entgeltabrechnung.docx')
+
+            doc = Document()
+            table = doc.add_table(rows=0, cols=2)
+            for key, value in [
+                ('ID', 'A-900'),
+                ('Titel', 'Entgeltabrechnung'),
+                ('Kategorie', 'Personalwirtschaft'),
+                ('Schwierigkeitsgrad', 'mittel'),
+                ('Aufgabenstellung (Pflicht)', ''),
+            ]:
+                row = table.add_row()
+                row.cells[0].text = key
+                row.cells[1].text = value
+
+            task_cell = table.rows[-1].cells[1]
+            task_cell.text = ''
+            task_cell.paragraphs[0].add_run('Bearbeiten Sie die Abrechnung vollständig.')
+            task_cell.add_paragraph('Nutzen Sie die beigefügte Anlage für die Ermittlung.')
+            task_cell.add_paragraph('<<tabelle=Entgeltabrechnung.docx>>')
+            doc.save(collection_path)
+
+            ext_doc = Document()
+            ext_table = ext_doc.add_table(rows=1, cols=2)
+            ext_table.cell(0, 0).text = 'Brutto'
+            ext_table.cell(0, 1).text = 'Netto'
+            ext_doc.save(external_path)
+
+            tasks = self.wp.extract_tasks(collection_path)
+            self.assertEqual(len(tasks), 1)
+            task = tasks[0]
+
+            self.assertEqual(task.get('external_table_reference'), 'Entgeltabrechnung.docx')
+            self.assertEqual(os.path.normpath(task.get('external_table_path', '')), os.path.normpath(external_path))
+            joined_content = '\n'.join(task.get('content') or [])
+            self.assertIn('Bearbeiten Sie die Abrechnung vollständig.', joined_content)
+            self.assertNotIn('<<tabelle=', joined_content)
+
+            out_doc = Document()
+            self.wp.append_task_to_lek_document(out_doc, task)
+            all_table_text = '\n'.join(cell.text for table in out_doc.tables for row in table.rows for cell in row.cells)
+            self.assertIn('Brutto', all_table_text)
+            self.assertIn('Netto', all_table_text)
 
     def test_external_table_reference_inserts_landscape_document(self):
         with tempfile.TemporaryDirectory() as tmp:

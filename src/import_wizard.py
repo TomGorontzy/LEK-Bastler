@@ -48,6 +48,7 @@ def is_blocking_warning(text: str) -> bool:
         "kategorie fehlt",
         "inkonsistenter schwierigkeitsgrad",
         "keinen verwertbaren inhalt",
+        "doppelte aufgabennummer",
     )
     return any(marker in warning_text for marker in blocking_markers)
 
@@ -68,6 +69,8 @@ def _blocking_warning_key(text: str) -> str | None:
         return "inconsistent_difficulty"
     if "keinen verwertbaren inhalt" in warning_text:
         return "missing_content"
+    if "doppelte aufgabennummer" in warning_text:
+        return "duplicate_numbering"
 
     return None
 
@@ -193,20 +196,21 @@ class ImportSession:
         source_filename: str,
         lek_theme: str,
         raw_tasks: list[dict[str, Any]],
+        global_warnings: list[str] | None = None,
     ) -> "ImportSession":
         tasks = [ImportTask.from_raw_task(t, fallback_id=i) for i, t in enumerate(raw_tasks, 1)]
         approved_ids = {t.id for t in tasks if t.accepted and t.id > 0}
 
-        global_warnings: list[str] = []
+        session_global_warnings: list[str] = list(global_warnings or [])
         if len(tasks) == 0:
-            global_warnings.append("Keine Aufgaben erkannt.")
+            session_global_warnings.append("Keine Aufgaben erkannt.")
 
         return cls(
             source_file=source_file,
             source_filename=source_filename,
             lek_theme=lek_theme,
             tasks=tasks,
-            global_warnings=global_warnings,
+            global_warnings=session_global_warnings,
             approved_task_ids=approved_ids,
         )
 
@@ -310,6 +314,7 @@ class ImportSession:
             "missing_category": 0,
             "inconsistent_difficulty": 0,
             "missing_content": 0,
+            "duplicate_numbering": 0,
         }
 
         for task in self.tasks:

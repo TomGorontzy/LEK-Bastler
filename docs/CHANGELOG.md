@@ -12,6 +12,33 @@ Alle relevanten Änderungen an diesem Projekt werden hier dokumentiert.
 
 - Keine Änderungen dokumentiert.
 
+## [3.7.4] - 2026-06-07
+
+### Added
+
+- Verbindliche Markdown-Lintprüfung im Build (`src/build.ps1`):
+  - Der Build führt jetzt standardmäßig `markdownlint-cli2` für `README.md`, `docs/**/*.md`, `release/**/*.md` und `data/**/*.md` aus.
+  - Bei Lint-Verstößen wird der Build mit einer klaren Fehlermeldung abgebrochen.
+  - Optional kann der Lint-Schritt explizit über `-SkipLint` übersprungen werden.
+
+### Changed
+
+- Build-Dateischreiben in `src/build.ps1` auf robustes UTF-8-Write (`WriteAllText`) umgestellt, um unnötige zusätzliche Leerzeilen in Markdown-Dateien zu vermeiden.
+- GUI-Aktionsbereich in `src/main.py` neu layoutet:
+  - Gruppen `Auswahl` und `Prüfung` links untereinander,
+  - Gruppe `Export` rechtsbündig,
+  - adaptive Gruppenbreite bei Fenstergrößenänderungen für bessere Nutzbarkeit auf kleineren Displays.
+
+### Fixed
+
+- Nummerierungsprüfung ausgebaut: Doppelte Aufgabennummern werden beim Laden erkannt, als blockierende Warnung geführt und vor Export klar eingefordert zu bereinigen.
+- Mehrere Markdown-Regelverstöße in Projekt- und Release-Dokumenten bereinigt (u. a. MD012/MD022/MD041), damit Build-Lint stabil grün bleibt.
+
+### Quality
+
+- Regressionstest-Suite erfolgreich: **30/30 OK** (`tools/test_regression_core.py`).
+- Build-Lintprüfung erfolgreich: `markdownlint-cli2` meldet **0 Fehler** im Buildlauf (`src/build.ps1 -SkipBuild`).
+
 ## [3.7.3] - 2026-06-07
 
 ### Changed
