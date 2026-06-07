@@ -12,6 +12,22 @@ Alle relevanten Änderungen an diesem Projekt werden hier dokumentiert.
 
 - Keine Änderungen dokumentiert.
 
+## [3.7.3] - 2026-06-07
+
+### Changed
+
+- LEK-Exportlayout für Aufgabenabstände präzisiert:
+  - Zwischen `Überschrift 1` (Aufgabentitel) und Aufgabeninhalt wird jetzt konsistent nur **eine Leerzeile** ausgegeben.
+  - Zwischen zwei Aufgaben werden jetzt **maximal zwei Leerzeilen** ausgegeben.
+- Export für Aufgaben mit Objekt-/Tabellenstart stabilisiert:
+  - Doppelte Leerzeilen vor einem ersten Tabellen-/Objektblock wurden entfernt.
+  - Führende und abschließende leere Absätze innerhalb eines Aufgabenblocks werden robuster begrenzt.
+
+### Quality
+
+- Syntax-/Problems-Check für `src/word_processor.py` ohne Fehler.
+- Mini-End-to-End-Exporttest (inkl. tabellenstartender Aufgabe) bestätigt die Zielabstände.
+
 ## [3.7.2] - 2026-06-07
 
 ### Changed

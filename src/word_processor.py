@@ -2278,6 +2278,7 @@ class WordProcessor:
         sect_pr = body.find(qn('w:sectPr'))
         rel_map = {}
         appended_any = False
+        started_content = False
 
         for child in list(tc):
             tag_local = child.tag.split('}')[-1] if '}' in child.tag else child.tag
@@ -2289,8 +2290,11 @@ class WordProcessor:
                 marker = self._parse_external_table_reference_line(paragraph_text)
                 if marker and marker.get('type') == 'table':
                     appended_any = self._insert_external_table_reference(doc, task) or appended_any
+                    started_content = started_content or appended_any
                     continue
                 if marker and marker.get('type') == 'orientation':
+                    continue
+                if not started_content and self._is_effectively_empty_paragraph_xml(child):
                     continue
             elif tag_local not in ('tbl', 'sdt'):
                 continue
@@ -2315,8 +2319,8 @@ class WordProcessor:
                     if node_tag == 'p':
                         self._set_keep_rules_on_paragraph_xml(node, keep_next=True, keep_lines=True)
 
-            if tag_local == 'tbl':
-                # Vor Tabellen immer eine Leerzeile
+            if tag_local == 'tbl' and started_content:
+                # Zwischen bereits vorhandenem Inhalt und Tabelle eine Leerzeile
                 doc.add_paragraph()
                 self._set_table_full_width_xml(cloned)
 
@@ -2330,8 +2334,83 @@ class WordProcessor:
                 doc.add_paragraph()
 
             appended_any = True
+            started_content = True
 
         return appended_any
+
+    def _is_effectively_empty_paragraph_xml(self, paragraph_xml):
+        """Prüft, ob ein Absatz praktisch leer ist (kein sichtbarer Text/Objektinhalt)."""
+        if paragraph_xml is None:
+            return True
+
+        try:
+            text = ''.join((node.text or '') for node in paragraph_xml.xpath('.//w:t')).strip()
+            if text:
+                return False
+
+            # Absätze mit eingebetteten Objekten/Bildern nicht als leer behandeln
+            has_object = bool(
+                paragraph_xml.xpath('.//w:drawing|.//w:object|.//w:pict|.//w:fldSimple')
+            )
+            return not has_object
+        except Exception:
+            return False
+
+    def _trim_leading_empty_paragraph_elements(self, elements):
+        """Entfernt führende leere Absatz-Elemente aus einer Elementliste."""
+        trimmed = list(elements or [])
+        while trimmed:
+            first = trimmed[0]
+            if first.get('type') != 'paragraph':
+                break
+
+            para = first.get('content')
+            if para is None or not hasattr(para, '_element'):
+                break
+
+            if not self._is_effectively_empty_paragraph_xml(para._element):
+                break
+
+            trimmed = trimmed[1:]
+
+        return trimmed
+
+    def _trim_trailing_empty_paragraphs_in_document(self, doc, max_empty=1):
+        """Begrenzt aufeinanderfolgende leere Absätze am Dokumentende."""
+        try:
+            limit = max(0, int(max_empty))
+        except Exception:
+            limit = 1
+
+        body = doc._element.body
+        children = list(body)
+        if not children:
+            return
+
+        idx = len(children) - 1
+        # section properties auslassen
+        while idx >= 0:
+            tag_local = children[idx].tag.split('}')[-1] if '}' in children[idx].tag else children[idx].tag
+            if tag_local == 'sectPr':
+                idx -= 1
+                continue
+            break
+
+        empty_seen = 0
+        while idx >= 0:
+            node = children[idx]
+            tag_local = node.tag.split('}')[-1] if '}' in node.tag else node.tag
+            if tag_local != 'p':
+                break
+
+            if not self._is_effectively_empty_paragraph_xml(node):
+                break
+
+            empty_seen += 1
+            if empty_seen > limit:
+                body.remove(node)
+
+            idx -= 1
 
     def _append_structured_task_as_flow_text(self, doc, task, table, include_title=True):
         """Schreibt strukturierte Aufgaben als Fließtext (ohne Tabelle) in fester Reihenfolge."""
@@ -2363,13 +2442,15 @@ class WordProcessor:
                 continue
 
             if has_content:
+                if blocks_written > 0:
+                    # Leerzeile nur zwischen Blöcken, nicht nach dem letzten
+                    doc.add_paragraph()
                 blocks_written += 1
-                # Leerzeile zwischen allen geschriebenen Blöcken
-                doc.add_paragraph()
 
         if self._insert_external_table_reference(doc, task):
+            if blocks_written > 0:
+                doc.add_paragraph()
             blocks_written += 1
-            doc.add_paragraph()
 
         if blocks_written == 0:
             # Fallback: zumindest Titel/Content aus Task übernehmen
@@ -2464,7 +2545,8 @@ class WordProcessor:
                         if node_tag == 'p':
                             self._set_keep_rules_on_paragraph_xml(node, keep_next=True, keep_lines=True)
 
-                if etype == 'table':
+                if etype == 'table' and wrote_any:
+                    # Zwischen bereits vorhandenem Inhalt und Tabelle eine Leerzeile
                     doc.add_paragraph()
                     self._set_table_full_width_xml(cloned)
 
@@ -2641,6 +2723,8 @@ class WordProcessor:
         spacer = doc.add_paragraph()
         self._set_paragraph_keep_rules(spacer, keep_with_next=True, keep_together=True)
         self.append_task_content_for_lek(doc, task, include_title=False)
+        # Pro Aufgabe am Ende max. eine Leerzeile halten; zusätzlicher Trenner ergibt dann max. zwei.
+        self._trim_trailing_empty_paragraphs_in_document(doc, max_empty=1)
 
     def _set_table_full_width_xml(self, table_xml_element):
         """Setzt eine Tabellenbreite auf 100 % (OOXML: w:type='pct', w:w='5000')."""
@@ -2676,6 +2760,8 @@ class WordProcessor:
             elements_to_copy = all_elements
             if not include_title:
                 elements_to_copy = self._strip_leading_task_heading_element(all_elements, task.get('title', ''))
+                # Zwischen H1 und erstem Inhalt nur eine Leerzeile (keine zusätzlichen leeren Quellabsätze)
+                elements_to_copy = self._trim_leading_empty_paragraph_elements(elements_to_copy)
 
             if elements_to_copy:
                 self._append_task_elements_for_lek(doc, task, elements_to_copy)
