@@ -14,6 +14,11 @@ Alle relevanten Änderungen an diesem Projekt werden hier dokumentiert.
 
 ## [3.7.6] - 2026-06-07
 
+### Added
+
+- LEK-Export erzeugt jetzt zusätzlich automatisch eine Protokolldatei (`.txt`) mit gleichem Basisnamen wie die exportierte LEK-Datei.
+- Die Protokolldatei enthält die im Export verwendeten Aufgabennummern in der tatsächlichen Exportreihenfolge.
+
 ### Changed
 
 - GUI-Workflow für Freigabe/Export verbessert:
@@ -24,7 +29,7 @@ Alle relevanten Änderungen an diesem Projekt werden hier dokumentiert.
 
 ### Quality
 
-- Regressionstest-Suite erfolgreich: **32/32 OK** (`tools/test_regression_core.py`).
+- Regressionstest-Suite erfolgreich: **33/33 OK** (`tools/test_regression_core.py`).
 
 ## [3.7.5] - 2026-06-07
 

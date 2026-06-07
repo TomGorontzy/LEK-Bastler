@@ -33,6 +33,7 @@ Aktueller Versionsstand: **3.7.6**.
 - EXE-Modus: Pfade relativ zu `sys.executable` (Deploy-Ordner)
 - Icon-Fallback bei PyInstaller: `sys._MEIPASS`
 - Exportziel: Verzeichnis `data/LEKs/` (wird bei Bedarf automatisch angelegt)
+- Zu jedem Export wird neben der `.docx` automatisch eine `.txt`-Protokolldatei mit den verwendeten Aufgabennummern geschrieben.
 
 ## 3a. Systemübersicht
 
@@ -61,6 +62,7 @@ Zusätzlich werden die ImportSession-/Wizard-Kopplung sowie der Regressionseinst
   - Punkte (optional)
 - Die Schritt-3-`Gesamtausgabe prüfen`-Vorschau in `src/main.py` nutzt dieselbe zentrale Fließtext-Logik wie der Exportpfad in `src/word_processor.py`.
 - Ein zusätzlicher Delta-Check markiert fehlende optionale Blöcke transparent, ohne den Exportinhalt künstlich zu verändern.
+- Der Exportpfad `create_document_from_tasks(...)` erzeugt nach dem Speichern zusätzlich über `_write_lek_export_protocol(...)` eine gleichnamige `.txt`-Datei mit Aufgabennummernliste.
 
 Technische Umsetzung der Gruppenlogik:
 

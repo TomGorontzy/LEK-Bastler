@@ -199,3 +199,38 @@ Nachvollziehbare, wiederholbare Dokumentation der Release-Smoketests je Version.
 
 - **Smoketest bestanden**
 - Keine technischen Auffälligkeiten im Post-Release-Check
+
+## Protokoll: v3.7.6 (2026-06-07)
+
+### Eingangsdaten
+
+- Artefakt: `release/LEK-Bastler_3.7.6.zip`
+- Größe: `16.32 MB` (`17,111,568` Bytes)
+- SHA256: `D17B22C8DB87661203DB68E0F2C2A90F1955AF1F8A424DB358D4C071C643668C`
+
+### Entpack- und Inhaltsprüfung
+
+- Archivstruktur: Dateien/Ordner direkt im ZIP-Root (kein zusätzlicher Top-Level-Unterordner)
+- Pflichtinhalte geprüft: OK
+  - `LEK-Bastler_3.7.6.exe`
+  - `README.md`
+  - `LIZENZ.txt`
+  - `data/`
+  - `docs/`
+  - `data/LEKs/README.md`
+
+### Startprobe EXE
+
+- Prozessstart: OK (`INPUT_IDLE=True`)
+- Test-PID: `14756`
+- Prozess danach kontrolliert beendet: OK
+
+### Ergebnis
+
+- **Smoketest bestanden**
+- Keine technischen Auffälligkeiten im Post-Release-Check
+
+### Post-Release (GitHub)
+
+- Release veröffentlicht/aktualisiert unter: <https://github.com/TomGorontzy/LEK-Bastler/releases/tag/v3.7.6>
+- Enthaltenes Asset: `LEK-Bastler_3.7.6.zip`

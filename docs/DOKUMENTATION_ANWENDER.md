@@ -26,6 +26,7 @@ Hinweis zum aktuellen Stand: Version **3.7.6**.
 4. **Optional Gesamtausgabe prüfen**
 5. **Export starten**
 6. Zieldatei im Ordner `data/LEKs/` speichern
+7. Automatisch erzeugte Protokolldatei (`.txt`) neben der LEK prüfen (enthält verwendete Aufgabennummern)
 
 Die vorgeschlagenen Dateinamen werden automatisch erzeugt und können bei Bedarf geändert werden.
 
@@ -39,6 +40,8 @@ Es bildet zusätzlich die Freigabe-Gating-Logik ab ("Weiter gesperrt", solange k
 ## 4. Wichtige Hinweise
 
 - Der Ordner `data/LEKs/` wird beim Export automatisch erstellt, falls er fehlt.
+- Zu jeder exportierten LEK wird automatisch eine Protokolldatei mit gleichem Dateinamen und Endung `.txt` erzeugt.
+- Die Protokolldatei enthält eine Liste der tatsächlich verwendeten Aufgabennummern und liegt im gleichen Ordner wie die exportierte LEK.
 - Für beste Ergebnisse sollten Aufgaben sauber mit Überschriften oder als strukturierte 2-Spalten-Tabellen aufgebaut sein.
 - Zusammengehörige Aufgabenfamilien werden automatisch gemeinsam behandelt: Wenn eine Hauptaufgabe mit Unteraufgaben vorliegt (z. B. `1.0`, `1.1`, `1.2`), übernimmt der LEK-Bastler diese bei Auswahl, Freigabe und Export immer als vollständige Gruppe.
 - Wenn Sie nur eine Unteraufgabe markieren, erweitert die Anwendung die Auswahl automatisch auf die restlichen Aufgaben derselben Hauptnummer.

@@ -7,10 +7,13 @@
   - Exportfunktionen sind damit direkt nach vorhandenen Freigaben nutzbar.
 - Layout im Aktionsbereich angepasst:
   - Die Export-Gruppe ist jetzt oben rechts ausgerichtet, nicht mehr vertikal zentriert.
+- LEK-Export erweitert:
+  - Zusätzlich zur `.docx` wird automatisch eine `.txt`-Protokolldatei mit identischem Basisnamen erzeugt.
+  - Die Protokolldatei listet die verwendeten Aufgabennummern in Exportreihenfolge.
 
 ## Qualitätssicherung
 
-- Regressionstest-Suite erfolgreich: **32/32 OK** (`tools/test_regression_core.py`).
+- Regressionstest-Suite erfolgreich: **33/33 OK** (`tools/test_regression_core.py`).
 
 ## Artefakte
 
