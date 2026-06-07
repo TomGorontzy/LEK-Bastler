@@ -16,7 +16,7 @@ Mit dem LEK-Bastler erstellen Sie aus vorbereiteten Aufgaben-Worddateien schnell
 1. Python-Umgebung vorbereiten
 2. Anwendung starten über `src/main.py`
 
-Hinweis zum aktuellen Stand: Version **3.7.5**.
+Hinweis zum aktuellen Stand: Version **3.7.6**.
 
 ## 3. Typischer Ablauf
 
@@ -62,6 +62,7 @@ Es bildet zusätzlich die Freigabe-Gating-Logik ab ("Weiter gesperrt", solange k
 - Die referenzierte Datei wird automatisch im lernbereichsspezifischen Unterordner der geladenen Aufgabensammlung gesucht, z. B. bei `Aufgaben_Auftragssteuerung und -koordination.docx` unter `data/Aufgaben/Auftragssteuerung und -koordination/`.
 - Der Marker selbst wird nicht in die LEK übernommen; stattdessen wird das referenzierte Dokument eingebettet.
 - Die Anwendung wählt automatisch Hoch- oder Querformat. Optional kann zusätzlich `<<tabelle_format=landscape>>`, `<<tabelle_format=portrait>>` oder `<<tabelle_format=auto>>` gesetzt werden.
+- Extern referenzierte Inhalte werden nach Möglichkeit jeweils auf einer eigenen Seite in die LEK übernommen.
 - Wenn die referenzierte Datei fehlt, wird der Export mit einer klaren Meldung blockiert.
 
 ## 5. Fehlerbehebung

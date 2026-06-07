@@ -12,6 +12,20 @@ Alle relevanten Änderungen an diesem Projekt werden hier dokumentiert.
 
 - Keine Änderungen dokumentiert.
 
+## [3.7.6] - 2026-06-07
+
+### Changed
+
+- GUI-Workflow für Freigabe/Export verbessert:
+  - Nach Klick auf `Auswahl freigeben` werden die Exportaktionen (`Auswahl exportieren`, `Freigaben exportieren`) sofort aktiviert.
+  - Die Aktivierung ist nicht mehr unnötig an den Wizard-Schritt 4 gebunden, sobald freigegebene Aufgaben vorliegen.
+- Aktionslayout verfeinert:
+  - Die Export-Gruppe wird jetzt oben rechts ausgerichtet (statt vertikal zentriert), für konsistentere Bedienführung.
+
+### Quality
+
+- Regressionstest-Suite erfolgreich: **32/32 OK** (`tools/test_regression_core.py`).
+
 ## [3.7.5] - 2026-06-07
 
 ### Fixed

@@ -3,6 +3,7 @@ import sys
 import tempfile
 import unittest
 from copy import deepcopy
+from pathlib import Path
 
 from docx import Document
 from docx.oxml import OxmlElement
@@ -946,6 +947,11 @@ class RegressionCoreTests(unittest.TestCase):
                 if any('Brutto' in str(cell.text or '') for cell in row.cells)
             ]
             self.assertEqual(len(found_rows), 1, 'Externe Tabelle wurde mehrfach eingefügt.')
+            self.assertGreaterEqual(
+                len(out_doc.sections),
+                3,
+                'Extern eingebundene Inhalte sollen auf eigener Seite/Sektion ausgegeben werden.',
+            )
 
     def test_external_document_style_conflicts_are_remapped_to_preserve_font_context(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1033,6 +1039,40 @@ class RegressionCoreTests(unittest.TestCase):
             all_table_text = '\n'.join(cell.text for table in out_doc.tables for row in table.rows for cell in row.cells)
             self.assertIn('Spalte 1', all_table_text)
             self.assertTrue(any(section.orientation == WD_ORIENT.LANDSCAPE for section in out_doc.sections))
+
+    def test_create_document_writes_txt_protocol_with_task_numbers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_path = os.path.join(tmp, 'LEK_Testexport.docx')
+            tasks = [
+                {
+                    'number': 1,
+                    'number_display': '1.0',
+                    'category': 'Demo',
+                    'title': 'Intro',
+                    'content': ['Einleitungstext'],
+                    'difficulty': 'Mittel',
+                    'keywords': [],
+                },
+                {
+                    'number': 2,
+                    'number_display': '1.1',
+                    'category': 'Demo',
+                    'title': 'Teilaufgabe',
+                    'content': ['Aufgabeninhalt'],
+                    'difficulty': 'Mittel',
+                    'keywords': [],
+                },
+            ]
+
+            self.wp.create_document_from_tasks(tasks, output_path, lek_theme='Demo')
+
+            protocol_path = os.path.splitext(output_path)[0] + '.txt'
+            self.assertTrue(os.path.exists(protocol_path), 'Export-Protokolldatei wurde nicht erzeugt.')
+
+            protocol_text = Path(protocol_path).read_text(encoding='utf-8')
+            self.assertIn('Verwendete Aufgabennummern:', protocol_text)
+            self.assertIn('- 1.0', protocol_text)
+            self.assertIn('- 1.1', protocol_text)
 
 
 if __name__ == '__main__':

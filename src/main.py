@@ -443,7 +443,7 @@ class LEKBastlerGUI:
         review_group = ttk.LabelFrame(action_frame, text="Prüfung", padding="8")
         review_group.grid(row=1, column=0, sticky="w", padx=(0, 10))
         export_group = ttk.LabelFrame(action_frame, text="Export", padding="8")
-        export_group.grid(row=0, column=1, rowspan=2, sticky="e")
+        export_group.grid(row=0, column=1, sticky="ne")
 
         self._action_groups = [select_group, review_group, export_group]
         for group in self._action_groups:
@@ -864,7 +864,8 @@ class LEKBastlerGUI:
         preview_lek_enabled = tk.NORMAL if has_session and self.current_step >= 3 and approved_count > 0 else tk.DISABLED
         self.btn_preview_lek.configure(state=preview_lek_enabled)
 
-        export_enabled = tk.NORMAL if has_session and self.current_step >= 4 and max_step >= 4 else tk.DISABLED
+        # Export soll direkt nach "Auswahl freigeben" (approved_count > 0) nutzbar sein
+        export_enabled = tk.NORMAL if has_session and max_step >= 4 else tk.DISABLED
         self.btn_export_selected.configure(state=export_enabled)
         self.btn_export_all.configure(state=export_enabled)
 
@@ -2734,6 +2735,11 @@ class LEKBastlerGUI:
         stats = self.import_session.get_stats()
         self._set_step(3, show_message=False)
         self._refresh_wizard_status()
+
+        # Exportbereich nach Freigabe sofort verfügbar machen
+        if int(stats.get('approved', 0) or 0) > 0:
+            self.btn_export_selected.configure(state=tk.NORMAL)
+            self.btn_export_all.configure(state=tk.NORMAL)
 
         effective_count = len(effective_ids)
         expanded_hint = ""

@@ -2351,7 +2351,10 @@ class WordProcessor:
             p_pr.insert(0, p_style)
 
     def _insert_external_table_reference(self, doc, task):
-        """Fügt eine referenzierte externe Tabellen-/Dokumentdatei in die LEK ein."""
+        """Fügt eine referenzierte externe Tabellen-/Dokumentdatei in die LEK ein.
+
+        Externe Inhalte werden nach Möglichkeit in einer eigenen Seite/Sektion ausgegeben.
+        """
         path = str((task or {}).get('external_table_path') or '').strip()
         if not path or not Path(path).exists():
             return False
@@ -2362,17 +2365,25 @@ class WordProcessor:
             override=(task or {}).get('external_table_orientation', 'auto'),
         )
 
-        inserted_landscape = False
-        if orientation == 'landscape':
-            landscape_section = doc.add_section(WD_SECTION.NEW_PAGE)
-            self._apply_section_orientation(landscape_section, 'landscape')
-            inserted_landscape = True
+        started_own_page = False
+        try:
+            # Externe Inhalte nach Möglichkeit auf eigener Seite/Sektion beginnen
+            external_section = doc.add_section(WD_SECTION.NEW_PAGE)
+            self._apply_section_orientation(external_section, orientation)
+            started_own_page = True
+        except Exception:
+            started_own_page = False
 
         self._append_external_document_content(doc, source_doc)
 
-        if inserted_landscape:
-            portrait_section = doc.add_section(WD_SECTION.NEW_PAGE)
-            self._apply_section_orientation(portrait_section, 'portrait')
+        if started_own_page:
+            try:
+                # Nach externen Inhalten wieder auf neue Seite wechseln,
+                # damit der restliche LEK-Inhalt separat weiterläuft.
+                continue_section = doc.add_section(WD_SECTION.NEW_PAGE)
+                self._apply_section_orientation(continue_section, 'portrait')
+            except Exception:
+                pass
 
         return True
 
@@ -3574,6 +3585,50 @@ class WordProcessor:
         
         return None  # Keine explizite Schwierigkeit gefunden
 
+    def _task_number_label_for_export(self, task):
+        """Liefert die bevorzugte Aufgabennummer für Exportprotokolle."""
+        if not isinstance(task, dict):
+            return ''
+
+        preferred = task.get('number_display') or task.get('number_label') or task.get('id') or task.get('number')
+        return str(preferred or '').strip()
+
+    def _write_lek_export_protocol(self, tasks, output_path):
+        """Schreibt eine TXT-Protokolldatei mit den verwendeten Aufgabennummern.
+
+        Die Protokolldatei liegt neben der exportierten LEK-Datei und verwendet
+        denselben Dateinamen mit der Endung `.txt`.
+        """
+        output_file = Path(output_path)
+        protocol_path = output_file.with_suffix('.txt')
+
+        ordered_numbers = []
+        seen = set()
+
+        for task in tasks or []:
+            label = self._task_number_label_for_export(task)
+            if not label:
+                continue
+            if label in seen:
+                continue
+            seen.add(label)
+            ordered_numbers.append(label)
+
+        lines = [
+            f"LEK-Export-Protokoll: {output_file.name}",
+            f"Erstellt am: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "",
+            "Verwendete Aufgabennummern:",
+        ]
+
+        if ordered_numbers:
+            lines.extend(f"- {number}" for number in ordered_numbers)
+        else:
+            lines.append("- (keine Aufgabennummern erkannt)")
+
+        protocol_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+        return str(protocol_path)
+
     def _difficulty_allowed_values(self):
         """Liefert erlaubte Schwierigkeitsgrade in Kleinbuchstaben."""
         values = self.get_import_rule('difficulty_rules.allowed_values', ['leicht', 'mittel', 'schwer']) or []
@@ -3761,6 +3816,7 @@ class WordProcessor:
             
             # Dokument speichern
             doc.save(output_path)
+            self._write_lek_export_protocol(tasks, output_path)
             
         except Exception as e:
             raise Exception(f"Fehler beim Erstellen der Word-Datei: {str(e)}")
