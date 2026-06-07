@@ -1903,6 +1903,142 @@ class WordProcessor:
 
         return style_ids, num_ids
 
+    def _resolve_style_numbering(self, source_part, style_id, visited=None):
+        """Löst eine über Paragraph-Styles definierte Nummerierung inkl. Vererbung auf."""
+        if source_part is None or not style_id:
+            return None, None
+
+        if visited is None:
+            visited = set()
+
+        style_key = str(style_id).strip()
+        if not style_key or style_key in visited:
+            return None, None
+        visited.add(style_key)
+
+        try:
+            styles_element = source_part.styles.element
+        except Exception:
+            return None, None
+
+        style_node = None
+        for candidate in styles_element.xpath('./w:style'):
+            if candidate.get(qn('w:styleId')) == style_key:
+                style_node = candidate
+                break
+
+        if style_node is None:
+            return None, None
+
+        num_nodes = style_node.xpath('./w:pPr/w:numPr/w:numId')
+        ilvl_nodes = style_node.xpath('./w:pPr/w:numPr/w:ilvl')
+        if num_nodes:
+            num_id = num_nodes[0].get(qn('w:val'))
+            ilvl = ilvl_nodes[0].get(qn('w:val')) if ilvl_nodes else None
+            return num_id, ilvl
+
+        based_on_nodes = style_node.xpath('./w:basedOn')
+        if based_on_nodes:
+            parent_style_id = based_on_nodes[0].get(qn('w:val'))
+            if parent_style_id:
+                return self._resolve_style_numbering(source_part, parent_style_id, visited=visited)
+
+        return None, None
+
+    def _collect_num_ids_from_xml_elements(self, xml_elements, source_part=None):
+        """Sammelt direkte und stilbasierte Nummerierungs-IDs aus XML-Elementen."""
+        num_ids = set()
+
+        for xml_elem in xml_elements or []:
+            if xml_elem is None:
+                continue
+
+            for n in xml_elem.xpath('.//*[local-name()="numPr"]/*[local-name()="numId"]'):
+                val = n.get(qn('w:val'))
+                if val:
+                    num_ids.add(val)
+
+            if source_part is None:
+                continue
+
+            para_nodes = []
+            tag_local = xml_elem.tag.split('}')[-1] if '}' in xml_elem.tag else xml_elem.tag
+            if tag_local == 'p':
+                para_nodes.append(xml_elem)
+            para_nodes.extend(xml_elem.xpath('.//*[local-name()="p"]'))
+
+            for para in para_nodes:
+                direct_num_nodes = para.xpath('./*[local-name()="pPr"]/*[local-name()="numPr"]/*[local-name()="numId"]')
+                if direct_num_nodes:
+                    continue
+
+                style_nodes = para.xpath('./*[local-name()="pPr"]/*[local-name()="pStyle"]')
+                style_id = style_nodes[0].get(qn('w:val')) if style_nodes else None
+                style_num_id, _style_ilvl = self._resolve_style_numbering(source_part, style_id)
+                if style_num_id:
+                    num_ids.add(style_num_id)
+
+        return num_ids
+
+    def _ensure_local_numbering_map(self, source_part, target_part, xml_elements, force_new_ids=True):
+        """Erzeugt ein lokales Numbering-Mapping für einen kopierten Aufgaben-/Zellblock."""
+        used_num_ids = self._collect_num_ids_from_xml_elements(xml_elements, source_part=source_part)
+        return self._merge_required_numbering(
+            source_part,
+            target_part,
+            used_num_ids,
+            force_new_ids=force_new_ids,
+        )
+
+    def _materialize_style_numbering_in_element(self, xml_element, source_part, num_id_map):
+        """Schreibt stilbasierte Listen als direkte numPr in kopierte XML-Elemente."""
+        if xml_element is None or source_part is None or not num_id_map:
+            return
+
+        para_nodes = []
+        tag_local = xml_element.tag.split('}')[-1] if '}' in xml_element.tag else xml_element.tag
+        if tag_local == 'p':
+            para_nodes.append(xml_element)
+        para_nodes.extend(xml_element.xpath('.//*[local-name()="p"]'))
+
+        for para in para_nodes:
+            direct_num_nodes = para.xpath('./*[local-name()="pPr"]/*[local-name()="numPr"]/*[local-name()="numId"]')
+            if direct_num_nodes:
+                continue
+
+            style_nodes = para.xpath('./*[local-name()="pPr"]/*[local-name()="pStyle"]')
+            style_id = style_nodes[0].get(qn('w:val')) if style_nodes else None
+            source_num_id, source_ilvl = self._resolve_style_numbering(source_part, style_id)
+            if not source_num_id:
+                continue
+
+            target_num_id = num_id_map.get(source_num_id)
+            if not target_num_id:
+                continue
+
+            p_pr = para.find(qn('w:pPr'))
+            if p_pr is None:
+                p_pr = OxmlElement('w:pPr')
+                para.insert(0, p_pr)
+
+            num_pr = p_pr.find(qn('w:numPr'))
+            if num_pr is None:
+                num_pr = OxmlElement('w:numPr')
+                p_pr.append(num_pr)
+
+            if source_ilvl is not None:
+                ilvl_node = num_pr.find(qn('w:ilvl'))
+                if ilvl_node is None:
+                    ilvl_node = OxmlElement('w:ilvl')
+                    num_pr.append(ilvl_node)
+                ilvl_node.set(qn('w:val'), str(source_ilvl))
+
+            num_id_node = num_pr.find(qn('w:numId'))
+            if num_id_node is None:
+                num_id_node = OxmlElement('w:numId')
+                num_pr.append(num_id_node)
+            num_id_node.set(qn('w:val'), str(target_num_id))
+
     def _append_external_document_content(self, target_doc, external_doc):
         """Übernimmt die relevanten Body-Elemente eines externen Dokuments ins Ziel."""
         xml_elements = []
@@ -1911,9 +2047,9 @@ class WordProcessor:
             if tag_local in ('p', 'tbl', 'sdt'):
                 xml_elements.append(child)
 
-        used_style_ids, used_num_ids = self._collect_used_style_and_num_ids_from_xml_elements(xml_elements)
+        used_style_ids, _used_num_ids = self._collect_used_style_and_num_ids_from_xml_elements(xml_elements)
         self._merge_required_styles(external_doc.part, target_doc.part, used_style_ids)
-        external_num_map = self._merge_required_numbering(external_doc.part, target_doc.part, used_num_ids)
+        external_num_map = self._ensure_local_numbering_map(external_doc.part, target_doc.part, xml_elements)
 
         body = target_doc._element.body
         sect_pr = body.find(qn('w:sectPr'))
@@ -1927,6 +2063,7 @@ class WordProcessor:
                 target_part=target_doc.part,
                 rel_map=rel_map,
             )
+            self._materialize_style_numbering_in_element(cloned, external_doc.part, external_num_map)
             self._remap_num_ids_in_element(cloned, external_num_map)
 
             if sect_pr is not None:
@@ -2274,6 +2411,11 @@ class WordProcessor:
             return False
 
         tc = cell._tc
+        copy_candidates = [
+            child for child in list(tc)
+            if (child.tag.split('}')[-1] if '}' in child.tag else child.tag) in ('p', 'tbl', 'sdt')
+        ]
+        local_num_map = self._ensure_local_numbering_map(source_part, doc.part, copy_candidates) if source_part is not None else {}
         body = doc._element.body
         sect_pr = body.find(qn('w:sectPr'))
         rel_map = {}
@@ -2309,7 +2451,8 @@ class WordProcessor:
                     rel_map=rel_map,
                 )
 
-            self._remap_num_ids_in_element(cloned, self._num_id_map)
+            self._materialize_style_numbering_in_element(cloned, source_part, local_num_map)
+            self._remap_num_ids_in_element(cloned, local_num_map or self._num_id_map)
 
             if tag_local == 'p':
                 self._set_keep_rules_on_paragraph_xml(cloned, keep_next=True, keep_lines=True)
@@ -2497,6 +2640,18 @@ class WordProcessor:
         if not elements:
             return False
 
+        source_part = None
+        xml_candidates = []
+        for element in elements:
+            content = element.get('content')
+            if source_part is None and hasattr(content, 'part'):
+                source_part = content.part
+            if hasattr(content, '_element'):
+                xml_candidates.append(content._element)
+            elif content is not None:
+                xml_candidates.append(content)
+
+        local_num_map = self._ensure_local_numbering_map(source_part, doc.part, xml_candidates) if source_part is not None else {}
         body = doc._element.body
         sect_pr = body.find(qn('w:sectPr'))
         rel_map = {}
@@ -2535,7 +2690,8 @@ class WordProcessor:
                         rel_map=rel_map,
                     )
 
-                self._remap_num_ids_in_element(cloned, self._num_id_map)
+                self._materialize_style_numbering_in_element(cloned, source_part, local_num_map)
+                self._remap_num_ids_in_element(cloned, local_num_map or self._num_id_map)
 
                 if etype == 'paragraph':
                     self._set_keep_rules_on_paragraph_xml(cloned, keep_next=True, keep_lines=True)
@@ -3479,7 +3635,7 @@ class WordProcessor:
                 target_styles.append(deepcopy(src_style))
                 tgt_ids.add(style_id)
 
-    def _merge_required_numbering(self, source_part, target_part, used_num_ids):
+    def _merge_required_numbering(self, source_part, target_part, used_num_ids, force_new_ids=False):
         """
         Fügt benötigte Nummerierungsdefinitionen aus Quelle in Ziel ein.
         Bei ID-Konflikten werden neue IDs erzeugt und zurückgemappt.
@@ -3525,6 +3681,8 @@ class WordProcessor:
             max_id = max([int(i) for i in existing_ids if str(i).isdigit()] + [0])
             return str(max_id + 1)
 
+        abs_id_map = {}
+
         for num_id in sorted(used_num_ids, key=lambda x: int(x) if str(x).isdigit() else 10**9):
             src_num = src_nums.get(num_id)
             if src_num is None:
@@ -3536,14 +3694,15 @@ class WordProcessor:
             src_abs_id = abs_nodes[0].get(qn('w:val'))
 
             target_num_id = num_id
-            if target_num_id in tgt_nums:
+            if force_new_ids or target_num_id in tgt_nums:
                 # ID bereits belegt -> remappen
                 target_num_id = _next_free_id(tgt_nums.keys())
 
-            target_abs_id = src_abs_id
-            if target_abs_id in tgt_abs:
+            target_abs_id = abs_id_map.get(src_abs_id, src_abs_id)
+            if target_abs_id in tgt_abs and target_abs_id not in abs_id_map.values():
                 # Abstract-ID belegt -> remappen
                 target_abs_id = _next_free_id(tgt_abs.keys())
+            abs_id_map[src_abs_id] = target_abs_id
 
             # AbstractNum sicherstellen
             src_abs_def = src_abs.get(src_abs_id)

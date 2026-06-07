@@ -40,6 +40,12 @@ class RegressionCoreTests(unittest.TestCase):
         self.assertTrue(tasks, 'Es wurde keine Aufgabe erkannt.')
         return tasks[0]
 
+    def _paragraph_num_id(self, paragraph):
+        nodes = paragraph._element.xpath('./w:pPr/w:numPr/w:numId')
+        if not nodes:
+            return None
+        return nodes[0].get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val')
+
     def test_table_with_intro_hint_points_preview_order(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, 'table_full.docx')
@@ -373,6 +379,113 @@ class RegressionCoreTests(unittest.TestCase):
             joined = '\n'.join(all_table_texts)
             self.assertIn('Antwort', joined)
             self.assertIn('Freitext', joined)
+
+    def test_export_resets_style_based_numbering_per_task(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src_path = os.path.join(tmp, 'structured_numbering_reset.docx')
+
+            doc = Document()
+            for task_id, title, first_item, second_item in [
+                ('A-110', 'Liste Eins', 'Alpha 1', 'Alpha 2'),
+                ('A-111', 'Liste Zwei', 'Beta 1', 'Beta 2'),
+            ]:
+                table = doc.add_table(rows=0, cols=2)
+                for key, value in [
+                    ('ID', task_id),
+                    ('Titel', title),
+                    ('Kategorie', 'Demo'),
+                    ('Schwierigkeitsgrad', 'mittel'),
+                    ('Aufgabenstellung (Pflicht)', ''),
+                ]:
+                    row = table.add_row()
+                    row.cells[0].text = key
+                    row.cells[1].text = value
+
+                task_cell = table.rows[-1].cells[1]
+                task_cell.text = ''
+                first_para = task_cell.paragraphs[0]
+                first_para.style = 'List Number'
+                first_para.add_run(first_item)
+                second_para = task_cell.add_paragraph(second_item)
+                second_para.style = 'List Number'
+                doc.add_paragraph('')
+
+            doc.save(src_path)
+
+            tasks = self.wp.extract_tasks(src_path)
+            self.assertEqual(len(tasks), 2)
+
+            out_doc = Document()
+            self.wp._prepare_target_document_context(out_doc, tasks)
+            for idx, task in enumerate(tasks):
+                self.wp.append_task_to_lek_document(out_doc, task)
+                if idx < len(tasks) - 1:
+                    out_doc.add_paragraph('')
+
+            para_by_text = {
+                str(p.text or '').strip(): p
+                for p in out_doc.paragraphs
+                if str(p.text or '').strip() in {'Alpha 1', 'Alpha 2', 'Beta 1', 'Beta 2'}
+            }
+
+            alpha_1 = self._paragraph_num_id(para_by_text['Alpha 1'])
+            alpha_2 = self._paragraph_num_id(para_by_text['Alpha 2'])
+            beta_1 = self._paragraph_num_id(para_by_text['Beta 1'])
+            beta_2 = self._paragraph_num_id(para_by_text['Beta 2'])
+
+            self.assertIsNotNone(alpha_1)
+            self.assertEqual(alpha_1, alpha_2)
+            self.assertIsNotNone(beta_1)
+            self.assertEqual(beta_1, beta_2)
+            self.assertNotEqual(alpha_1, beta_1)
+
+    def test_structured_export_materializes_numbering_in_nested_table_lists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src_path = os.path.join(tmp, 'structured_nested_numbering.docx')
+
+            doc = Document()
+            table = doc.add_table(rows=0, cols=2)
+            for key, value in [
+                ('ID', 'A-112'),
+                ('Titel', 'Untertabelle mit Liste'),
+                ('Kategorie', 'Demo'),
+                ('Schwierigkeitsgrad', 'mittel'),
+                ('Aufgabenstellung (Pflicht)', ''),
+            ]:
+                row = table.add_row()
+                row.cells[0].text = key
+                row.cells[1].text = value
+
+            task_cell = table.rows[-1].cells[1]
+            task_cell.text = ''
+            nested = task_cell.add_table(rows=2, cols=1)
+            nested_first = nested.cell(0, 0).paragraphs[0]
+            nested_first.style = 'List Number'
+            nested_first.add_run('Unterpunkt 1')
+            nested_second = nested.cell(1, 0).paragraphs[0]
+            nested_second.style = 'List Number'
+            nested_second.add_run('Unterpunkt 2')
+            doc.save(src_path)
+
+            task = self._extract_first_task(src_path)
+            out_doc = Document()
+            self.wp._prepare_target_document_context(out_doc, [task])
+            self.wp.append_task_content_for_lek(out_doc, task)
+
+            nested_paragraphs = []
+            for out_table in out_doc.tables:
+                for row in out_table.rows:
+                    for cell in row.cells:
+                        for paragraph in cell.paragraphs:
+                            text = str(paragraph.text or '').strip()
+                            if text in {'Unterpunkt 1', 'Unterpunkt 2'}:
+                                nested_paragraphs.append(paragraph)
+
+            self.assertEqual(len(nested_paragraphs), 2)
+            first_num = self._paragraph_num_id(nested_paragraphs[0])
+            second_num = self._paragraph_num_id(nested_paragraphs[1])
+            self.assertIsNotNone(first_num)
+            self.assertEqual(first_num, second_num)
 
     def test_structured_export_copies_sdt_controls_from_task_cell(self):
         with tempfile.TemporaryDirectory() as tmp:

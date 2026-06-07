@@ -22,11 +22,15 @@ Alle relevanten Änderungen an diesem Projekt werden hier dokumentiert.
 - Export für Aufgaben mit Objekt-/Tabellenstart stabilisiert:
   - Doppelte Leerzeilen vor einem ersten Tabellen-/Objektblock wurden entfernt.
   - Führende und abschließende leere Absätze innerhalb eines Aufgabenblocks werden robuster begrenzt.
+- Nummerierte Listen im LEK-Export korrigiert:
+  - Nummerierte Absätze in Aufgabenbeschreibungen behalten jetzt ihre lokale Nummerierung pro Aufgabe, statt ungewollt in späteren Aufgaben weiterzulaufen.
+  - Das gilt auch für nummerierte Listen in verschachtelten Tabellen innerhalb strukturierter Aufgaben.
 
 ### Quality
 
 - Syntax-/Problems-Check für `src/word_processor.py` ohne Fehler.
 - Mini-End-to-End-Exporttest (inkl. tabellenstartender Aufgabe) bestätigt die Zielabstände.
+- Regressionstest-Suite erfolgreich: **27/27 OK** (`tools/test_regression_core.py`).
 
 ## [3.7.2] - 2026-06-07
 
